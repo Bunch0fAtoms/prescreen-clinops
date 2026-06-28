@@ -36,12 +36,16 @@ fake = Faker()
 Faker.seed(SEED)
 
 # ── Spark session (serverless via Databricks Connect; falls back to local) ─────
-try:
-    from databricks.connect import DatabricksSession
-    spark = DatabricksSession.builder.serverless(True).getOrCreate()
-except Exception:
-    from pyspark.sql import SparkSession
-    spark = SparkSession.builder.getOrCreate()
+from pyspark.sql import SparkSession
+spark = SparkSession.getActiveSession()
+if spark is None:
+    try:
+        # Databricks job / notebook runtime provides the session directly.
+        spark = SparkSession.builder.getOrCreate()
+    except Exception:
+        # Pure-local dev: fall back to Databricks Connect (serverless).
+        from databricks.connect import DatabricksSession
+        spark = DatabricksSession.builder.serverless(True).getOrCreate()
 
 # ─────────────────────────────────────────────────────────────────────────────
 # CONCEPT IDs — synthetic but stable.

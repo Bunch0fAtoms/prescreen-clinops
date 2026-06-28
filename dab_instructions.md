@@ -76,4 +76,5 @@ The following are **not deployed by `bundle deploy`** — they are demonstration
 | `SCHEMA_NOT_FOUND` | Run with `CREATE SCHEMA` privilege on `client_catalog` |
 | `Permission denied` on catalog | Request `USE CATALOG` + `CREATE SCHEMA` from your admin |
 | Job fails with `ModuleNotFoundError` | The job uses serverless env `client: "2"` with Faker/Numpy/Pandas — check if serverless is enabled |
-| `python_script_task` warning during validate | Schema warning only; functional at runtime. Ignore. |
+| `No task defined` on deploy | The task type must be `spark_python_task` (not `python_script_task`). |
+| `PyArrow not installed` on serverless run | Use `environment_version: "3"` (or later) in the job env spec — older versions lack pyarrow. |
