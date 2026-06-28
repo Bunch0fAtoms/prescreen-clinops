@@ -1,0 +1,63 @@
+bundle:
+  name: fred-hutch-clinical-trial-prescreening
+
+include:
+  - resources/*.yml
+
+variables:
+  # ── Synth / real toggle ─────────────────────────────────────────────────────
+  # Set run_with_synthetic_data=yes  → run the generation job; downstream tools
+  #   read from client_catalog.client_schema (synthetic OMOP data).
+  # Set run_with_synthetic_data=no   → skip generation; downstream tools read
+  #   from source_catalog.source_schema (your real curated_omop.omop tables).
+  # The 6 table names are identical in both cases — no query changes required.
+  run_with_synthetic_data:
+    description: >
+      yes = use bundled synthetic data generator (recommended for first run).
+      no = read from source_catalog.source_schema (your real OMOP tables).
+    default: "yes"
+
+  source_catalog:
+    description: >
+      Source catalog for your real OMOP data.
+      Only used when run_with_synthetic_data=no. Default: curated_omop.
+    default: "curated_omop"
+
+  source_schema:
+    description: >
+      Source schema for your real OMOP data.
+      Only used when run_with_synthetic_data=no. Default: omop.
+    default: "omop"
+
+  # ── Client catalog / schema (where demo tables are created) ─────────────────
+  client_catalog:
+    description: "Your Unity Catalog catalog (where the demo will create tables)"
+    default: "<your_catalog>"
+
+  client_schema:
+    description: "Your schema (created inside client_catalog if it doesn't exist)"
+    default: "<your_schema>"
+
+  warehouse_id:
+    description: "SQL Warehouse ID for queries and dashboard"
+    default: "<your_warehouse_id>"
+
+targets:
+  # ── Client target (default) — fill in your workspace values below, then: ────
+  #   databricks bundle deploy --target client
+  #   databricks bundle run data_generation_job --target client
+  #
+  # Genie Code can auto-detect these via the
+  # `fred-hutch-clinical-trial-prescreening-adaptation` skill —
+  # open Genie Code and ask: "run in my workspace"
+  client:
+    default: true
+    # Omit `mode:` — DAB defaults to production behavior (no dev_<username>_ prefixing).
+    # Set workspace.host to your workspace URL, e.g.:
+    #   workspace:
+    #     host: https://<your-workspace>.cloud.databricks.com
+    variables:
+      client_catalog: "<your_catalog>"
+      client_schema: "<your_schema>"
+      warehouse_id: "<your_warehouse_id>"
+      run_with_synthetic_data: "yes"

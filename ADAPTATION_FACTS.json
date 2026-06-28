@@ -1,0 +1,254 @@
+{
+  "skill_version": "1.0.0",
+  "demo_slug": "fred-hutch-clinical-trial-prescreening",
+  "demo_name": "Fred Hutch Clinical Trial Pre-Screening",
+
+  "name_vars": {
+    "catalog_var": "client_catalog",
+    "schema_var": "client_schema",
+    "warehouse_var": "warehouse_id"
+  },
+
+  "deploy_target": {
+    "kind": "job",
+    "resource_key": "data_generation_job",
+    "run_command": "databricks bundle run data_generation_job --target client",
+    "bundle_target_flag": "--target client"
+  },
+
+  "toggle": {
+    "variable": "run_with_synthetic_data",
+    "synthetic_value": "yes",
+    "real_value": "no",
+    "source_catalog_var": "source_catalog",
+    "source_schema_var": "source_schema",
+    "default_source_catalog": "curated_omop",
+    "default_source_schema": "omop",
+    "note": "All 6 OMOP table names are identical in synthetic and real modes. No query changes required to switch between them."
+  },
+
+  "tables": [
+    {
+      "name": "person",
+      "role": "One row per patient. Key columns: person_id (PK), year_of_birth, gender_source_value, birth_date.",
+      "row_count_synthetic": 300
+    },
+    {
+      "name": "condition_occurrence",
+      "role": "Breast cancer diagnoses. condition_source_value = 'Malignant neoplasm of breast' identifies breast cancer patients.",
+      "row_count_synthetic": 300
+    },
+    {
+      "name": "measurement",
+      "role": "Structured biomarker results (ER/PR/HER2). measurement_source_value identifies the marker; value_source_value = 'Positive'/'Negative'. Absent for notes-only patients (person_ids 181-240).",
+      "row_count_synthetic_approx": "~720 (3 markers × 240 structured patients)"
+    },
+    {
+      "name": "observation",
+      "role": "Menopausal status (observation_source_value='Menopausal status', value_source_value='Postmenopausal'/'Premenopausal') and AJCC tumor stage (observation_source_value='AJCC stage', value_source_value in Stage I..Stage IV). Each patient gets both observation types.",
+      "row_count_synthetic_approx": "~600 (2 observations × 300 patients)"
+    },
+    {
+      "name": "drug_exposure",
+      "role": "Prior therapy. drug_source_value='Trastuzumab' or 'Pertuzumab' flags prior anti-HER2 therapy — disqualifier for Trial A. Present for person_ids 21-30 (ineligible controls).",
+      "row_count_synthetic_approx": "~550 (general chemo/hormone therapy for most patients)"
+    },
+    {
+      "name": "note",
+      "role": "Free-text pathology reports in note_text. Contains biomarker status phrasing for both-agree patients (person_ids 1-180) and notes-only patients (181-240). Absent biomarker phrasing for structured-only patients (241-300). The NLP value story: ~60 patients (181-240) are invisible to structured queries but discoverable via note_text extraction.",
+      "row_count_synthetic": 300
+    }
+  ],
+
+  "planted_cohorts": {
+    "trial_a": {
+      "name": "HER2-Positive Breast Cancer",
+      "eligible_person_ids": "1-20",
+      "ineligible_controls": "21-30",
+      "ineligible_reason": "Prior anti-HER2 therapy (Trastuzumab and/or Pertuzumab in drug_exposure)",
+      "criteria": [
+        "condition_occurrence.condition_source_value = 'Malignant neoplasm of breast'",
+        "measurement.measurement_source_value = 'HER2/neu' AND value_source_value = 'Positive'",
+        "age 18-75 at diagnosis",
+        "NO drug_exposure row with drug_source_value IN ('Trastuzumab','Pertuzumab')"
+      ]
+    },
+    "trial_b": {
+      "name": "ER-Positive / HER2-Negative Postmenopausal",
+      "eligible_person_ids": "31-50",
+      "ineligible_controls": "51-60",
+      "ineligible_reason_51_55": "Premenopausal (observation.value_source_value = 'Premenopausal')",
+      "ineligible_reason_56_60": "ER-negative (measurement.value_source_value = 'Negative' for Estrogen receptor)",
+      "criteria": [
+        "condition_occurrence.condition_source_value = 'Malignant neoplasm of breast'",
+        "measurement.measurement_source_value = 'Estrogen receptor' AND value_source_value = 'Positive'",
+        "measurement.measurement_source_value = 'HER2/neu' AND value_source_value = 'Negative'",
+        "observation.observation_source_value = 'Menopausal status' AND value_source_value = 'Postmenopausal'",
+        "age 18-75 at diagnosis"
+      ]
+    }
+  },
+
+  "biomarker_groups": {
+    "both_agree": {
+      "person_ids": "1-180",
+      "measurement_rows": true,
+      "note_biomarkers": true,
+      "description": "Structured AND note biomarkers present. NLP ground truth for MLflow evaluation.",
+      "count": 180
+    },
+    "notes_only": {
+      "person_ids": "181-240",
+      "measurement_rows": false,
+      "note_biomarkers": true,
+      "description": "Biomarker status in note_text ONLY — invisible to structured queries. The NLP value story: ~18 Trial A eligible, ~15 Trial B eligible recoverable only via NLP extraction.",
+      "count": 60
+    },
+    "structured_only": {
+      "person_ids": "241-300",
+      "measurement_rows": true,
+      "note_biomarkers": false,
+      "description": "Structured measurement rows only; note_text has no biomarker phrasing.",
+      "count": 60
+    }
+  },
+
+  "biomarker_source_values": {
+    "her2": {
+      "table": "measurement",
+      "measurement_source_value": "HER2/neu",
+      "positive": "Positive",
+      "negative": "Negative"
+    },
+    "er": {
+      "table": "measurement",
+      "measurement_source_value": "Estrogen receptor",
+      "positive": "Positive",
+      "negative": "Negative"
+    },
+    "pr": {
+      "table": "measurement",
+      "measurement_source_value": "Progesterone receptor",
+      "positive": "Positive",
+      "negative": "Negative"
+    },
+    "menopausal_status": {
+      "table": "observation",
+      "observation_source_value": "Menopausal status",
+      "postmenopausal_value": "Postmenopausal",
+      "premenopausal_value": "Premenopausal"
+    },
+    "ajcc_stage": {
+      "table": "observation",
+      "observation_source_value": "AJCC stage",
+      "values": ["Stage I", "Stage IIA", "Stage IIB", "Stage IIIA", "Stage IIIB", "Stage IV"],
+      "distribution_note": "15% Stage I / 28% IIA / 22% IIB / 18% IIIA / 10% IIIB / 7% IV"
+    }
+  },
+
+  "source_files": {
+    "data_generator": "src/data_generation/generate_omop_data.py",
+    "job_resource": "resources/data_gen_job.yml",
+    "bundle": "databricks.yml"
+  },
+
+  "table_contract": {
+    "bronze": null,
+    "silver": null,
+    "gold": {
+      "tables": ["person", "condition_occurrence", "measurement", "observation", "drug_exposure", "note"],
+      "defined_in": ["src/data_generation/generate_omop_data.py"],
+      "note": "This demo has no SDP pipeline — all 6 tables are written directly by the data generator. They behave as 'gold' (analytics-ready, OMOP CDM compliant)."
+    }
+  },
+
+  "dependency_map": [
+    {"from": "data_generation_job", "to": "person",               "type": "creates"},
+    {"from": "data_generation_job", "to": "condition_occurrence", "type": "creates"},
+    {"from": "data_generation_job", "to": "measurement",          "type": "creates"},
+    {"from": "data_generation_job", "to": "observation",          "type": "creates"},
+    {"from": "data_generation_job", "to": "drug_exposure",        "type": "creates"},
+    {"from": "data_generation_job", "to": "note",                 "type": "creates"},
+    {"from": "measurement",         "to": "genie",                "type": "queried_by",   "note": "Structured biomarker cohort queries"},
+    {"from": "note",                "to": "genie_code",           "type": "queried_by",   "note": "NLP biomarker extraction from note_text"},
+    {"from": "measurement",         "to": "mlflow_eval",          "type": "ground_truth", "note": "both-agree patients as NLP evaluation ground truth"}
+  ],
+
+  "grain_constraints": [
+    {
+      "table": "person",
+      "grain_key": "person_id",
+      "min_partition_size": 1,
+      "note": "One row per patient, 300 rows total"
+    },
+    {
+      "table": "measurement",
+      "grain_key": "person_id + measurement_source_value",
+      "min_partition_size": 1,
+      "note": "Up to 3 rows per patient (ER, PR, HER2); absent for notes-only group (person_ids 181-240)"
+    },
+    {
+      "table": "observation",
+      "grain_key": "person_id + observation_source_value",
+      "min_partition_size": 1,
+      "note": "2 rows per patient: menopausal status + AJCC stage"
+    }
+  ],
+
+  "source_inputs": [
+    {
+      "source_type": "synthetic_generator",
+      "locator": "src/data_generation/generate_omop_data.py",
+      "description": "Faker-based Python script writes all 6 OMOP tables. Parameters: argv[1]=catalog, argv[2]=schema. Seed=42 for determinism.",
+      "active_when": "run_with_synthetic_data = yes"
+    },
+    {
+      "source_type": "real_omop",
+      "locator": "${source_catalog}.${source_schema}",
+      "description": "Customer's real OMOP CDM tables. Must have identical schema to the synthetic tables (exact FH curated_omop.omop column names and types).",
+      "active_when": "run_with_synthetic_data = no"
+    }
+  ],
+
+  "verify_queries": [
+    {
+      "id": "table_row_counts",
+      "description": "Row counts for all 6 OMOP tables — all must be > 0 after data generation",
+      "sql": "SELECT 'person' AS tbl, COUNT(*) AS n FROM ${client_catalog}.${client_schema}.person UNION ALL SELECT 'condition_occurrence', COUNT(*) FROM ${client_catalog}.${client_schema}.condition_occurrence UNION ALL SELECT 'measurement', COUNT(*) FROM ${client_catalog}.${client_schema}.measurement UNION ALL SELECT 'observation', COUNT(*) FROM ${client_catalog}.${client_schema}.observation UNION ALL SELECT 'drug_exposure', COUNT(*) FROM ${client_catalog}.${client_schema}.drug_exposure UNION ALL SELECT 'note', COUNT(*) FROM ${client_catalog}.${client_schema}.note ORDER BY tbl",
+      "expected_synthetic": "person=300, condition_occurrence>=300, note=300, all others > 0"
+    },
+    {
+      "id": "trial_a_eligible_count",
+      "description": "Trial A eligible patients (HER2+, breast cancer dx, no anti-HER2 prior therapy)",
+      "sql": "SELECT COUNT(DISTINCT m.person_id) AS n FROM ${client_catalog}.${client_schema}.measurement m JOIN ${client_catalog}.${client_schema}.condition_occurrence co ON m.person_id = co.person_id AND co.condition_source_value = 'Malignant neoplasm of breast' WHERE m.measurement_source_value = 'HER2/neu' AND m.value_source_value = 'Positive' AND m.person_id NOT IN (SELECT person_id FROM ${client_catalog}.${client_schema}.drug_exposure WHERE drug_source_value IN ('Trastuzumab','Pertuzumab'))",
+      "expected_synthetic": ">= 20 (person_ids 1-20 guaranteed)"
+    },
+    {
+      "id": "trial_b_eligible_count",
+      "description": "Trial B eligible patients (ER+/HER2-, postmenopausal, breast cancer dx)",
+      "sql": "SELECT COUNT(DISTINCT m_er.person_id) AS n FROM ${client_catalog}.${client_schema}.measurement m_er JOIN ${client_catalog}.${client_schema}.measurement m_her2 ON m_er.person_id = m_her2.person_id AND m_her2.measurement_source_value = 'HER2/neu' AND m_her2.value_source_value = 'Negative' JOIN ${client_catalog}.${client_schema}.observation obs ON m_er.person_id = obs.person_id AND obs.observation_source_value = 'Menopausal status' AND obs.value_source_value = 'Postmenopausal' WHERE m_er.measurement_source_value = 'Estrogen receptor' AND m_er.value_source_value = 'Positive'",
+      "expected_synthetic": ">= 20 (person_ids 31-50 guaranteed)"
+    },
+    {
+      "id": "notes_only_count",
+      "description": "Patients with pathology notes but no structured biomarker measurements (the NLP value story)",
+      "sql": "SELECT COUNT(DISTINCT n.person_id) AS n FROM ${client_catalog}.${client_schema}.note n WHERE n.person_id NOT IN (SELECT DISTINCT person_id FROM ${client_catalog}.${client_schema}.measurement WHERE measurement_source_value IN ('HER2/neu','Estrogen receptor','Progesterone receptor'))",
+      "expected_synthetic": ">= 60 (person_ids 181-240)"
+    }
+  ],
+
+  "lock_targets": [
+    {
+      "task_class": "rename_table",
+      "paths": ["resources/data_gen_job.yml", "src/data_generation/generate_omop_data.py"],
+      "reason": "OMOP CDM table names (person, condition_occurrence, measurement, observation, drug_exposure, note) are standard. The synth/real toggle works because synthetic and real OMOP tables share identical names. Renaming breaks the toggle."
+    },
+    {
+      "task_class": "setup",
+      "paths": [".assistant/**"],
+      "reason": "Adaptation skill must not modify itself"
+    }
+  ],
+
+  "unresolved": []
+}
