@@ -16,7 +16,22 @@ so moving from synthetic to real data later is a configuration change, not a rew
 ## How to stand it up
 
 The foundation ships as a Databricks Asset Bundle (a bundle is a versioned, deployable unit of
-jobs and code). Fill in your workspace values in `databricks.yml`, then deploy and run:
+jobs and code). Fill in your workspace values in `databricks.yml`, then deploy and run.
+
+**In the workspace (no command line):**
+
+1. Open `foundation/databricks.yml` in your workspace. The target selector at the top shows `client`.
+2. Under `targets: client: variables:`, replace the three placeholders with your real values:
+   - `client_catalog` → your Unity Catalog catalog (e.g. `main`)
+   - `client_schema` → a schema name (default `clinops_foundation` is fine)
+   - `warehouse_id` → your SQL Warehouse ID
+3. **Save the file (Cmd/Ctrl+S) before deploying.** The Deploy button reads the file on disk, not
+   your unsaved edits. If you deploy without saving, the job runs with the `<your_catalog>`
+   placeholder and stops with a clear "set your real value, SAVE, then Deploy again" message.
+4. Click **Deploy** (the rocket icon), target `client`.
+5. Open the deployed **foundation_setup_job** in Jobs and click **Run now**.
+
+**Or from the command line:**
 
 ```bash
 cd foundation

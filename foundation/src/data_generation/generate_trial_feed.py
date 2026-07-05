@@ -87,6 +87,19 @@ def parse_args(argv):
 args = parse_args(sys.argv[1:])
 CATALOG = args.catalog
 SCHEMA = args.schema
+
+# ── Guard: refuse to run with an unfilled template placeholder ───────────────────
+# Ships as "<your_catalog>"; if left unreplaced the Volume path is invalid and the
+# failure is cryptic. Catch it up front with a clear, actionable message.
+for _name, _val in (("client_catalog", CATALOG), ("client_schema", SCHEMA)):
+    if "<" in _val or ">" in _val:
+        raise SystemExit(
+            f"\n❌  {_name} is still the template placeholder: {_val!r}\n"
+            "    Open foundation/databricks.yml (target: client), set your real value,\n"
+            "    SAVE the file, then Deploy the bundle again before running this job.\n"
+            "    client_catalog = your Unity Catalog catalog (e.g. main).\n"
+            "    Nothing was created.\n"
+        )
 SPEED = max(args.speed, 0.01)
 HEARTBEAT = max(args.heartbeat_seconds, 5)
 MAX_RUNTIME_S = args.max_runtime_min * 60 if args.max_runtime_min > 0 else None
