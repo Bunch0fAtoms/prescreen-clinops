@@ -62,8 +62,10 @@
 # COMMAND ----------
 
 # DBTITLE 1,Landing path (read-only, shared) + your ingest-state Volume (PRE-BUILT)
-# The presenter's land_trial_feed task drops files here, in the SHARED foundation schema:
-LANDING_PATH = f"/Volumes/{CATALOG}/{SOURCE_SCHEMA}/trial_landing/trial_catalog"
+# The presenter's land_trial_feed task drops files here, in the SHARED foundation schema.
+# This is the trials FEED (a workshop simulator), not the OMOP source — so it uses FEED_SCHEMA,
+# which stays on the foundation even if you repoint SOURCE_SCHEMA at real OMOP (curated_omop.omop).
+LANDING_PATH = f"/Volumes/{CATALOG}/{FEED_SCHEMA}/trial_landing/trial_catalog"
 
 # Auto Loader's own bookkeeping lives in YOUR schema (never in the shared, read-only Volume):
 spark.sql(f"CREATE VOLUME IF NOT EXISTS {CATALOG}.{SCHEMA}._ingest_state")

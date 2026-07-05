@@ -18,17 +18,22 @@
 
 # DBTITLE 1,Widgets — set these to your bundle vars (schema you WRITE to + the read-only OMOP source)
 # `schema` is YOUR writable schema (silver features, NLP output, gold pre-screen, the model,
-#   the Genie space). `source_schema` points at the 6 read-only OMOP tables the shared
-#   foundation stood up (synthetic default clinops_foundation; set to omop for real curated_omop).
-dbutils.widgets.text("catalog",       "<your_catalog>",     "1 · Catalog")
-dbutils.widgets.text("schema",        "clinops_ml",         "2 · Schema (you write here)")
-dbutils.widgets.text("warehouse_id",  "<your_wh_id>",       "3 · SQL Warehouse ID")
-dbutils.widgets.text("source_schema", "clinops_foundation", "4 · Source schema (read-only OMOP)")
+#   the Genie space). `source_catalog` / `source_schema` point at the 6 read-only OMOP tables.
+#   Synthetic (workshop): leave source_catalog blank (defaults to your own catalog) and
+#   source_schema = clinops_foundation. Real: set source_catalog = curated_omop,
+#   source_schema = omop. The 6 table names are identical either way — no query changes.
+dbutils.widgets.text("catalog",        "<your_catalog>",     "1 · Catalog")
+dbutils.widgets.text("schema",         "clinops_ml",         "2 · Schema (you write here)")
+dbutils.widgets.text("warehouse_id",   "<your_wh_id>",       "3 · SQL Warehouse ID")
+dbutils.widgets.text("source_schema",  "clinops_foundation", "4 · Source schema (read-only OMOP)")
+dbutils.widgets.text("source_catalog", "",                   "5 · Source catalog (blank = same as Catalog)")
 
-CATALOG       = dbutils.widgets.get("catalog")
-SCHEMA        = dbutils.widgets.get("schema")
-WAREHOUSE_ID  = dbutils.widgets.get("warehouse_id")
-SOURCE_SCHEMA = dbutils.widgets.get("source_schema")
+CATALOG        = dbutils.widgets.get("catalog")
+SCHEMA         = dbutils.widgets.get("schema")
+WAREHOUSE_ID   = dbutils.widgets.get("warehouse_id")
+SOURCE_SCHEMA  = dbutils.widgets.get("source_schema")
+# Synthetic reads from your own catalog; real OMOP (curated_omop) sits in a different catalog.
+SOURCE_CATALOG = dbutils.widgets.get("source_catalog").strip() or CATALOG
 
 # COMMAND ----------
 
@@ -45,7 +50,7 @@ spark.sql(f"USE CATALOG {CATALOG}")
 spark.sql(f"USE SCHEMA {SCHEMA}")
 
 print(f"✅ Writing to {CATALOG}.{SCHEMA}")
-print(f"   Reading read-only OMOP source from {CATALOG}.{SOURCE_SCHEMA}")
+print(f"   Reading read-only OMOP source from {SOURCE_CATALOG}.{SOURCE_SCHEMA}")
 print(f"   SQL Warehouse: {WAREHOUSE_ID}")
 
 # COMMAND ----------
@@ -57,8 +62,8 @@ def fqn(table: str) -> str:
 
 
 def src(table: str) -> str:
-    """Fully-qualified name of a READ-ONLY source OMOP table: src('person') -> 'catalog.source_schema.person'."""
-    return f"{CATALOG}.{SOURCE_SCHEMA}.{table}"
+    """Fully-qualified name of a READ-ONLY source OMOP table: src('person') -> 'source_catalog.source_schema.person'."""
+    return f"{SOURCE_CATALOG}.{SOURCE_SCHEMA}.{table}"
 
 
 def show_md(markdown: str):

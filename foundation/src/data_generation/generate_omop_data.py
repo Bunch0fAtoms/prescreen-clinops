@@ -27,6 +27,23 @@ from pyspark.sql.types import (
 # ── CLI args ───────────────────────────────────────────────────────────────────
 CATALOG = sys.argv[1] if len(sys.argv) > 1 else "your_catalog_here"  # pass via bundle variables in production
 SCHEMA  = sys.argv[2] if len(sys.argv) > 2 else "demo_clinical_trial_pre_screening_omop"
+# argv[3] = run_with_synthetic_data ("yes"/"no"). "no" means read real OMOP downstream,
+# so there is nothing to generate — the job passes this in from the bundle variable.
+SYNTHETIC = (sys.argv[3] if len(sys.argv) > 3 else "yes").strip().lower()
+
+# ── Guard: refuse to run with an unfilled template placeholder ───────────────────
+# The bundle ships with client_catalog = "<your_catalog>". If that placeholder is
+# never replaced, CREATE SCHEMA fails deep inside Spark with a cryptic parse error
+# on the "<". Catch it up front with a clear, actionable message instead.
+for _name, _val in (("client_catalog", CATALOG), ("client_schema", SCHEMA)):
+    if "<" in _val or ">" in _val:
+        raise SystemExit(
+            f"\n❌  {_name} is still the template placeholder: {_val!r}\n"
+            "    Open foundation/databricks.yml (target: client), set your real value,\n"
+            "    SAVE the file, then Deploy the bundle again before running this job.\n"
+            "    client_catalog = your Unity Catalog catalog (e.g. main).\n"
+            "    Nothing was created.\n"
+        )
 
 # ── Reproducibility ────────────────────────────────────────────────────────────
 SEED = 42
@@ -1186,6 +1203,13 @@ def write_table(df: pd.DataFrame, table_name: str) -> None:
 def main():
     print(f"\n🏥  Fred Hutch OMOP Synthetic Data Generator")
     print(f"    Target: {CATALOG}.{SCHEMA}\n")
+
+    if SYNTHETIC in ("no", "false", "0"):
+        print("⏭️  run_with_synthetic_data=no — skipping synthetic OMOP generation.")
+        print("    Downstream tracks read the 6 OMOP tables from your real source")
+        print("    (source_catalog.source_schema, e.g. curated_omop.omop). Nothing to generate here.")
+        print("    (The trials feed is separate and still runs — it is net-new synthetic data.)")
+        return
 
     spark.sql(f"CREATE SCHEMA IF NOT EXISTS {CATALOG}.{SCHEMA}")
 

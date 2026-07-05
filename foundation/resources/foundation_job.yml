@@ -27,6 +27,9 @@ resources:
             parameters:
               - "${var.client_catalog}"
               - "${var.client_schema}"
+              # run_with_synthetic_data: "no" makes the generator no-op (real OMOP is read
+              # downstream from source_catalog.source_schema). The trials feed still runs.
+              - "${var.run_with_synthetic_data}"
           environment_key: default
 
         # The trials feed is its own task so the presenter can restart ONLY the feed

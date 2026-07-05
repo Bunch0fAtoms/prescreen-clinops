@@ -89,9 +89,11 @@
 
 # DBTITLE 1,Point this profiling session at the read-only source schema
 # Read-only exploration only. We do NOT create anything in the source schema.
-spark.sql(f"USE CATALOG {CATALOG}")
+# Use the SOURCE catalog+schema so bare table names resolve to real OMOP too — real
+# curated_omop.omop is a different catalog, so switching only the schema would miss it.
+spark.sql(f"USE CATALOG {SOURCE_CATALOG}")
 spark.sql(f"USE SCHEMA {SOURCE_SCHEMA}")
-print(f"Reading the 6 OMOP tables from {CATALOG}.{SOURCE_SCHEMA}")
+print(f"Reading the 6 OMOP tables from {SOURCE_CATALOG}.{SOURCE_SCHEMA}")
 
 # COMMAND ----------
 

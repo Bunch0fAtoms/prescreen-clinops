@@ -98,8 +98,10 @@ gates. Use judgment.
 | Task needs… | Read from facts |
 |---|---|
 | Deploy / run command | `deploy_target.run_command` (+ `deploy_target.kind`) |
-| Editable DAB variable names | `name_vars` (`catalog_var`, `schema_var`, `warehouse_var`, and kit-specific extras like `group_var`, `source_schema_var`) |
-| Synthetic ↔ real switch | `toggle` (may be a boolean var, OR source-repointing via `source_catalog_var`/`source_schema_var`) |
+| Editable DAB variable names | `name_vars` (`catalog_var`, `schema_var`, `warehouse_var`, and kit-specific extras like `group_var`, `source_catalog_var`, `source_schema_var`) |
+| Synthetic ↔ real switch | `toggle` (a boolean var AND/OR source-repointing via `source_catalog_var` + `source_schema_var`; read `real_source_catalog`/`real_source_schema`). Real OMOP is a DIFFERENT catalog, so set BOTH. |
+| Notebook widget defaults to rewrite | `widget_config` (`file` + `widgets` map). Notebooks read widgets, not DAB vars — rewrite these defaults so a run inherits the chosen values. |
+| How to finish a real-data switch | `real_mode` (`how` + `rebuild_assets`) — repoint, then rebuild anything already materialized from synthetic |
 | What each table is / expected counts | `tables[]` |
 | Upstream/downstream + dashboard/genie refs | `dependency_map[]` |
 | Valid grain columns, min partition size | `grain_constraints[]` |
@@ -117,6 +119,7 @@ gates. Use judgment.
 - Locks are keyed by `lock_targets[].task_class`, which is GRANULAR and operation-specific (`rename_table` vs `rename_column`, `add_metric`, `change_grain`, `setup`). Match your intent to the SPECIFIC operation, never a substring. Treat every path in a matching entry as `MUST NOT EDIT \`<exact-path>\``. Only when the operation is genuinely ambiguous, fall back to the UNION of all `lock_targets[].paths` as a safe floor. Writing to a locked path is a reasoning defect — STOP.
 - **Never deploy from inside Genie Code.** The CLI is sandboxed in `executeCode` and can't `cd` to the bundle root. Always OUTPUT web-terminal commands and stop.
 - **Never bind masks / row filters to a shared source schema** (governance kit): policies change what *everyone* sees. Bind only to the kit's own `client_schema`. If the target is a schema another track reads → STOP.
+- **Rewriting widget DEFAULTS is allowed (it is setup, not a rename).** During setup you MAY edit the default value (the 2nd arg of `dbutils.widgets.text`) in the `widget_config.file` for the widgets named in `widget_config.widgets`. That is how the chosen catalog/schema/warehouse/source values reach an interactive run. This is distinct from a `rename_table` lock, which forbids changing table-identifier strings — do NOT touch table identifiers, SQL logic, or the trials-feed path.
 
 ## 4. Setup flow — "run in my workspace" [GENERIC]
 
@@ -130,16 +133,31 @@ gates. Use judgment.
    | schema is empty/default | ASK; offer the kit's default (`client_schema` default in facts) |
    | a running warehouse found | use; confirm |
    | none running | ASK which to use |
-3. **Synthetic vs real**, driven by the kit's `toggle`:
-   - **Boolean toggle** (ML): ask "start with synthetic data (recommended — runs end-to-end
-     immediately) or your own OMOP data?" Set the `toggle.variable` accordingly.
-   - **Source-repointing** (Governance, Data Engineering): the switch is which `source_catalog`/
-     `source_schema` you read/clone FROM — synthetic (`toggle.default_source_*`) vs real
-     (`curated_omop.omop`). Set those vars; no boolean.
-4. **Write ONLY `databricks.yml`** — update `targets.client.variables` (`name_vars` + kit extras).
-   NEVER hardcode catalog/schema/warehouse/group into Python/SQL/notebooks; those flow from DAB
-   variables and notebook widgets. A hardcoded constant in a pipeline/notebook is a packaging bug →
-   surface and stop. Present as Accept/Reject; don't auto-write.
+3. **Synthetic vs real**, driven by the kit's `toggle`. Ask "start with synthetic data (recommended —
+   runs end-to-end immediately) or your own OMOP data?" Then, for **real**:
+   - **Boolean toggle** (ML, Foundation): set `toggle.variable` to `real_value`. For the Foundation
+     this also no-ops the generator (real OMOP already exists); the trials feed still runs.
+   - **Source-repointing (ALWAYS set BOTH vars).** Real OMOP lives in a **different catalog**
+     (`curated_omop.omop`), so setting `source_schema` alone is not enough — you MUST set
+     `source_catalog_var` **and** `source_schema_var` (read `real_source_catalog` /
+     `real_source_schema` from `toggle`). This applies to ML and DE (read/ingest FROM) and Governance
+     (clone FROM). For synthetic, `source_catalog` = the team's own catalog (or blank) and
+     `source_schema` = `clinops_foundation`.
+   - **Do NOT repoint the DE trials feed.** The trials feed (`feed_schema`) is a synthetic workshop
+     simulator on the foundation. It is independent of `source_schema` — leave it on the foundation
+     even in real mode, or nb 05's Volume path breaks.
+4. **Write `databricks.yml` AND the notebook widget defaults.**
+   - **`databricks.yml`** — update `targets.client.variables` (`name_vars` + kit extras, incl. both
+     source vars for real mode).
+   - **Widget defaults** — the notebooks read from `dbutils.widgets`, NOT from DAB vars, so a
+     `databricks.yml` change alone never reaches an interactive run. Using `widget_config`, rewrite
+     each named widget's DEFAULT (2nd arg of `dbutils.widgets.text`) in `widget_config.file` to match
+     the chosen values (catalog, schema, warehouse, and for source-repointing kits `source_catalog` /
+     `source_schema`; leave DE `feed_schema` on the foundation). This is the step that makes the
+     synth/real choice actually reach the build. It is allowed setup — see §3.
+   - NEVER hardcode catalog/schema/warehouse/group as literals in SQL logic or elsewhere; only the
+     widget DEFAULTS named in `widget_config` may be set. A hardcoded constant anywhere else is a
+     packaging bug → surface and stop. Present as Accept/Reject; don't auto-write.
 5. **Deploy from a web terminal — NOT from Genie Code.** Output the kit's exact commands (from
    `deploy_target`) and stop. Shapes by `deploy_target.kind`:
    > Open a Web Terminal (Compute → Terminal, or ⌘+Shift+T) and paste:
@@ -159,9 +177,17 @@ gates. Use judgment.
    > regen is harmless) or Repair-run selecting only `land_trial_feed`. Never deploy or run from Genie Code.
    Triage failures: "variable not found" → a `${var.*}` rename was missed (grep + fix);
    `permission denied` on catalog → user lacks `CREATE SCHEMA`; serverless not available → change job
-   environment client id to a cluster policy; DE "source table not found" → wrong `source_schema`.
+   environment client id to a cluster policy; DE/ML "source table not found" → wrong `source_catalog`
+   **or** `source_schema` (real OMOP is a different catalog — check both, in the widget defaults too).
 6. **Idempotency:** if `databricks.yml` already matches the workspace + chosen targets, say "no edits
    needed, ready to redeploy" and point at the run command.
+7. **Real mode is more than a var flip — rebuild what was built on synthetic.** If the team is
+   switching to real data AFTER already building on synthetic, read `real_mode.rebuild_assets` and
+   walk them through it. Everything that reads source (silver/gold tables, NLP output, the model, the
+   Genie space, the app; or, for Governance, the clones + their masks/filters) was materialized from
+   synthetic and must be re-run so it reflects real data. Repointing the vars alone leaves those
+   assets stale. Name the specific re-runs from `real_mode` / `dependency_map`; the DE trials segment
+   is unaffected (it keeps reading the foundation feed).
 
 ## 5. Rename flow — "use my naming convention" [GENERIC]
 

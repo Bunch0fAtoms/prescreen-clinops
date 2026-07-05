@@ -7,6 +7,7 @@
     "catalog_var": "client_catalog",
     "schema_var": "client_schema",
     "warehouse_var": "warehouse_id",
+    "source_catalog_var": "source_catalog",
     "source_schema_var": "source_schema"
   },
 
@@ -21,11 +22,32 @@
   "toggle": {
     "variable": null,
     "mechanism": "source_repointing",
-    "source_catalog_var": null,
+    "source_catalog_var": "source_catalog",
     "source_schema_var": "source_schema",
-    "default_source_schema": "clinops_foundation",
+    "synthetic_source_catalog": "<same as client_catalog>",
+    "synthetic_source_schema": "clinops_foundation",
+    "real_source_catalog": "curated_omop",
+    "real_source_schema": "omop",
     "real_source_hint": "curated_omop.omop",
-    "note": "There is no run_with_synthetic_data boolean here. Synthetic vs real = which schema source_schema points at. Synthetic = clinops_foundation (shared foundation). Real = the FH OMOP schema (e.g. curated_omop.omop). The 6 OMOP table names are identical either way, so no query changes are required to switch."
+    "note": "There is no run_with_synthetic_data boolean here. Synthetic vs real = where source_catalog/source_schema point. Synthetic = your own catalog + clinops_foundation (shared foundation). Real = the FH OMOP schema, a DIFFERENT catalog (curated_omop.omop) — so BOTH source_catalog and source_schema must be set. The 6 OMOP table names are identical either way, so no query changes are required. IMPORTANT: the trials FEED (nb 05) is a separate source — it is a workshop simulator that stays on the foundation. It uses feed_schema, NOT source_schema, so repointing OMOP to real does not break the feed."
+  },
+
+  "widget_config": {
+    "file": "notebooks/_config.py",
+    "widgets": {
+      "catalog": "catalog",
+      "schema": "schema",
+      "warehouse_id": "warehouse_id",
+      "source_schema": "source_schema",
+      "source_catalog": "source_catalog",
+      "feed_schema": "feed_schema"
+    },
+    "note": "The notebooks read from these dbutils.widgets, NOT from bundle vars, so a databricks.yml change alone does not reach an interactive run. At setup the skill rewrites each widget's DEFAULT (the 2nd argument of dbutils.widgets.text) to the chosen value: catalog<-client_catalog, schema<-client_schema, source_schema<-source_schema, source_catalog<-source_catalog (leave blank for synthetic; curated_omop for real). Leave feed_schema on the foundation schema (clinops_foundation, or wherever the foundation deployed) even in real mode — nb 05 reads the live trials feed from /Volumes/<catalog>/<feed_schema>/trial_landing. Rewriting a widget DEFAULT is a setup action, not a rename — allowed."
+  },
+
+  "real_mode": {
+    "how": "Set source_catalog=curated_omop and source_schema=omop in BOTH databricks.yml (targets.client.variables) AND the notebooks/_config.py widget defaults. Leave feed_schema pointed at the foundation — the trials feed is a workshop simulator, not real FH data.",
+    "rebuild_assets": "Real mode is more than a var flip. bronze_* and recon outputs read from src() = source_catalog.source_schema. Any already built from synthetic must be REBUILT: re-run nb 01-04 after repointing so bronze/recon reflect real OMOP. The trials segment (nb 05) is unaffected — it keeps reading the foundation feed via feed_schema."
   },
 
   "tables": [
@@ -82,7 +104,7 @@
   "source_inputs": [
     {"source_type": "uc_tables_readonly", "locator": "${var.source_schema}", "description": "The 6 read-only OMOP source tables. Synthetic default = clinops_foundation.", "active_when": "always (this kit does not generate data)"},
     {"source_type": "real_omop", "locator": "curated_omop.omop", "description": "FH real OMOP CDM tables — point source_schema here to run against real data. Identical table names.", "active_when": "source_schema repointed to real"},
-    {"source_type": "live_files_volume", "locator": "/Volumes/${var.client_catalog}/${var.source_schema}/trial_landing/trial_catalog/trials_*.json", "description": "The shared LIVE clinical-trials feed, streamed by the foundation land_trial_feed simulator. nb 05 ingests it incrementally with Auto Loader (cloudFiles). Read-only shared producer; each team checkpoints in its own schema.", "active_when": "always — presenter starts/stops the feed via the foundation job"}
+    {"source_type": "live_files_volume", "locator": "/Volumes/${var.client_catalog}/${feed_schema}/trial_landing/trial_catalog/trials_*.json", "description": "The shared LIVE clinical-trials feed, streamed by the foundation land_trial_feed simulator. nb 05 ingests it incrementally with Auto Loader (cloudFiles). Read-only shared producer; each team checkpoints in its own schema. feed_schema is the foundation schema (default clinops_foundation) and is INDEPENDENT of source_schema — it stays on the foundation even when OMOP source_schema is repointed to real (curated_omop.omop).", "active_when": "always — presenter starts/stops the feed via the foundation job"}
   ],
 
   "verify_queries": [
@@ -127,7 +149,7 @@
     {
       "task_class": "edit",
       "paths": ["notebooks/05_trials_catalog_ingest.py"],
-      "reason": "The trials LANDING Volume path reads from source_schema (the shared foundation feed produced by land_trial_feed): /Volumes/<catalog>/<source_schema>/trial_landing/trial_catalog. Do not repoint it at client_schema — the feed is a shared producer. Auto Loader schemaLocation + checkpoint MUST stay in client_schema (_ingest_state Volume)."
+      "reason": "The trials LANDING Volume path reads the shared foundation feed via feed_schema: /Volumes/<catalog>/<feed_schema>/trial_landing/trial_catalog. Keep it on feed_schema (the foundation) — never repoint it at client_schema (the feed is a shared producer) and never tie it to source_schema (repointing OMOP to real must not break the feed). Auto Loader schemaLocation + checkpoint MUST stay in client_schema (_ingest_state Volume)."
     },
     {
       "task_class": "setup",

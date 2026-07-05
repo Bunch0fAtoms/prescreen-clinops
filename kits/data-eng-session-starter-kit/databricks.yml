@@ -18,8 +18,15 @@ include:
 variables:
   # ── Source (read-only) OMOP tables you ingest FROM ───────────────────────────
   # The 6 OMOP tables live here and are READ-ONLY. You never modify this schema.
+  # Synthetic (workshop): source_catalog = your own catalog, source_schema = clinops_foundation.
+  # Real: source_catalog = curated_omop, source_schema = omop. The 6 table names are identical
+  # either way, so no query changes are needed to switch.
+  source_catalog:
+    description: "Catalog holding the read-only OMOP source tables. Synthetic default = your team catalog; set to curated_omop for real."
+    default: "<your_catalog>"
+
   source_schema:
-    description: "Read-only schema holding the 6 OMOP source tables (person, condition_occurrence, ...)."
+    description: "Read-only schema holding the 6 OMOP source tables (person, condition_occurrence, ...). Synthetic default clinops_foundation; set to omop for real."
     default: "clinops_foundation"
 
   # ── Client (per-team) catalog / schema — where YOU write ─────────────────────
@@ -50,5 +57,6 @@ targets:
     variables:
       client_catalog: "<your_catalog>"
       client_schema: "clinops_de"
+      source_catalog: "<your_catalog>"
       source_schema: "clinops_foundation"
       warehouse_id: "<your_warehouse_id>"

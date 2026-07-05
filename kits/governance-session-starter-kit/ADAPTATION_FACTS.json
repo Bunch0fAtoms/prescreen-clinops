@@ -25,9 +25,28 @@
     "mechanism": "source_repointing",
     "source_catalog_var": "source_catalog",
     "source_schema_var": "source_schema",
-    "default_source_schema": "clinops_foundation",
+    "synthetic_source_catalog": "<same as client_catalog>",
+    "synthetic_source_schema": "clinops_foundation",
+    "real_source_catalog": "curated_omop",
+    "real_source_schema": "omop",
     "real_source_hint": "curated_omop.omop",
-    "note": "No boolean toggle. The clone source is set by source_catalog/source_schema. Synthetic default = clinops_foundation (the shared foundation). Real = the FH OMOP schema. Table names are identical, so the same masks/filters bind either way."
+    "note": "No boolean toggle. The clone source is set by source_catalog/source_schema (job params to clone_omop_tables.sql). Synthetic = your own catalog + clinops_foundation (the shared foundation). Real = the FH OMOP schema, a DIFFERENT catalog (curated_omop.omop) — set BOTH source_catalog and source_schema. Table names are identical, so the same masks/filters bind either way. The notebooks apply policies to the CLONES in client_schema, so no source widget is needed in the notebooks — only the clone job reads source."
+  },
+
+  "widget_config": {
+    "file": "notebooks/_config.py",
+    "widgets": {
+      "catalog": "catalog",
+      "schema": "schema",
+      "warehouse_id": "warehouse_id",
+      "ocdo_group": "ocdo_group"
+    },
+    "note": "The notebooks read from these dbutils.widgets, NOT from bundle vars. At setup the skill rewrites each widget's DEFAULT (2nd arg of dbutils.widgets.text) to match the bundle: catalog<-client_catalog, schema<-client_schema, warehouse_id<-warehouse_id, ocdo_group<-ocdo_group. There is NO source widget here — the notebooks operate on the clones in client_schema; the synth/real source is set only in databricks.yml and consumed by the clone job. Rewriting a widget DEFAULT is a setup action, not a rename — allowed."
+  },
+
+  "real_mode": {
+    "how": "Set source_catalog=curated_omop and source_schema=omop in databricks.yml (targets.client.variables), then re-run setup_clone_job so the 6 tables are re-cloned from real OMOP into client_schema.",
+    "rebuild_assets": "After re-cloning from real, RE-RUN the governance notebooks (nb 01-03) so the tags, masks, and row filters are re-applied to the real clones. Policies bind to the clones in client_schema, so nothing is ever applied to the shared source — but the clones themselves must be refreshed from real and re-governed."
   },
 
   "tables": [
