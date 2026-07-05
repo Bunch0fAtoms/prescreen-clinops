@@ -47,14 +47,14 @@ targets:
   #   databricks bundle deploy --target client
   #   databricks bundle run foundation_setup_job --target client
   #
-  # Genie Code can auto-detect these via the
-  # `fred-hutch-clinical-trial-prescreening-adaptation` skill —
+  # Genie Code can auto-detect these via the `fred-hutch-onsite-adaptation` skill —
   # open Genie Code and ask: "run in my workspace"
   client:
     default: true
     # Omit `mode:` — DAB defaults to production behavior (no dev_<username>_ prefixing).
-    workspace:
-      host: https://<your-workspace>.cloud.databricks.com
+    # No `workspace.host:` — the CLI uses your profile's host (databricks bundle deploy
+    # --target client -p <profile>), so there's no host to mismatch. Add one only if you
+    # deploy without a profile.
     variables:
       client_catalog: "<your_catalog>"
       client_schema: "clinops_foundation"

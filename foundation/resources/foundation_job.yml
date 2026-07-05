@@ -3,12 +3,22 @@ resources:
     foundation_setup_job:
       name: "[${bundle.target}] Fred Hutch — stand up the shared foundation"
       description: >
-        Stands up the shared Day-1 foundation both groups build on. Two tasks:
-        (1) generate the 6 synthetic OMOP CDM tables (300 breast-cancer patients),
-        (2) land the clinical-trials JSON feed into the trial_landing Volume for the
-        Data Engineering group to ingest. Only needs to run when
-        run_with_synthetic_data=yes. When run_with_synthetic_data=no, downstream
-        tools read from ${var.source_catalog}.${var.source_schema} instead.
+        Stands up the shared Day-1 foundation every track builds on. Two tasks:
+        (1) generate_omop_data — writes the 6 synthetic OMOP CDM tables (300
+        breast-cancer patients); deterministic (seed=42), so re-running rewrites the
+        identical tables. Only needed when run_with_synthetic_data=yes; when =no,
+        downstream tools read the 6 OMOP tables from ${var.source_catalog}.${var.source_schema}.
+        (2) land_trial_feed — a LONG-RUNNING, presenter-controlled LIVE feed. It drops
+        clinical-trials JSON files into the trial_landing Volume over time (a ~50-min
+        scripted opening act, then an indefinite heartbeat) so the Data Engineering
+        group builds a genuinely incremental Auto Loader ingest and watches it react to
+        new files, schema drift, and bad records. One shared producer, many independent
+        consumers: each DE team points its own Auto Loader + checkpoint at this Volume.
+        PRESENTER CONTROL — start: run the job (or Repair-run just land_trial_feed);
+        pause: cancel the run (generate_omop_data has already finished, so only the feed
+        stops); restart: Run now again, or Repair-run selecting only land_trial_feed.
+        TUNING — add --speed / --heartbeat-seconds / --reset via "Run now with different
+        parameters" (e.g. --speed 6 for an ~8-min dry run).
 
       tasks:
         - task_key: generate_omop_data
@@ -19,6 +29,10 @@ resources:
               - "${var.client_schema}"
           environment_key: default
 
+        # The trials feed is its own task so the presenter can restart ONLY the feed
+        # (Repair-run → select land_trial_feed) without regenerating OMOP. The feed
+        # doesn't read the OMOP tables (it lands trial reference metadata), but we keep
+        # the dependency so it starts after the one-time generator finishes.
         - task_key: land_trial_feed
           depends_on:
             - task_key: generate_omop_data

@@ -37,11 +37,15 @@
     {"name": "note", "role": "Read-only OMOP source (free-text pathology notes).", "row_count_expected": 265, "access": "read-only (source_schema)"},
     {"name": "bronze_*", "role": "Bronze landing tables the TEAM creates in client_schema (e.g. bronze_person). nb 01 evolves bronze on append via mergeSchema.", "access": "written (client_schema)"},
     {"name": "recon_summary", "role": "Timestamped reconciliation audit table the TEAM writes in nb 02 (one row per table per run).", "access": "written (client_schema)"},
-    {"name": "ingest_allowlist", "role": "UC config table (6 OMOP allowed, 2 restricted denied) the restricted-ingest gate reads in nb 03.", "access": "written (client_schema)"}
+    {"name": "ingest_allowlist", "role": "UC config table (6 OMOP allowed, 2 restricted denied) the restricted-ingest gate reads in nb 03.", "access": "written (client_schema)"},
+    {"name": "bronze_trial_catalog", "role": "nb 05 — VARIANT bronze the TEAM lands via Auto Loader (cloudFiles) from the shared LIVE trials feed Volume. Schema-stable: (value, trial_raw VARIANT, _source_file, _ingested_at). Row count GROWS as the feed runs.", "access": "written (client_schema)"},
+    {"name": "silver_trial_criteria", "role": "nb 05 — flattened, join-ready trial eligibility criteria (latest-wins per trial_id by load_ts). Includes min_ecog (VARIANT path, NULL when a trial doesn't set it). The eligibility contract the Applied AI pre-screen joins against.", "access": "written (client_schema)"},
+    {"name": "bronze_trial_quarantine", "role": "nb 05 TODO — bad trial records routed aside with a quarantine_reason (unparseable / missing_trial_id / bad_type_age) so a malformed line never fails the load.", "access": "written (client_schema)"},
+    {"name": "_ingest_state (volume)", "role": "nb 05 — a Volume in client_schema holding Auto Loader's schemaLocation + checkpoint for the trials ingest (per-team ingest bookkeeping; never in the shared read-only Volume).", "access": "written (client_schema)"}
   ],
 
   "source_files": {
-    "notebooks": "notebooks/ (00_START_HERE, 01_schema_evolution, 02_row_count_reconciliation, 03_restricted_table_ingest_gate, 04_sla_job_windows)",
+    "notebooks": "notebooks/ (00_START_HERE, 01_schema_evolution, 02_row_count_reconciliation, 03_restricted_table_ingest_gate, 04_sla_job_windows, 05_trials_catalog_ingest)",
     "config": "notebooks/_config.py",
     "job_resource": "resources/sla_ingest_job.yml",
     "bundle": "databricks.yml"
@@ -55,7 +59,7 @@
     },
     "silver": {
       "tables": ["silver_trial_criteria"],
-      "note": "This DE track owns ingest hardening plus the trials catalog. It flattens the Volume-fed trials feed to silver_trial_criteria, which is the eligibility contract the Applied AI pre-screen joins against. Both groups build in parallel off the 6 OMOP tables; neither waits on the other's data layer. See ../../SHARED_FOUNDATION.md."
+      "note": "This DE track owns ingest hardening plus the trials catalog. It ingests the shared LIVE trials feed (foundation land_trial_feed) incrementally with Auto Loader into bronze_trial_catalog, flattens the good records to silver_trial_criteria (the eligibility contract the Applied AI pre-screen joins against), and quarantines bad records to bronze_trial_quarantine. Both groups build in parallel off the 6 OMOP tables; neither waits on the other's data layer. See ../../SHARED_FOUNDATION.md."
     },
     "gold": null
   },
@@ -64,6 +68,9 @@
     {"from": "source_schema.*", "to": "bronze_*", "type": "ingested_into", "note": "Read-only OMOP source → bronze in client_schema"},
     {"from": "source_schema.measurement", "to": "recon_summary", "type": "reconciled_by", "note": "nb 02 compares source vs target counts + anti-join for missing keys"},
     {"from": "ingest_allowlist", "to": "safe_ingest()", "type": "gates", "note": "nb 03 reads the allow-list before any write"},
+    {"from": "foundation land_trial_feed (shared trial_landing Volume)", "to": "bronze_trial_catalog", "type": "ingested_into", "note": "nb 05 Auto Loader reads the shared LIVE feed Volume (source_schema) and appends to bronze in client_schema, checkpointed per-team"},
+    {"from": "bronze_trial_catalog", "to": "silver_trial_criteria", "type": "flattened_into", "note": "good records only, latest-wins per trial_id by load_ts"},
+    {"from": "bronze_trial_catalog", "to": "bronze_trial_quarantine", "type": "routed_into", "note": "nb 05 TODO — bad records with a quarantine_reason"},
     {"from": "silver_trial_criteria", "to": "ml_group", "type": "contract", "note": "The trials catalog silver_trial_criteria is the eligibility contract the Applied AI pre-screen joins against (a hand-off, never a blocker)"}
   ],
 
@@ -74,7 +81,8 @@
 
   "source_inputs": [
     {"source_type": "uc_tables_readonly", "locator": "${var.source_schema}", "description": "The 6 read-only OMOP source tables. Synthetic default = clinops_foundation.", "active_when": "always (this kit does not generate data)"},
-    {"source_type": "real_omop", "locator": "curated_omop.omop", "description": "FH real OMOP CDM tables — point source_schema here to run against real data. Identical table names.", "active_when": "source_schema repointed to real"}
+    {"source_type": "real_omop", "locator": "curated_omop.omop", "description": "FH real OMOP CDM tables — point source_schema here to run against real data. Identical table names.", "active_when": "source_schema repointed to real"},
+    {"source_type": "live_files_volume", "locator": "/Volumes/${var.client_catalog}/${var.source_schema}/trial_landing/trial_catalog/trials_*.json", "description": "The shared LIVE clinical-trials feed, streamed by the foundation land_trial_feed simulator. nb 05 ingests it incrementally with Auto Loader (cloudFiles). Read-only shared producer; each team checkpoints in its own schema.", "active_when": "always — presenter starts/stops the feed via the foundation job"}
   ],
 
   "verify_queries": [
@@ -95,6 +103,18 @@
       "description": "Checkpoint 2 — reconciliation flags the injected 7-row measurement gap",
       "sql": "SELECT table_name, status, delta FROM ${client_catalog}.${client_schema}.recon_summary ORDER BY event_time DESC",
       "expected": "measurement FAIL delta=7; all other tables PASS"
+    },
+    {
+      "id": "trials_silver_good",
+      "description": "Checkpoint 5 — clean trials flowed to silver, latest-wins, with min_ecog present. Counts grow as the live feed runs; the point is clean trials are present and deduped.",
+      "sql": "SELECT trial_id, min_ecog, feed_version FROM ${client_catalog}.${client_schema}.silver_trial_criteria ORDER BY trial_id",
+      "expected": "one row per trial_id (A/B/C at minimum, then D/E/F as they land); Trial A min_ecog=1, others NULL until they set it"
+    },
+    {
+      "id": "trials_quarantine",
+      "description": "Checkpoint 5 — bad records were routed aside with a reason, not allowed to fail the load",
+      "sql": "SELECT quarantine_reason, COUNT(*) AS n FROM ${client_catalog}.${client_schema}.bronze_trial_quarantine GROUP BY quarantine_reason ORDER BY quarantine_reason",
+      "expected": "once the opening act passes ~50 min: unparseable=1, missing_trial_id=1, bad_type_age=1 (built by the nb 05 TODO)"
     }
   ],
 
@@ -103,6 +123,11 @@
       "task_class": "rename_table",
       "paths": ["notebooks/_config.py", "notebooks/01_schema_evolution.py", "notebooks/02_row_count_reconciliation.py"],
       "reason": "OMOP CDM source table names (person, condition_occurrence, measurement, observation, drug_exposure, note) are standard. Renaming breaks the read from source_schema and the synth→real repointing."
+    },
+    {
+      "task_class": "edit",
+      "paths": ["notebooks/05_trials_catalog_ingest.py"],
+      "reason": "The trials LANDING Volume path reads from source_schema (the shared foundation feed produced by land_trial_feed): /Volumes/<catalog>/<source_schema>/trial_landing/trial_catalog. Do not repoint it at client_schema — the feed is a shared producer. Auto Loader schemaLocation + checkpoint MUST stay in client_schema (_ingest_state Volume)."
     },
     {
       "task_class": "setup",

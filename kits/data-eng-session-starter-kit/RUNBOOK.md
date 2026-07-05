@@ -9,8 +9,8 @@ This runbook is the per-build-block detail: what's pre-built, what the team buil
 **Team:** comfortable with SQL + notebooks; this track is **ingestion plumbing** — practical DE patterns,
 not GenAI. The four TODOs are small and high-leverage, so reveal sooner than on the ML track.
 **Outcome:** a governed, reconciled OMOP ingest — schema that evolves, counts that reconcile, a gate that
-blocks restricted tables, a guard that respects the SLA window, plus a net-new Volume-fed trials catalog
-that flattens to `silver_trial_criteria`. **Security-first:** synthetic data only,
+blocks restricted tables, a guard that respects the SLA window, plus a net-new LIVE Volume-fed trials
+feed ingested incrementally to `silver_trial_criteria` with bad records quarantined. **Security-first:** synthetic data only,
 everything UC-scoped, the source schema is read-only, config over code.
 
 **Reveal ladder:** nudge → hint (point at the `# TODO`) → **point at the matching prompt in
@@ -24,14 +24,15 @@ prompts (numbered to the notebooks, each with a "good looks like"); treat them a
 adapt*, not a script.
 
 **The five notebooks are independent.** You can run them in any order. `01`→`02` are a natural
-ingest→verify pair; `03`/`04` are reusable guards; `05` is the net-new trials catalog on a Volume
+ingest→verify pair; `03`/`04` are reusable guards; `05` is the net-new LIVE trials feed on a Volume
 source. If a team stalls on one, move to another and circle back.
 
-**Net-new dataset in nb 05: the trials catalog.** Notebooks 01–04 harden the OMOP silver. Notebook
-05 builds something new: a Volume-fed clinical-trials catalog that flattens to
-`silver_trial_criteria`. That table is the **eligibility contract the ML group's pre-screen joins
-against** — adding a trial is dropping a file, not a code change. Same read-only-source discipline as
-01–04, on a Volume source instead of tables.
+**Net-new dataset in nb 05: the LIVE trials feed.** Notebooks 01–04 harden the OMOP silver. Notebook
+05 builds something new: a **live**, presenter-controlled clinical-trials feed (the foundation
+`land_trial_feed` task streams files into a shared Volume) ingested **incrementally with Auto Loader**
+into `silver_trial_criteria`, with bad records **quarantined**. That table is the **eligibility contract
+the ML group's pre-screen joins against** — adding a trial is a file landing, not a code change. Same
+read-only-source discipline as 01–04, on a live Volume feed instead of tables.
 
 **Cross-group: both groups build in parallel off the 6 OMOP tables.** This DE track and the Applied AI
 (ML) track both start from the shared foundation, the 6 read-only OMOP tables (see
@@ -118,28 +119,37 @@ it is a hand-off, never a blocker. Don't let the team think they're blocking ML.
     the runtime guard catches manual/backfill runs. Defense in depth — point at `resources/sla_ingest_job.yml`.
     (It ships `pause_status: PAUSED` so the kit never fires unattended.)
 
-## Block 5 · Trials catalog ingest (nb 05) — 🛠️ GUIDED TODO (net-new dataset)
+## Block 5 · Trials catalog — LIVE feed ingest (nb 05) — 🛠️ GUIDED TODO (net-new dataset)
 
-- **Pre-built:** the nested trials JSON feed, the landing Volume, wave 1 (Trials A / B / C), the
-  schema-stable `VARIANT` bronze writer, and the wave-2 file that adds `min_ecog`.
-- **Team builds:** the flatten from the `VARIANT` bronze to a columnar `silver_trial_criteria`, and
-  the **additive-vs-breaking decision gate** at the flatten step — a new field like `min_ecog` is
-  **additive** (surface it, default it, keep going), a changed type or dropped required field is
-  **breaking** (stop and flag). The `# TODO` is: **evolve safely** as new waves land.
-- **🚩 Checkpoint 5 — Trials catalog flattens and evolves.** After wave 1, `silver_trial_criteria`
-  has **3 rows** (Trials A / B / C), one row per trial, with the `req_*` / `age_min` / `age_max`
-  columns. After the wave-2 file lands, the flatten surfaces the new `min_ecog` column (`A.min_ecog=1`),
-  the older trials read NULL for it (unconstrained), and **no rows are lost**. Trials A and B keep the
-  criteria that reproduce the pre-screen numbers.
+> **Presenter action:** start the feed. In the deployed **foundation** job, run (or Repair-run)
+> the `land_trial_feed` task at the top of this segment. It streams trial files into the shared
+> `trial_landing` Volume — clean trials first, a `min_ecog` change next, then bad records, then a
+> clean heartbeat — and runs until you cancel it. Compress with `--speed 6` for a dry run. To pause,
+> cancel the run; to resume, Run now (OMOP regen is harmless) or Repair-run just `land_trial_feed`.
+
+- **Pre-built:** the incremental **Auto Loader** ingest (`cloudFiles` text → `try_parse_json` → a
+  schema-stable `VARIANT` bronze, checkpointed in the team's own `_ingest_state` Volume) and the flatten
+  of GOOD records to `silver_trial_criteria` (latest-wins per `trial_id` by `load_ts`, `min_ecog`
+  projected from the VARIANT).
+- **Team builds:** the **quarantine** — `bronze_trial_quarantine` with a `quarantine_reason` per bad row
+  (`unparseable`, `missing_trial_id`, `bad_type_age`), so a malformed record is routed aside instead of
+  failing the load. The `# TODO` is: **separate good from bad, keep good flowing.**
+- **🚩 Checkpoint 5 — Live feed ingests incrementally and survives bad data.** Re-running the ingest picks
+  up only NEW files (the bronze count climbs). `silver_trial_criteria` holds the clean trials, deduped
+  latest-wins, with `min_ecog` present (Trial A = 1, others NULL, no rows lost). `bronze_trial_quarantine`
+  holds the three bad records with reasons. Because the feed is live, **counts grow** — the signal is that
+  good and bad are cleanly separated and nothing crashed, not a fixed total.
 - **Common failures:**
-  - *They hardcode the trial fields in the flatten* → **the redirect.** The point is that trials are
-    data: read the `VARIANT` columns generically so a new trial is just a new file. (ANSWER_KEY nb 05.)
-  - *A late wave with `min_ecog` breaks the older trials* → NULL means unconstrained; don't drop rows
-    that lack the new field. Additive change, not breaking. Surface it, default it, keep going.
-  - *Duplicate rows per trial across waves* → the flatten must keep the **latest wave per trial**
-    (dedup), and only surface `min_ecog` from the wave that carries it. (ANSWER_KEY nb 05.)
-  - *"Why VARIANT and not a fixed schema?"* → the feed is nested and evolves; `VARIANT` bronze stays
-    stable while the *flatten* absorbs the change. That's where the evolve decision lives.
+  - *They use `parse_json`, and the malformed line fails the whole batch* → **the redirect.**
+    `try_parse_json` returns NULL on a bad line; route the NULLs to quarantine. (ANSWER_KEY nb 05.)
+  - *They do a one-shot `read_files(...)` batch read* → works, but re-reads everything each run. The
+    lesson is **incremental**: `cloudFiles` + checkpoint appends only new files.
+  - *They point Auto Loader's checkpoint at the shared Volume* → it must live in the team's OWN schema
+    (`_ingest_state`); the landing Volume is read-only shared.
+  - *They try to `mergeSchema` for `min_ecog`* → not needed here. Bronze is `VARIANT`; the flatten already
+    projects the path. (The `mergeSchema` lesson is nb 01, on an OMOP append — don't cross the wires.)
+  - *`bad_type_age` confuses them* → `min_age_years` is present in the VARIANT but `::int` is NULL. Present
+    + uncastable ≠ absent; that two-part check is the reason. (ANSWER_KEY nb 05.)
 
 ---
 
@@ -152,7 +162,7 @@ it is a hand-off, never a blocker. Don't let the team think they're blocking ML.
 | 2 | Reconciliation flags the gap | measurement FAIL delta=7; anti-join returns ids 101–707; `recon_summary` written |
 | 3 | Restricted table blocked | `bronze_person` lands; `genomic_sequencing` raises; no bronze table created |
 | 4 | SLA guard correct | truth-table all ✅ (wrap-around right); guard cell doesn't hang |
-| 5 | Trials catalog flattens + evolves | `silver_trial_criteria` = 3 rows (A/B/C); wave 2 adds `min_ecog` (A=1), older trials NULL, no rows lost |
+| 5 | Live trials feed ingests + quarantines | Auto Loader picks up only new files (bronze grows); `silver_trial_criteria` deduped latest-wins with `min_ecog` (A=1, others NULL); `bronze_trial_quarantine` holds the bad rows (unparseable / missing_trial_id / bad_type_age); load never fails |
 
 **Validation note:** all five notebooks were run green on FEVM2 (`a reference workspace`,
 catalog `<your_catalog>`, writing `clinops_de`, reading `clinops_foundation`)

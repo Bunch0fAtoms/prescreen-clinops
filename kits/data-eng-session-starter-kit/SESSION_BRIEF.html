@@ -165,7 +165,7 @@
       <div class="card tinted"><div class="n">Chetan #17</div><h3>2 · Missing records</h3><p>Did we load every row? Which records are missing? → a reconciliation framework.</p></div>
       <div class="card tinted"><div class="n">Jenn #16</div><h3>3 · Restricted data</h3><p>A restricted table gets ingested by accident. → a config-driven ingest gate.</p></div>
       <div class="card tinted"><div class="n">Jennifer #9</div><h3>4 · SLA windows</h3><p>A job hammers the source during its 11pm–8am window. → an SLA-window guard.</p></div>
-      <div class="card tinted" style="grid-column:1 / -1;"><div class="n">net-new · feeds ML</div><h3>5 · Hardcoded trials</h3><p>Trials are hardcoded in SQL, so adding one means a code change. → a Volume-fed trials catalog. Adding a trial becomes dropping a file.</p></div>
+      <div class="card tinted" style="grid-column:1 / -1;"><div class="n">net-new · feeds ML</div><h3>5 · A live trials feed</h3><p>A registry drips trial files with drift and bad rows. → an <b>Auto Loader</b> incremental ingest into <code>silver_trial_criteria</code>, bad records quarantined. Adding a trial becomes a file landing.</p></div>
     </div>
   </section>
 
@@ -183,7 +183,7 @@
         <tr><td class="step">02</td><td>Row-count reconciliation</td><td>Source vs. target counts, missing-key anti-joins, a persisted <code>recon_summary</code> audit table.</td></tr>
         <tr><td class="step">03</td><td>Restricted-table gate</td><td>A reusable guard blocks restricted tables from a Unity Catalog allow-list, not a hardcoded list.</td></tr>
         <tr><td class="step">04</td><td>SLA-window guard</td><td>Skip the overnight blackout, plus the Jobs schedule pattern that prevents it at the scheduler.</td></tr>
-        <tr><td class="step">05</td><td>Trials catalog</td><td>Nested JSON in a Volume → schema-stable <code>VARIANT</code> bronze → flatten to <code>silver_trial_criteria</code>.</td></tr>
+        <tr><td class="step">05</td><td>Live trials feed</td><td>A live Volume feed → <b>Auto Loader</b> incremental ingest → schema-stable <code>VARIANT</code> bronze → flatten to <code>silver_trial_criteria</code>, with bad records quarantined.</td></tr>
       </tbody>
     </table>
   </section>
@@ -201,7 +201,7 @@
         <ul>
           <li>Six synthetic OMOP source tables, read-only. You ingest from them.</li>
           <li>The bronze landing writers and the "new column" version-2 frame.</li>
-          <li>An injected reconciliation gap, and the trials JSON feed with its <code>VARIANT</code> bronze writer.</li>
+          <li>An injected reconciliation gap, and the live trials feed with its Auto Loader ingest to a <code>VARIANT</code> bronze.</li>
         </ul>
       </div>
       <div class="colbox build">
@@ -209,7 +209,7 @@
         <ul>
           <li>The <code>mergeSchema</code> append, the count comparison, and the missing-key anti-join.</li>
           <li>The <code>assert_ingest_allowed()</code> gate and the <code>in_sla_window()</code> guard.</li>
-          <li>The flatten to <code>silver_trial_criteria</code>, plus the additive-vs-breaking decision when a later wave adds a column.</li>
+          <li>The <b>quarantine</b> that routes bad trial records aside with a reason, so a malformed line never fails the load.</li>
         </ul>
       </div>
     </div>
@@ -262,7 +262,7 @@
       <div class="k">The one line</div>
       <p>"Reliable, governed ingestion plus the curated layer the Applied AI group builds on — schema drift handled, records reconciled, restricted data blocked, and SLA windows enforced."</p>
     </div>
-    <p class="body" style="margin-top:14px;">Then show the net-new trials catalog: drop a file to add a trial, and watch the flatten make the additive-vs-breaking call. Adding a trial is now data, not a code change.</p>
+    <p class="body" style="margin-top:14px;">Then show the net-new live trials feed: files stream into a Volume while Auto Loader ingests them incrementally, a new criterion flows through untouched, and bad records land in quarantine instead of breaking the load. Adding a trial is now data, not a code change.</p>
     <div class="chips">
       <span class="chip"><b>evolve</b> → new column, no break</span>
       <span class="chip"><b>reconcile</b> → every row accounted for</span>

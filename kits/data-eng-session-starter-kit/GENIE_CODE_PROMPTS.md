@@ -64,25 +64,34 @@ is right (`h >= 23 OR h < 8`, **not** `23 <= h < 8`, which is always False). The
 
 ---
 
-### 6. Build the trials catalog from a Volume — nested JSON → VARIANT bronze → flat silver  *(nb 05 · Chetan #15 · the net-new feed)*
-> **"Land a nested clinical-trials JSON feed from my `trial_landing` Volume. Read the newline-delimited files, `parse_json` each record into ONE `VARIANT` column, and write a schema-stable `bronze_trial_catalog` (keep a `_source_file` column). Then flatten to `silver_trial_criteria` with real typed columns (trial_id, trial_name, status, req_sex, age_min, age_max, req_her2, req_er, req_pr, req_menopausal, req_no_prior_anti_her2, eligibility_text) — a missing key reads NULL, meaning 'this trial does not constrain that field.' The feed re-lands files, so a trial can appear in more than one wave: keep ONE row per `trial_id` from the newest file (`ROW_NUMBER() OVER (PARTITION BY trial_id ORDER BY _source_file DESC)`). Now a later wave adds a `min_ecog` criterion: classify the change additive-vs-breaking, and only if additive evolve the silver write so it GAINS the column instead of failing. Show me the bronze schema before/after and the flattened silver."**
+### 6. Ingest the LIVE trials feed — Auto Loader → VARIANT bronze → flat silver + quarantine  *(nb 05 · Chetan #15 · Jenn on bad data · the net-new feed)*
 
-*Good looks like:* wave 1 lands **3 trials (A / B / C)**; wave 2 re-lands so `bronze_trial_catalog`
-holds **4 rows** but stays **one `VARIANT` column** (a new JSON key never changes bronze); the dedup
-keeps the latest per trial (Q2 wins over Q1); the gate reads **additive** and `silver_trial_criteria`
-ends at **3 rows** and **gains `min_ecog`** — Trial A carries `1`, B and C read `NULL`. This is the
-**net-new dataset** this session builds; it lands in your schema, never touching the read-only source.
-The schema-evolution decision moves to the FLATTEN step: for an overwrite that adds a column use the
-option that lets the schema grow (`overwriteSchema` here, since the whole table is rewritten from the
-re-landed bronze); a dropped or retyped column is **breaking** and must gate behind approval, not
-auto-apply. This table is the contract the Applied AI section joins against — adding a trial is dropping
-a file, not a code change.
+> **⚠️ First: the feed is live and presenter-controlled.** Your instructor starts the foundation
+> `land_trial_feed` task; it drops one JSON file at a time into a **shared** `trial_landing` Volume
+> (clean trials first, then a schema change, then bad records) and keeps running until cancelled. You
+> read that shared Volume and write everything into **your** schema. If nothing has landed yet, ask the
+> presenter to start (or Repair-run) the feed.
 
-> **SQL-only variant (Genie Code often prefers SQL):** the whole bronze step is one statement —
-> `SELECT parse_json(value) AS trial_raw, _metadata.file_path AS _source_file, current_timestamp() AS _ingested_at FROM read_files('/Volumes/<cat>/<sch>/trial_landing/trial_catalog/trials_*.json', format => 'text')`.
-> `read_files(..., format => 'text')` gives one row per line, so newline-delimited JSON parses cleanly
-> without any Python. Flatten with `trial_raw:eligibility.her2_status::string` VARIANT paths. (Validated
-> on FEVM2: bronze 4 rows, silver 3 trials, Trial A `min_ecog=1`.)
+> **"Ingest the live clinical-trials feed from the shared Volume `/Volumes/<cat>/<source_schema>/trial_landing/trial_catalog/` **incrementally with Auto Loader** (`cloudFiles`, format `text`, `trigger(availableNow=True)`, schemaLocation + checkpoint in MY schema). `try_parse_json` each line into ONE `VARIANT` column and append to a schema-stable `bronze_trial_catalog` — keep the raw `value` string and `_source_file`. Then flatten the GOOD records to `silver_trial_criteria` (real typed columns: trial_id, trial_name, status, req_sex, age_min, age_max, req_her2, req_er, req_pr, req_menopausal, req_no_prior_anti_her2, min_ecog, eligibility_text) keeping ONE row per trial_id by newest `load_ts` (`ROW_NUMBER() OVER (PARTITION BY trial_id ORDER BY load_ts DESC)`); a missing key reads NULL = 'this trial does not constrain that field.' Finally **quarantine** the bad rows into `bronze_trial_quarantine` with a `quarantine_reason`: `unparseable` (trial_raw IS NULL), `missing_trial_id` (no id), `bad_type_age` (min_age_years present but `::int` is NULL). Show me the bronze count, the clean silver, and the quarantine breakdown by reason."**
+
+*Good looks like:* Auto Loader ingests only **new** files each run (re-run it and the bronze count
+climbs); bronze stays **one `VARIANT` column** no matter how many keys arrive; silver holds the clean
+trials deduped latest-wins (**Trial A carries `min_ecog=1`**, others `NULL`) and **grows as clean
+trials land**; `bronze_trial_quarantine` collects the bad rows — one `unparseable`, one
+`missing_trial_id`, one `bad_type_age` — **each with a reason, and the load never crashed**. Because
+bronze is `VARIANT`, the new `min_ecog` criterion needs **no schema surgery** — the flatten already
+projects the path. This is the **net-new dataset** this session builds; it never touches the read-only
+OMOP source. The table is the contract the Applied AI section joins against — adding a trial is a file
+landing, not a code change.
+
+> **If Genie Code reaches for a one-shot `read_files(...)` batch read**, that's the redirect: it works,
+> but it re-reads every file every time. The ask is **incremental** — `cloudFiles` with a checkpoint so
+> each run appends only new files. That's the whole point of a *live* feed.
+>
+> **SQL-only flatten variant:** the VARIANT paths are `trial_raw:eligibility.her2_status::string`,
+> `trial_raw:load_ts::timestamp`, etc. Dedup with `QUALIFY ROW_NUMBER() OVER (PARTITION BY
+> trial_raw:trial_id::string ORDER BY trial_raw:load_ts::timestamp DESC) = 1`. (Bronze/flatten pattern
+> validated on FEVM2; Trial A `min_ecog=1`, others NULL.)
 
 ---
 
@@ -103,9 +112,10 @@ trial flow all the way to the coordinator app with zero code change.
 ### 🧩 Now design your own (the open part)
 You have a governed, reconciled ingest — extend it however a real clinical-data team would:
 
-- *"Convert the batch ingest to Auto Loader `cloudFiles` reading files from a UC Volume, keeping schema evolution on."*
-- *"Add Lakeflow data-quality EXPECTATIONS to the pipeline and route violations to a quarantine table."*
+- *"Turn my re-runnable Auto Loader ingest (nb 05) into a continuously-running stream with `trigger(processingTime='30 seconds')`, or schedule the notebook every few minutes, so the trials catalog stays current hands-free."*
+- *"Add Lakeflow data-quality EXPECTATIONS to the trials ingest and route violations to the quarantine table, so the bad-record rules live in the pipeline definition."*
 - *"Make the SLA window and the allow-list fully config-driven from UC tables so ops changes behavior with zero deploys."*
+- *"Use `ai_query` to parse each trial's free-text `eligibility_text` into structured criteria and reconcile it against the structured `req_*` columns."*
 
 **Optional — expose it via a self-serve Genie space.** Any team can install the workspace-level
 `prompt-to-genie` skill (see the README) and say **"create a Genie space"** over your `recon_summary` /

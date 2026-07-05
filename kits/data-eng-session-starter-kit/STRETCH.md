@@ -1,6 +1,6 @@
 # 🚀 STRETCH — make it your own
 
-Finished the core build (notebooks 01–04, all the `# TODO (you build this)` markers)? Pick an
+Finished the core build (notebooks 01–05, all the `# TODO (you build this)` markers)? Pick an
 extension. These map to the `# EXTENSION (optional)` hooks scattered through the notebooks. None are
 required — they're for teams who want to push further or have a real FH ingestion pattern in mind.
 
@@ -63,7 +63,19 @@ Lean into the dominant onsite theme:
 - Grant a steward `MODIFY` on `ingest_allowlist` and show them flipping the gate live — the whole
   config-over-code story, made visible.
 
-## 7. Make the four guards a reusable module
+## 7. Live trials feed — continuous stream + criteria extraction (nb 05)
+
+Notebook 05 ingests the live feed with `trigger(availableNow=True)` (re-run to pick up new files). Push it further:
+- Switch to a **continuously-running stream** (`trigger(processingTime='30 seconds')`) or schedule the
+  notebook every few minutes so `silver_trial_criteria` stays current with zero clicks while the feed runs.
+- Add **Lakeflow EXPECTATIONS** so the bad-record rules (missing id, bad type) live in the pipeline
+  definition and route to quarantine declaratively, instead of the hand-written `CASE`.
+- Use **`ai_query`** to parse each trial's free-text `eligibility_text` into structured criteria, then
+  reconcile the extracted values against the structured `req_*` columns — extraction on the *trial* side,
+  mirroring the patient-side note extraction the Applied AI group does. See the
+  `databricks-spark-structured-streaming` skill.
+
+## 8. Make the four guards a reusable module
 
 Each notebook builds a guard in isolation. Package them:
 - Move `assert_ingest_allowed`, `in_sla_window`, and a `reconcile(table)` helper into a small shared

@@ -18,12 +18,13 @@ description: Configure, deploy, and adapt ANY Fred Hutch onsite starter kit (Gov
 
 1. Locate `ADAPTATION_FACTS.json` in the **active project root** (beside `databricks.yml`). If none is
    found, ask the user which kit folder they're in / to open it. Do not proceed without a facts file.
-2. Read `demo_slug` / `demo_name` — that identifies the kit. The four onsite kits:
+2. Read `demo_slug` / `demo_name` — that identifies the kit. The shared foundation plus the four onsite kits:
 
    | Kit | Has DAB? | `deploy_target.kind` | Stand-up shape |
    |---|---|---|---|
+   | Shared Foundation (`fred-hutch-prescreen-foundation`) | yes | `job` (`foundation_setup_job`) | deploy → run the job: `generate_omop_data` writes the 6 OMOP tables (one-time), `land_trial_feed` is a **long-running, presenter-controlled live trials feed** (streams files until the run is cancelled; the run stays RUNNING by design). Stand this up FIRST — the other kits read from it. |
    | Governance (`fred-hutch-governance-session`) | yes | `job` (`setup_clone_job`) | deploy → run the deep-clone job (lands 6 OMOP tables in the governance schema) |
-   | Data Engineering (`fred-hutch-omop-data-eng-session`) | yes | `bundle` | deploy only; the 6 OMOP source tables must already exist in `source_schema` (pre-seeded) |
+   | Data Engineering (`fred-hutch-omop-data-eng-session`) | yes | `bundle` | deploy only; reads the 6 OMOP source tables + the shared live trials feed Volume from `source_schema` (both stood up by the foundation) |
    | ML / Pre-Screening (`fred-hutch-clinical-trial-prescreening`) | yes | `job` (`data_generation_job`) | deploy → run the data-generation job |
    | Admin / Genie One | **no bundle** | n/a | **No adaptation needed** — SQL + Genie One over `system.billing`. If asked, point the user at the kit's `sql/` + `GENIE_ONE_PROMPTS.md`; there is nothing to deploy. |
 
@@ -96,10 +97,14 @@ description: Configure, deploy, and adapt ANY Fred Hutch onsite starter kit (Gov
    > databricks bundle deploy   --target client
    > # kind=job → also run the job that lands data:
    > #   databricks bundle run <resource_key> --target client
-   > #   (Governance = setup_clone_job · ML = data_generation_job)
-   > # kind=bundle (Data Engineering) → no data job; the 6 OMOP source tables
-   > #   must already exist in source_schema (pre-seeded in the shared foundation).
+   > #   (Foundation = foundation_setup_job · Governance = setup_clone_job · ML = data_generation_job)
+   > # kind=bundle (Data Engineering) → no data job; the 6 OMOP source tables + the shared
+   > #   live trials feed Volume must already exist in source_schema (stood up by the foundation).
    > ```
+   > **Foundation note:** `foundation_setup_job` includes `land_trial_feed`, a long-running live
+   > feed that runs until cancelled — so the job run stays RUNNING by design. Tell the presenter to
+   > start it at the top of the trials segment; pause = cancel the run; restart = Run now (OMOP
+   > regen is harmless) or Repair-run selecting only `land_trial_feed`. Never deploy or run from Genie Code.
    Triage failures: "variable not found" → a `${var.*}` rename was missed (grep + fix);
    `permission denied` on catalog → user lacks `CREATE SCHEMA`; serverless not available → change job
    environment client id to a cluster policy; DE "source table not found" → wrong `source_schema`.

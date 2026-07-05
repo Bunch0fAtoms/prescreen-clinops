@@ -25,30 +25,31 @@ build the answer to all of them:
 | 2 | Did we load **every** row? Which records are **missing**? | a reconciliation framework | Chetan #17 |
 | 3 | A **restricted** table gets ingested by accident. | a config-driven ingest gate | Jenn #16 |
 | 4 | A job hammers the source during its **11pm–8am SLA window**. | an SLA-window guard | Jennifer #9 |
-| 5 | Trials are **hardcoded in SQL**; adding one means a code change. | a Volume-fed trials catalog | ML/Sita ask |
+| 5 | Trials are **hardcoded in SQL**; a **live** feed drips files with drift and bad rows. | an incremental trials-feed ingest + quarantine | ML/Sita ask |
 
 By the end you will have built:
 - a bronze ingest that **evolves** when the source schema changes (Delta `mergeSchema`; Auto Loader `cloudFiles` variant documented),
 - a **reconciliation** framework — source↔target counts, missing-key anti-joins, a persisted `recon_summary` audit table,
 - a reusable **ingest gate** that blocks restricted tables from a **Unity Catalog allow-list** (not hardcoded),
 - an **SLA-window guard** that skips the overnight blackout, plus the Jobs schedule / `pause_status` pattern that prevents it at the scheduler level,
-- a **trials catalog** — a nested JSON feed landing in a Volume, a schema-stable `VARIANT` bronze, and a flatten to `silver_trial_criteria` that handles a later wave adding a column.
+- a **live trials feed ingest** — an **Auto Loader (`cloudFiles`)** incremental read of a live Volume feed into a schema-stable `VARIANT` bronze, a flatten to `silver_trial_criteria` (latest-wins per trial), and a **quarantine** for bad records.
 
 > 🔗 **Both groups build in parallel off the same 6 OMOP tables.** You and the Applied AI (ML) group
 > both start from the shared foundation, the 6 read-only OMOP tables (see `../../SHARED_FOUNDATION.md`).
 > Neither group waits on the other's data layer. Your cross-group contribution is the **trials catalog**:
-> you flatten the Volume-fed trials feed to `silver_trial_criteria` (nb 05), and that table is the
+> you ingest the live trials feed to `silver_trial_criteria` (nb 05), and that table is the
 > **eligibility contract the ML pre-screen joins against**. If the ML group gets there first, they can
-> flatten the same Volume themselves, so it is a hand-off, never a blocker.
+> read the same Volume themselves, so it is a hand-off, never a blocker.
 
-> 🆕 **Net-new dataset: the trials catalog (nb 05).** The four notebooks above harden the OMOP
-> silver. Notebook `05` adds something **new** the room hasn't seen: a clinical-trials catalog. A
-> nested JSON trials feed lands in a **Volume** in waves, you ingest it into a schema-stable
-> **`VARIANT` bronze**, then flatten it to `silver_trial_criteria` (Trials A / B / C). That table is
-> the **eligibility contract the ML group's pre-screen joins against** — so **adding a trial is
-> dropping a file, not a code change**. A later wave drops a file that adds `min_ecog`; your flatten
-> makes the **additive-vs-breaking** call. This is the same read-only-source, land-in-your-own-schema
-> discipline as nb 01–04, on a Volume source instead of tables.
+> 🆕 **Net-new dataset: the LIVE trials feed (nb 05).** The four notebooks above harden the OMOP
+> silver. Notebook `05` adds something **new** the room hasn't seen: a **live**, presenter-controlled
+> clinical-trials feed. The foundation `land_trial_feed` task streams nested JSON files into a **shared
+> Volume** over time; you ingest them **incrementally with Auto Loader** into a schema-stable
+> **`VARIANT` bronze**, flatten the good records to `silver_trial_criteria`, and **quarantine** the bad
+> ones (a missing id, a malformed line, a wrong-typed field). That table is the **eligibility contract
+> the ML group's pre-screen joins against** — so **adding a trial is a file landing, not a code
+> change**. Because bronze is `VARIANT`, a new `min_ecog` criterion flows through with no schema surgery.
+> Same read-only-source, land-in-your-own-schema discipline as nb 01–04, on a live Volume feed.
 
 ---
 
@@ -63,9 +64,9 @@ By the end you will have built:
 | The count comparison + missing-key anti-join (nb 02) | 🛠️ **You build** |
 | The `assert_ingest_allowed()` UC-driven guard (nb 03) | 🛠️ **You build** |
 | The `in_sla_window()` overnight-wrap guard (nb 04) | 🛠️ **You build** |
-| The trials JSON feed + landing Volume + `VARIANT` bronze writer (nb 05) | ✅ **Pre-built wiring** |
-| The flatten to `silver_trial_criteria` + the additive-vs-breaking decision gate (nb 05) | 🛠️ **You build** |
-| Auto Loader `cloudFiles`, tag-driven gate, config-driven window, more | 🚀 **Stretch** — see `STRETCH.md` |
+| The live trials feed (foundation `land_trial_feed`) + the Auto Loader ingest + flatten (nb 05) | ✅ **Pre-built wiring** — presenter starts the feed |
+| The `bronze_trial_quarantine` routing of bad records with a reason (nb 05) | 🛠️ **You build** |
+| Continuous `processingTime` streaming, `ai_query` criteria parsing, tag-driven gate, config-driven window, more | 🚀 **Stretch** — see `STRETCH.md` |
 
 ---
 
@@ -133,7 +134,7 @@ and the same source tables.
 
 > **The five notebooks are independent** — you can build them in any order. `01`→`02` form a
 > natural ingest→verify pair; `03` and `04` are reusable guards you'd call *before* any ingest; `05`
-> is the net-new trials catalog on a Volume source.
+> is the net-new LIVE trials feed on a Volume source (ask the presenter to start the feed first).
 
 ---
 
@@ -176,4 +177,4 @@ data-eng-session-starter-kit/
 | 02 | `02_row_count_reconciliation` | source↔target counts + anti-joins + `recon_summary` | 🛠️ build the recon |
 | 03 | `03_restricted_table_ingest_gate` | block restricted tables from a UC allow-list | 🛠️ build the guard |
 | 04 | `04_sla_job_windows` | skip the 11pm–8am window + the Jobs schedule pattern | 🛠️ build the guard |
-| 05 | `05_trials_catalog_ingest` | Volume-fed nested JSON → `VARIANT` bronze → flatten to `silver_trial_criteria`; a later wave adds `min_ecog` | 🛠️ build the flatten + the evolve gate |
+| 05 | `05_trials_catalog_ingest` | LIVE Volume feed → Auto Loader → `VARIANT` bronze → flatten to `silver_trial_criteria` + quarantine bad records | 🛠️ build the quarantine routing |

@@ -106,37 +106,57 @@ def in_sla_window(now, start_hour=SLA_START_HOUR, end_hour=SLA_END_HOUR) -> bool
 - **Validated:** guard correct across all tested hours; the guard cell runs without hanging (gated on the
   window check, demos *skip*).
 
-## NB 05 — trials catalog schema evolution (🛠️ evolve the silver write + gate breaking changes)
+## NB 05 — LIVE trials feed: incremental Auto Loader + quarantine (🛠️ route bad records aside)
 
-**Intended TODO** — additive change auto-evolves via `overwriteSchema`; breaking change gates on approval:
+**The feed is live.** The presenter starts the foundation `land_trial_feed` task; it streams files into
+the SHARED `trial_landing` Volume (in `source_schema`) — clean trials first, then a `min_ecog` schema
+change, then the bad records, then an indefinite clean heartbeat. Each team reads that Volume and writes
+into its own schema. If a team sees "no files yet," the presenter hasn't started (or needs to Repair-run)
+the feed.
+
+**Intended TODO** — build `bronze_trial_quarantine` with a reason per bad row (good rows already flow to
+silver in cell 3):
 ```python
-AUTO_FULL_RELOAD_ALLOWED = False
-if change in ("none", "additive"):
-    (silver_v2.write.mode("overwrite")
-        .option("overwriteSchema", "true")     # lets the overwrite add the new min_ecog column
-        .saveAsTable(fqn("silver_trial_criteria")))
-elif change == "breaking" and AUTO_FULL_RELOAD_ALLOWED:
-    (silver_v2.write.mode("overwrite")
-        .option("overwriteSchema", "true")
-        .saveAsTable(fqn("silver_trial_criteria")))
-else:
-    raise Exception("Breaking schema change needs manual approval")
+spark.sql(f"""
+  CREATE OR REPLACE TABLE {fqn('bronze_trial_quarantine')} AS
+  SELECT value AS raw_line, trial_raw, _source_file, _ingested_at, quarantine_reason
+  FROM (
+    SELECT value, trial_raw, _source_file, _ingested_at,
+      CASE
+        WHEN trial_raw IS NULL                          THEN 'unparseable'
+        WHEN trial_raw:trial_id::string IS NULL         THEN 'missing_trial_id'
+        WHEN trial_raw:eligibility.min_age_years IS NOT NULL
+             AND trial_raw:eligibility.min_age_years::int IS NULL THEN 'bad_type_age'
+        ELSE NULL
+      END AS quarantine_reason
+    FROM {fqn('bronze_trial_catalog')}
+  )
+  WHERE quarantine_reason IS NOT NULL
+""")
 ```
-- **Why `overwriteSchema`, not `mergeSchema`:** the write is a full `mode("overwrite")` (the flatten
-  reproduces every trial from bronze each run), so the option that *replaces* the schema is the right
-  one. NB 01's append uses `mergeSchema`; this overwrite uses `overwriteSchema`. Same lesson, opposite
-  write mode — don't let a team cross the wires.
-- **The gate is the point:** additive drift (a new `min_ecog` criterion) flows through untouched; a
-  breaking change (a dropped or retyped column) must be a human decision, not a silent reload. `classify_change`
-  returns `additive` here, so the write auto-applies; the `AUTO_FULL_RELOAD_ALLOWED=False` branch is the
-  guardrail for the breaking case.
-- **Two flatten defects to know about (already fixed in the kit):** the shared `flatten()` (a) dedups to
-  the latest record per `trial_id` with `ROW_NUMBER() OVER (PARTITION BY trial_id ORDER BY _source_file DESC)`
-  so wave 2 (Q2) supersedes wave 1 (Q1) — otherwise bronze's two Trial A rows both survive; and (b) takes
-  `include_ecog` so wave 1 flattens WITHOUT `min_ecog` and wave 2 flattens WITH it. Without that split the
-  "new column arrives" story never happens and `classify_change` sees no additive change.
-- **Validated:** 3 trials (A/B/C), no duplicate A; `silver_trial_criteria` gains `min_ecog`; Trial A=1,
-  B/C NULL.
+- **Why keep the raw `value`:** a malformed line has `trial_raw IS NULL` (from `try_parse_json`), so the
+  only record of it is the raw text. Bronze keeps `value` precisely so quarantine can capture it. If a
+  team used `parse_json` (not `try_parse_json`) the whole batch would fail on the bad line — that's the
+  redirect: `try_parse_json` returns NULL instead of throwing.
+- **`bad_type_age` is the subtle one:** `trial_raw:eligibility.min_age_years` is still present in the
+  VARIANT (it's `"eighteen"`), but `::int` casts to NULL. "Present in the raw but uncastable" ≠ "absent."
+  That two-part condition is what distinguishes a wrong type from an unconstrained field.
+- **Incremental is the point:** Auto Loader (`cloudFiles` + checkpoint, `trigger(availableNow=True)`)
+  appends only NEW files each run. Re-run cell 2 and the bronze count climbs; re-run cells 3–4 and silver +
+  quarantine stay in sync. A one-shot `read_files(...)` re-reads everything every time — works, but misses
+  the incremental lesson.
+- **Schema evolution is free here:** because bronze is `VARIANT` and the flatten always projects
+  `trial_raw:eligibility.min_ecog::int`, the new criterion needs NO schema surgery — Trial A picks up
+  `min_ecog=1`, others read NULL. (The `mergeSchema`-on-append lesson lives in nb 01; don't cross the
+  wires — nb 05 is about incremental ingest + quarantine, not the merge option.)
+- **Dedup latest-wins on `load_ts`:** the feed re-lands trials (Trial A + min_ecog, Trial B conflicting,
+  and the heartbeat). `ROW_NUMBER() OVER (PARTITION BY trial_id ORDER BY load_ts DESC)` keeps the newest.
+  Ordering by `load_ts` (stamped at drop time) is more robust than filename order in the heartbeat phase.
+- **Counts grow (it's live):** don't assert fixed totals. After the ~50-min opening act, expect the clean
+  trials in silver (A/B/C/D/E/F, A with min_ecog=1) and 3 quarantined rows (`unparseable`,
+  `missing_trial_id`, `bad_type_age`). Before that, counts are partial — that's correct.
+- **Validated on FEVM2:** bronze VARIANT stable across new keys; silver deduped latest-wins with
+  `min_ecog`; the three bad categories route to quarantine with reasons; the load never fails.
 
 ---
 

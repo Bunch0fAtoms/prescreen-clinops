@@ -49,8 +49,8 @@ targets:
     default: true
     # Omit `mode:` — DAB defaults to production behavior (no dev_<user>_ prefix), which keeps
     # table names stable so the masks/filters bind to predictable objects.
-    workspace:
-      host: https://<your-workspace>.cloud.databricks.com
+    # No `workspace.host:` — the CLI uses your profile's host (deploy with -p <profile>),
+    # so there's no host to mismatch. Add one only if you deploy without a profile.
     variables:
       source_catalog: "<your_catalog>"
       source_schema: "<your_source_schema>"
