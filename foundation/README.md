@@ -30,8 +30,17 @@ trials JSON into the Volume. Both are reproducible: a fixed random seed means ev
 the same 300 patients.
 
 **Let Genie Code fill in your workspace values.** The `fred-hutch-onsite-adaptation` skill (in
-`../.assistant/skills/`) reads your bundle and writes the `databricks.yml` variables for you.
-Install it once, open Genie Code, and ask: **"set up and run the foundation in my workspace."**
+`../.assistant/skills/`) reads your bundle and writes the `databricks.yml` variables for you. A
+workspace admin installs it once, for everyone — this is separate from deploying the bundle:
+
+```bash
+databricks workspace import-dir \
+  ../.assistant/skills/fred-hutch-onsite-adaptation \
+  /Workspace/.assistant/skills/fred-hutch-onsite-adaptation --profile <profile>
+```
+
+Then open Genie Code and ask: **"set up and run the foundation in my workspace."** See the repo
+`README.md` (Step 2) for the full install note and the per-user fallback.
 
 ## Synthetic today, real tomorrow
 

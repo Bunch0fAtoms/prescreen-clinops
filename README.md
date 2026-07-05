@@ -53,9 +53,21 @@ SQL warehouse, and the Databricks command-line interface (CLI) configured for yo
 **Step 1 — stand up the foundation.** Follow `foundation/README.md`. This is the only thing that
 must run before the groups split.
 
-**Step 2 — install two Genie Code skills, once, at the workspace level.** Genie Code is the
-in-workspace assistant that writes and runs code from plain-language prompts. Install both skills
-under `/Workspace/.assistant/skills/`:
+**Step 2 — a workspace admin installs two Genie Code skills, once, for everyone.** Genie Code is the
+in-workspace assistant that writes and runs code from plain-language prompts. It finds skills only
+under `/Workspace/.assistant/skills/`, so an admin imports them there one time and every builder then
+has them. This is a **separate action from deploying a kit** — `bundle deploy` syncs a kit's code, it
+does not install skills.
+
+```bash
+# Run once, from the repo root, by someone with write access to /Workspace/.assistant/skills/
+databricks workspace import-dir \
+  .assistant/skills/fred-hutch-onsite-adaptation \
+  /Workspace/.assistant/skills/fred-hutch-onsite-adaptation --profile <profile>
+```
+
+If you cannot write to the workspace-level path, install per-user instead at
+`/Workspace/Users/<you>/.assistant/skills/…`. The two skills:
 
 | Skill | What it does | Who uses it |
 |---|---|---|
