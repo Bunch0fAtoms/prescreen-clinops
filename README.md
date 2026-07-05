@@ -1,83 +1,93 @@
-# Fred Hutch Clinical Trial Pre-Screening — OMOP Data Foundation
+# Fred Hutch — Clinical Trial Pre-Screening Onsite
 
-| | |
-|---|---|
-| **Organization** | Fred Hutchinson Cancer Center |
-| **Protagonist** | Dr. Sarah Okonkwo — Clinical Research Coordinator, Breast Oncology |
-| **Challenge** | Researchers manually review hundreds of charts to identify eligible patients for breast cancer trials. Biomarker results (ER/PR/HER2 status) are split between structured EHR data and free-text pathology notes, forcing staff to read every report individually. Eligibility checks that should take minutes take days. |
-| **Journey** | A Databricks-powered pre-screening pipeline ingests OMOP clinical data, extracts biomarker status from pathology notes using NLP/LLM, and aligns structured + unstructured signals. Genie Code surfaces eligible cohorts instantly. |
-| **Resolution** | Trial A (HER2+) and Trial B (ER+/HER2-) eligible cohorts are identified in seconds. Notes-only patients — invisible to structured queries — are surfaced by NLP extraction, expanding each cohort by ~25%. |
-| **Impact** | Screening time: **days → minutes**. Cohort completeness: **+25% patients recovered from notes alone**. Trial enrollment velocity: faster first-patient-in. |
+**This repo is everything your team needs to run the two-day onsite.** The goal is a working
+clinical-trial patient pre-screening solution, built by your team, on your workspace, using
+synthetic data that matches your real OMOP schema. You build it, you own it, and each group
+presents its part.
 
-## Overview
+The scenario is breast cancer because it maps to a real Fred Hutch need, but the deliverable is
+the pattern: take clinical data, find the patients who match a trial's criteria, and give a
+coordinator a trustworthy, governed shortlist.
 
-This project delivers the **OMOP data foundation** for the Fred Hutch clinical trial pre-screening solution. Six OMOP CDM tables — `person`, `condition_occurrence`, `measurement`, `observation`, `drug_exposure`, `note` — are populated with 300 realistic breast cancer patients, designed specifically to power:
+---
 
-1. **Structured cohort queries** (SQL over `measurement` for known biomarker results)
-2. **NLP/LLM extraction** from `note.note_text` pathology reports (the value story — ~25% of patients have biomarker status in notes only)
-3. **MLflow evaluation** — `both-agree` patients provide structured ground truth against which note-extraction accuracy can be scored
+## How the two days flow
 
-Genie Code builds the actual cohort logic and agent on top of this foundation. This project owns the data and the bundle.
+**One shared foundation, then four groups building in parallel on top of it.**
 
-## Key Numbers
+1. **Day 1, whole room: stand up the foundation.** Run the `foundation/` bundle once. It creates
+   six shared OMOP tables and lands a clinical-trials feed. See `foundation/README.md`.
+2. **Day 1, whole room: discovery.** Every group interrogates the same six tables with Genie Code,
+   and optionally stands up a Genie space over them, so the build is grounded in the data. See
+   `foundation/DISCOVERY.md`.
+3. **Day 1–2: four sections build in parallel.** Each group takes a starter kit in `kits/` and
+   designs its own solution. Governance runs as the spine across all of them.
+4. **Day 2: each group presents its section.**
 
-| Metric | Value |
-|---|---|
-| Total patients | 300 |
-| OMOP tables | 6 (exact customer schema match) |
-| **both-agree** patients (NLP ground truth) | ~150 (50%) |
-| **notes-only** patients (NLP value story) | ~75 (25%) |
-| **structured-only** patients | ~75 (25%) |
-| Trial A eligible patients (HER2+) | 20 (person_ids 1–20) |
-| Trial B eligible patients (ER+/HER2-, postmenopausal) | 20 (person_ids 31–50) |
-| Known-ineligible controls per trial | 10 each |
+## The four sections
 
-## Planted Cohorts
+Each kit is self-contained: a runbook, ready-to-adapt Genie Code prompts, pre-built plumbing,
+open build steps, and an answer key for the facilitator.
 
-Two trials with deterministic eligible/ineligible person_ids, documented in `PLANTED_COHORTS.md`:
-
-**Trial A — HER2+ breast cancer:** breast cancer dx + HER2 Positive + age 18–75 + NO prior anti-HER2 therapy (trastuzumab/pertuzumab)
-
-**Trial B — ER+/HER2- postmenopausal:** breast cancer dx + ER Positive + HER2 Negative + postmenopausal (observation) + age 18–75
-
-## Synth → Real Toggle
-
-The bundle is parameterized so the same downstream Genie/ML/dashboard assets work against either synthetic demo data or the customer's real `curated_omop.omop` tables — no query changes required:
-
-| Variable | Default (synthetic) | Real mode |
+| Section | Kit | What the group builds |
 |---|---|---|
-| `run_with_synthetic_data` | `yes` | `no` |
-| `source_catalog` | `curated_omop` | customer catalog |
-| `source_schema` | `omop` | customer schema |
+| **Governance** | `kits/governance-session-starter-kit/` | Tag and classify sensitive data, apply column masks and row filters, search for identifiers, and govern the data used for artificial intelligence (AI). This is the spine the other sections inherit. |
+| **Data Engineering** | `kits/data-eng-session-starter-kit/` | Harden the ingest of the six tables: absorb schema changes, reconcile row counts, gate restricted tables, respect service-level windows, and bring in the net-new trials feed from the Volume. |
+| **Applied AI** | `kits/ml-session-starter-kit/` | Build the patient features, recover notes-only patients with language models, produce the trial pre-screen, and stand up a Genie space clinical researchers can question in plain English. |
+| **Admin** | `kits/admin-session-starter-kit/` | Use Genie One to answer cost and usage questions and set budget alerts, in plain language over the billing system tables. |
 
-## Demo Walkthrough
+## Governance is the spine
 
-1. **Open Genie** — query `measurement` for HER2-positive patients → returns ~50% of eligible Trial A patients
-2. **Run NLP extraction** (Genie Code) — parse `note.note_text` pathology reports → recovers the other ~25% of Trial A patients whose HER2 status was notes-only
-3. **Trial A cohort** — filter: breast cancer + HER2 Positive + age 18–75 + no trastuzumab/pertuzumab in `drug_exposure` → returns person_ids 1–20
-4. **Trial B cohort** — filter: breast cancer + ER Positive + HER2 Negative + postmenopausal (`observation`) + age 18–75 → returns person_ids 31–50
-5. **MLflow eval** — score NLP extraction accuracy using both-agree patients as ground truth
-6. **Flip toggle** — point bundle at `curated_omop.omop` → exact same queries run against real patient data
+The Governance group applies the tag, classify, mask, and row-filter pattern to the shared tables
+on Day 1, then re-applies it to the tables and models the other groups produce as they build. The
+result is that every section's work respects who is allowed to see what. Because the data is
+synthetic, you exercise the full control set with no risk to real patient information.
 
-## First Run (Client)
+---
 
-1. Unzip `fred-hutch-clinical-trial-prescreening-client-handoff.zip` and open `databricks.yml`. Edit the `targets.client.variables` block — set `client_catalog`, `client_schema`, and `warehouse_id` to your values (replace `<your_catalog>` / `<your_schema>` / `<your_warehouse_id>`).
-2. Import the Genie Code adaptation skill: in Genie Code, use **Import skill from file** → `.assistant/skills/fred-hutch-clinical-trial-prescreening-adaptation/SKILL.md`. Or ask Genie Code: **"run in my workspace"** and it will guide you.
-3. From a terminal at the project root:
-   ```bash
-   databricks bundle deploy --target client
-   databricks bundle run data_generation_job --target client
-   ```
+## Getting set up
 
-See `ADAPTATION_GUIDE.md` for switching to real OMOP data.
+**Prerequisites.** A Databricks workspace with Unity Catalog, permission to create a schema and a
+SQL warehouse, and the Databricks command-line interface (CLI) configured for your workspace.
 
-## Products Showcased
+**Step 1 — stand up the foundation.** Follow `foundation/README.md`. This is the only thing that
+must run before the groups split.
 
-| Product | Role in this demo |
-|---|---|
-| **Synthetic Data Gen** | 300 OMOP patients with realistic pathology notes, biomarker coherence, and planted cohorts |
-| **Databricks Asset Bundles** | Deployable bundle with synth/real toggle via `run_with_synthetic_data` variable |
-| **Unity Catalog** | Tables in `<client_catalog>.<client_schema>`, lineage, governance |
-| **Genie** *(talking track)* | Natural-language cohort queries over OMOP tables |
-| **Genie Code** *(talking track)* | NLP/LLM extraction from `note.note_text`, cohort pre-screening logic |
-| **MLflow** *(talking track)* | Evaluation of NLP extraction accuracy using both-agree ground truth |
+**Step 2 — install two Genie Code skills, once, at the workspace level.** Genie Code is the
+in-workspace assistant that writes and runs code from plain-language prompts. Install both skills
+under `/Workspace/Users/<you>/.assistant/skills/`:
+
+| Skill | What it does | Who uses it |
+|---|---|---|
+| `fred-hutch-onsite-adaptation` (in `.assistant/skills/`) | Reads the kit you are in and fills in its `databricks.yml` for your workspace, then gives you the deploy commands. | Every group at deploy time. |
+| `prompt-to-genie` ([github.com/sean-zhang-dbx/prompt-to-genie](https://github.com/sean-zhang-dbx/prompt-to-genie)) | Builds a self-serve Genie space from your tables. | Any group that wants a Genie space. |
+
+**Step 3 — each group opens its kit** in `kits/` and follows that kit's `README.md` and
+`RUNBOOK.md`.
+
+## How to work with Genie Code well
+
+- Paste one prompt at a time and review what it writes before you accept it.
+- Let it save its work as real notebooks and files, not scratch.
+- Drive edits from the right page: notebook edits from the notebook, pipeline files from the
+  pipeline editor.
+
+The kit prompts are starters, not a script. The value is in the solution your group designs. If a
+group gets stuck, each kit has an answer key in its `reference/` folder.
+
+---
+
+## Ground rules
+
+- **Synthetic data only.** Everything generated here is fake and Unity Catalog scoped. No patient
+  health information is used at any point.
+- **Unity Catalog scoped.** All tables live in your catalog and schema. Nothing uses the legacy
+  metastore.
+- **Configuration over code.** Workspace values live in `databricks.yml` and Unity Catalog config
+  tables, so behavior changes without editing code.
+
+## Synthetic today, real tomorrow
+
+The six tables match the column names and types of your real `curated_omop.omop` schema. When you
+are ready, flip `run_with_synthetic_data` to `no` in `foundation/databricks.yml` and point it at
+your real tables. The table names are identical, so the solution you built carries straight over.

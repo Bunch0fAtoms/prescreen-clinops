@@ -1,0 +1,44 @@
+resources:
+  jobs:
+    foundation_setup_job:
+      name: "[${bundle.target}] Fred Hutch — stand up the shared foundation"
+      description: >
+        Stands up the shared Day-1 foundation both groups build on. Two tasks:
+        (1) generate the 6 synthetic OMOP CDM tables (300 breast-cancer patients),
+        (2) land the clinical-trials JSON feed into the trial_landing Volume for the
+        Data Engineering group to ingest. Only needs to run when
+        run_with_synthetic_data=yes. When run_with_synthetic_data=no, downstream
+        tools read from ${var.source_catalog}.${var.source_schema} instead.
+
+      tasks:
+        - task_key: generate_omop_data
+          spark_python_task:
+            python_file: ../src/data_generation/generate_omop_data.py
+            parameters:
+              - "${var.client_catalog}"
+              - "${var.client_schema}"
+          environment_key: default
+
+        - task_key: land_trial_feed
+          depends_on:
+            - task_key: generate_omop_data
+          spark_python_task:
+            python_file: ../src/data_generation/generate_trial_feed.py
+            parameters:
+              - "${var.client_catalog}"
+              - "${var.client_schema}"
+          environment_key: default
+
+      environments:
+        - environment_key: default
+          spec:
+            environment_version: "3"
+            dependencies:
+              - "faker>=20.0.0"
+              - "numpy>=1.26"
+              - "pandas>=2.0"
+              - "pyarrow>=4.0.0"
+
+      permissions:
+        - level: CAN_VIEW
+          group_name: "users"

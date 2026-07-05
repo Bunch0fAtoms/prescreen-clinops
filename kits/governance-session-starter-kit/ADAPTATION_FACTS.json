@@ -1,0 +1,144 @@
+{
+  "skill_version": "1.0.0",
+  "demo_slug": "fred-hutch-governance-session",
+  "demo_name": "Fred Hutch Governance Session — UC governance on OMOP",
+
+  "name_vars": {
+    "catalog_var": "client_catalog",
+    "schema_var": "client_schema",
+    "warehouse_var": "warehouse_id",
+    "group_var": "ocdo_group",
+    "source_catalog_var": "source_catalog",
+    "source_schema_var": "source_schema"
+  },
+
+  "deploy_target": {
+    "kind": "job",
+    "resource_key": "setup_clone_job",
+    "run_command": "databricks bundle run setup_clone_job --target client",
+    "bundle_target_flag": "--target client",
+    "note": "Two-step stand-up: (1) databricks bundle deploy --target client, then (2) databricks bundle run setup_clone_job --target client. The setup job DEEP CLONEs the 6 OMOP tables from source_catalog.source_schema into client_catalog.client_schema so policies are applied in ISOLATION — never on a schema another track reads. clone_omop_tables.sql does all 6."
+  },
+
+  "toggle": {
+    "variable": null,
+    "mechanism": "source_repointing",
+    "source_catalog_var": "source_catalog",
+    "source_schema_var": "source_schema",
+    "default_source_schema": "clinops_foundation",
+    "real_source_hint": "curated_omop.omop",
+    "note": "No boolean toggle. The clone source is set by source_catalog/source_schema. Synthetic default = clinops_foundation (the shared foundation). Real = the FH OMOP schema. Table names are identical, so the same masks/filters bind either way."
+  },
+
+  "tables": [
+    {"name": "person", "role": "Cloned into the governance schema. PHI columns: person_id (identifier), year_of_birth, gender_source_value, birth_date.", "row_count_expected": 300, "access": "cloned into client_schema; policies applied here"},
+    {"name": "condition_occurrence", "role": "Cloned. person_id is the row-filter key.", "row_count_expected": 300, "access": "cloned into client_schema"},
+    {"name": "measurement", "role": "Cloned. Clinical facts (biomarkers) — data_sensitivity, not phi.", "row_count_expected": 720, "access": "cloned into client_schema"},
+    {"name": "observation", "role": "Cloned. Clinical facts.", "row_count_expected": 720, "access": "cloned into client_schema"},
+    {"name": "drug_exposure", "role": "Cloned. Clinical facts.", "row_count_expected": 383, "access": "cloned into client_schema"},
+    {"name": "note", "role": "Cloned. note_text is free-text PHI — masked in nb 02; person_id is an identifier.", "row_count_expected": 265, "access": "cloned into client_schema; note_text masked"}
+  ],
+
+  "governed_tag_policy": {
+    "note": "This metastore ENFORCES governed tag policies — you cannot invent tag values. Use only the allowed values from _config's PHI_COLUMNS map.",
+    "phi": {"description": "Only accepts HIPAA Safe-Harbor identifier types.", "example_values": ["other_identifier"], "do_not_use": ["high", "direct_identifier"]},
+    "data_sensitivity": {"description": "Only official / official_sensitive.", "allowed_values": ["official", "official_sensitive"]}
+  },
+
+  "phi_columns": {
+    "note": "The PHI_COLUMNS map in notebooks/_config.py is the source of truth for what gets tagged/masked. Identifiers get phi + data_sensitivity; clinical facts get data_sensitivity only (phi_type is None).",
+    "identifiers": ["person.person_id", "note.person_id", "note.note_text"],
+    "quasi_identifiers": ["person.year_of_birth", "person.gender_source_value", "person.birth_date"]
+  },
+
+  "source_files": {
+    "notebooks": "notebooks/ (00_START_HERE, 01_discover_and_classify, 02_column_masks, 03_row_filters_abac, 04_phi_identifier_search, 05_ai_feature_governance, 06_inactive_users_report)",
+    "config": "notebooks/_config.py",
+    "clone_sql": "resources/clone_omop_tables.sql",
+    "job_resource": "resources/setup_clone_job.yml",
+    "bundle": "databricks.yml"
+  },
+
+  "table_contract": {
+    "bronze": null,
+    "silver": null,
+    "gold": {
+      "tables": ["person", "condition_occurrence", "measurement", "observation", "drug_exposure", "note"],
+      "defined_in": ["resources/clone_omop_tables.sql"],
+      "note": "The 6 OMOP tables are deep-cloned as-is; the team applies tags/masks/row filters on top. Governance is the SPINE — the same pattern is then applied (by Josh rotating) to the DE/ML silver/gold/models."
+    }
+  },
+
+  "dependency_map": [
+    {"from": "setup_clone_job", "to": "person", "type": "creates"},
+    {"from": "setup_clone_job", "to": "condition_occurrence", "type": "creates"},
+    {"from": "setup_clone_job", "to": "measurement", "type": "creates"},
+    {"from": "setup_clone_job", "to": "observation", "type": "creates"},
+    {"from": "setup_clone_job", "to": "drug_exposure", "type": "creates"},
+    {"from": "setup_clone_job", "to": "note", "type": "creates"},
+    {"from": "person.person_id", "to": "mask_person_id", "type": "masked_by", "note": "nb 02 column mask, gates on is_account_group_member(ocdo_group)"},
+    {"from": "note.note_text", "to": "mask_note_text", "type": "masked_by", "note": "nb 02 column mask"},
+    {"from": "all 6 tables", "to": "consent_row_filter", "type": "filtered_by", "note": "nb 03 row filter ON (person_id)"},
+    {"from": "system.access.audit", "to": "inactive_users_report", "type": "queried_by", "note": "nb 06"}
+  ],
+
+  "grain_constraints": [
+    {"table": "person", "grain_key": "person_id", "min_partition_size": 1, "note": "Row-filter key; one row per patient"}
+  ],
+
+  "source_inputs": [
+    {"source_type": "uc_tables_clone", "locator": "${var.source_catalog}.${var.source_schema}", "description": "6 OMOP tables deep-cloned into the governance schema. Synthetic default = clinops_foundation.", "active_when": "always (setup_clone_job)"},
+    {"source_type": "real_omop", "locator": "curated_omop.omop", "description": "FH real OMOP — point source_catalog/source_schema here to govern real data. Identical table names.", "active_when": "source repointed to real"}
+  ],
+
+  "verify_queries": [
+    {
+      "id": "foundation_clone_counts",
+      "description": "Checkpoint 1 — all 6 OMOP tables present in the GOVERNANCE schema (not the source) after the clone job",
+      "sql": "SELECT 'person' AS tbl, COUNT(*) AS n FROM ${client_catalog}.${client_schema}.person UNION ALL SELECT 'condition_occurrence', COUNT(*) FROM ${client_catalog}.${client_schema}.condition_occurrence UNION ALL SELECT 'measurement', COUNT(*) FROM ${client_catalog}.${client_schema}.measurement UNION ALL SELECT 'observation', COUNT(*) FROM ${client_catalog}.${client_schema}.observation UNION ALL SELECT 'drug_exposure', COUNT(*) FROM ${client_catalog}.${client_schema}.drug_exposure UNION ALL SELECT 'note', COUNT(*) FROM ${client_catalog}.${client_schema}.note ORDER BY tbl",
+      "expected": "person=300, condition_occurrence=300, measurement=720, observation=720, drug_exposure=383, note=265 (in client_schema)"
+    },
+    {
+      "id": "classification_coverage",
+      "description": "Checkpoint 2 — every PHI column is tagged (coverage check = 0 missing)",
+      "sql": "SELECT column_name, tag_name, tag_value FROM ${client_catalog}.information_schema.column_tags WHERE schema_name = '${client_schema}' ORDER BY table_name, column_name",
+      "expected": "phi + data_sensitivity tags present on the PHI_COLUMNS map columns; 0 missing"
+    },
+    {
+      "id": "masks_bound",
+      "description": "Checkpoint 3 — column masks bound to person.person_id, note.person_id, note.note_text",
+      "sql": "SELECT table_name, column_name, mask_name FROM ${client_catalog}.information_schema.column_masks WHERE table_schema = '${client_schema}'",
+      "expected": "3 masks listed"
+    },
+    {
+      "id": "row_filters_bound",
+      "description": "Checkpoint 4 — row filter bound across the patient tables",
+      "sql": "SELECT table_name, filter_name FROM ${client_catalog}.information_schema.row_filters WHERE table_schema = '${client_schema}'",
+      "expected": "row filter on all 6 tables; owner sees 300 vs the consented subset an ocdo_group member sees"
+    }
+  ],
+
+  "lock_targets": [
+    {
+      "task_class": "rename_table",
+      "paths": ["notebooks/_config.py", "resources/clone_omop_tables.sql", "resources/setup_clone_job.yml"],
+      "reason": "OMOP CDM table names are standard and the clone + synth→real repointing depend on them."
+    },
+    {
+      "task_class": "setup",
+      "paths": [".assistant/**"],
+      "reason": "Adaptation skill must not modify itself"
+    },
+    {
+      "task_class": "bind_policy",
+      "paths": ["${var.source_catalog}.${var.source_schema}"],
+      "reason": "CARDINAL RULE: never bind masks/row filters to the shared source schema — it changes what every other track sees. Policies bind ONLY to client_schema (the governance clone)."
+    }
+  ],
+
+  "abac_note": "Tag-based ABAC via CREATE POLICY (define once by tag, applies everywhere) is preview-gated on this metastore — kept as a STRETCH (see STRETCH.md). The GA column-mask + row-filter path already satisfies the full masking/access ask; do not block on ABAC.",
+
+  "checkpoints_note": "Checkpoints 1-7 are documented in RUNBOOK.md; nb 05 (AI-feature governance) and nb 06 (inactive users) depend on system tables (serving usage / system.access.audit) that an account admin may need to enable.",
+
+  "unresolved": []
+}

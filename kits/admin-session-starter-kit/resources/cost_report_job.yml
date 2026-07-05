@@ -1,0 +1,66 @@
+# =============================================================================
+# cost_report_job.yml  ·  FH Admin session (Genie One) starter kit  ·  OPTIONAL
+#
+# A scheduled Databricks Job that operationalizes the two FH asks:
+#   Task 1 (cost_by_category)  -> Amy #1: monthly chargeback cost, emailed.
+#   Task 2 (budget_alert)      -> Amy #2: alert when within 10% of budget.
+#
+# This is documentation-grade: it does NOT have to be deployed for the onsite.
+# It shows Amy how to turn the two ad-hoc queries into a monthly, hands-off
+# report + alert. Deploy with the Databricks CLI:
+#     databricks bundle deploy --target <your-target>
+# (or paste the task SQL into a Job in the Workflows UI — no bundle required).
+#
+# WHAT IT DOES NOT DO OUT OF THE BOX
+#   - Email a CSV *attachment*. Databricks Job email_notifications send run
+#     status, not query results. To email the CSV itself, use a SQL Alert /
+#     scheduled Dashboard subscription on the cost_by_category query (the
+#     RUNBOOK documents this click-path), OR add a tiny notebook task that
+#     writes the result to a Volume and mails a link. Kept out here on purpose
+#     to stay light.
+# =============================================================================
+
+resources:
+  jobs:
+    fh_cost_report_and_budget_alert:
+      name: "[FH Admin] Monthly cost report + budget alert"
+
+      # Run on the 1st of every month at 07:00 America/Los_Angeles.
+      schedule:
+        quartz_cron_expression: "0 0 7 1 * ?"
+        timezone_id: "America/Los_Angeles"
+        pause_status: "UNPAUSED"
+
+      # Run status emails. (For the CSV itself, see the SQL Alert path above.)
+      email_notifications:
+        on_success:
+          - amy.paguirigan@fredhutch.org
+        on_failure:
+          - amy.paguirigan@fredhutch.org
+
+      tasks:
+        # ---- Task 1: monthly cost by chargeback category (Amy #1) ----------
+        - task_key: cost_by_category
+          sql_task:
+            warehouse_id: ${var.warehouse_id}
+            file:
+              path: ../sql/cost_by_category.sql
+
+        # ---- Task 2: budget threshold alert (Amy #2) -----------------------
+        # A SQL Alert is the right primitive for "email me when a condition is
+        # met" — it evaluates the query and only notifies when the trigger
+        # fires. Point the alert at sql/budget_threshold_alert.sql and trigger
+        # when any row has status != 'OK'. Defined here as an alert resource:
+        - task_key: budget_alert
+          depends_on:
+            - task_key: cost_by_category
+          sql_task:
+            warehouse_id: ${var.warehouse_id}
+            file:
+              path: ../sql/budget_threshold_alert.sql
+
+variables:
+  warehouse_id:
+    description: "SQL warehouse to run the cost queries on."
+    # FEVM2 validation warehouse; replace with FH's admin/finance warehouse.
+    default: "<your_warehouse_id>"

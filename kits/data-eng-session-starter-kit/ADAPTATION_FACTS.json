@@ -1,0 +1,117 @@
+{
+  "skill_version": "1.0.0",
+  "demo_slug": "fred-hutch-omop-data-eng-session",
+  "demo_name": "Fred Hutch OMOP Ingestion — Data Engineering Session",
+
+  "name_vars": {
+    "catalog_var": "client_catalog",
+    "schema_var": "client_schema",
+    "warehouse_var": "warehouse_id",
+    "source_schema_var": "source_schema"
+  },
+
+  "deploy_target": {
+    "kind": "bundle",
+    "resource_key": null,
+    "run_command": "databricks bundle deploy --target client",
+    "bundle_target_flag": "--target client",
+    "note": "No data-generation job. This kit READS the 6 OMOP source tables from source_schema (read-only) and WRITES bronze/recon/config tables into client_schema. The source tables must already exist. They are produced by the foundation setup job (the `foundation/` bundle, `foundation_setup_job`)."
+  },
+
+  "toggle": {
+    "variable": null,
+    "mechanism": "source_repointing",
+    "source_catalog_var": null,
+    "source_schema_var": "source_schema",
+    "default_source_schema": "clinops_foundation",
+    "real_source_hint": "curated_omop.omop",
+    "note": "There is no run_with_synthetic_data boolean here. Synthetic vs real = which schema source_schema points at. Synthetic = clinops_foundation (shared foundation). Real = the FH OMOP schema (e.g. curated_omop.omop). The 6 OMOP table names are identical either way, so no query changes are required to switch."
+  },
+
+  "tables": [
+    {"name": "person", "role": "Read-only OMOP source, one row per patient.", "row_count_expected": 300, "access": "read-only (source_schema)"},
+    {"name": "condition_occurrence", "role": "Read-only OMOP source. In nb 01 a v2 append adds condition_source_name to demonstrate schema evolution.", "row_count_expected": 300, "access": "read-only (source_schema)"},
+    {"name": "measurement", "role": "Read-only OMOP source. In nb 02 a copy has a deliberate 7-row gap injected to exercise reconciliation.", "row_count_expected": 720, "access": "read-only (source_schema)"},
+    {"name": "observation", "role": "Read-only OMOP source.", "row_count_expected": 720, "access": "read-only (source_schema)"},
+    {"name": "drug_exposure", "role": "Read-only OMOP source.", "row_count_expected": 383, "access": "read-only (source_schema)"},
+    {"name": "note", "role": "Read-only OMOP source (free-text pathology notes).", "row_count_expected": 265, "access": "read-only (source_schema)"},
+    {"name": "bronze_*", "role": "Bronze landing tables the TEAM creates in client_schema (e.g. bronze_person). nb 01 evolves bronze on append via mergeSchema.", "access": "written (client_schema)"},
+    {"name": "recon_summary", "role": "Timestamped reconciliation audit table the TEAM writes in nb 02 (one row per table per run).", "access": "written (client_schema)"},
+    {"name": "ingest_allowlist", "role": "UC config table (6 OMOP allowed, 2 restricted denied) the restricted-ingest gate reads in nb 03.", "access": "written (client_schema)"}
+  ],
+
+  "source_files": {
+    "notebooks": "notebooks/ (00_START_HERE, 01_schema_evolution, 02_row_count_reconciliation, 03_restricted_table_ingest_gate, 04_sla_job_windows)",
+    "config": "notebooks/_config.py",
+    "job_resource": "resources/sla_ingest_job.yml",
+    "bundle": "databricks.yml"
+  },
+
+  "table_contract": {
+    "bronze": {
+      "tables": ["bronze_person", "bronze_condition_occurrence", "bronze_measurement", "bronze_observation", "bronze_drug_exposure", "bronze_note"],
+      "defined_in": ["notebooks/01_schema_evolution.py", "notebooks/02_row_count_reconciliation.py"],
+      "note": "Bronze landing written by the ingest notebooks into client_schema."
+    },
+    "silver": {
+      "tables": ["silver_trial_criteria"],
+      "note": "This DE track owns ingest hardening plus the trials catalog. It flattens the Volume-fed trials feed to silver_trial_criteria, which is the eligibility contract the Applied AI pre-screen joins against. Both groups build in parallel off the 6 OMOP tables; neither waits on the other's data layer. See ../../SHARED_FOUNDATION.md."
+    },
+    "gold": null
+  },
+
+  "dependency_map": [
+    {"from": "source_schema.*", "to": "bronze_*", "type": "ingested_into", "note": "Read-only OMOP source → bronze in client_schema"},
+    {"from": "source_schema.measurement", "to": "recon_summary", "type": "reconciled_by", "note": "nb 02 compares source vs target counts + anti-join for missing keys"},
+    {"from": "ingest_allowlist", "to": "safe_ingest()", "type": "gates", "note": "nb 03 reads the allow-list before any write"},
+    {"from": "silver_trial_criteria", "to": "ml_group", "type": "contract", "note": "The trials catalog silver_trial_criteria is the eligibility contract the Applied AI pre-screen joins against (a hand-off, never a blocker)"}
+  ],
+
+  "grain_constraints": [
+    {"table": "person", "grain_key": "person_id", "min_partition_size": 1, "note": "One row per patient"},
+    {"table": "measurement", "grain_key": "person_id + measurement_source_value", "min_partition_size": 1, "note": "Reconciliation anti-join keys on person_id"}
+  ],
+
+  "source_inputs": [
+    {"source_type": "uc_tables_readonly", "locator": "${var.source_schema}", "description": "The 6 read-only OMOP source tables. Synthetic default = clinops_foundation.", "active_when": "always (this kit does not generate data)"},
+    {"source_type": "real_omop", "locator": "curated_omop.omop", "description": "FH real OMOP CDM tables — point source_schema here to run against real data. Identical table names.", "active_when": "source_schema repointed to real"}
+  ],
+
+  "verify_queries": [
+    {
+      "id": "foundation_source_counts",
+      "description": "Checkpoint 0 — all 6 read-only OMOP source tables present with expected counts",
+      "sql": "SELECT 'person' AS tbl, COUNT(*) AS n FROM ${client_catalog}.${source_schema}.person UNION ALL SELECT 'condition_occurrence', COUNT(*) FROM ${client_catalog}.${source_schema}.condition_occurrence UNION ALL SELECT 'measurement', COUNT(*) FROM ${client_catalog}.${source_schema}.measurement UNION ALL SELECT 'observation', COUNT(*) FROM ${client_catalog}.${source_schema}.observation UNION ALL SELECT 'drug_exposure', COUNT(*) FROM ${client_catalog}.${source_schema}.drug_exposure UNION ALL SELECT 'note', COUNT(*) FROM ${client_catalog}.${source_schema}.note ORDER BY tbl",
+      "expected": "person=300, condition_occurrence=300, measurement=720, observation=720, drug_exposure=383, note=265"
+    },
+    {
+      "id": "schema_evolved_row_count",
+      "description": "Checkpoint 1 — after the mergeSchema append, bronze has condition_source_name and 600 rows (300 NULL pre-evolution + 300 populated)",
+      "sql": "SELECT COUNT(*) AS n, COUNT(condition_source_name) AS populated FROM ${client_catalog}.${client_schema}.bronze_condition_occurrence",
+      "expected": "n=600, populated=300"
+    },
+    {
+      "id": "reconciliation_gap",
+      "description": "Checkpoint 2 — reconciliation flags the injected 7-row measurement gap",
+      "sql": "SELECT table_name, status, delta FROM ${client_catalog}.${client_schema}.recon_summary ORDER BY event_time DESC",
+      "expected": "measurement FAIL delta=7; all other tables PASS"
+    }
+  ],
+
+  "lock_targets": [
+    {
+      "task_class": "rename_table",
+      "paths": ["notebooks/_config.py", "notebooks/01_schema_evolution.py", "notebooks/02_row_count_reconciliation.py"],
+      "reason": "OMOP CDM source table names (person, condition_occurrence, measurement, observation, drug_exposure, note) are standard. Renaming breaks the read from source_schema and the synth→real repointing."
+    },
+    {
+      "task_class": "setup",
+      "paths": [".assistant/**"],
+      "reason": "Adaptation skill must not modify itself"
+    }
+  ],
+
+  "checkpoints_note": "Notebook-driven checkpoints (Checkpoint 0-4) are documented in RUNBOOK.md. Some (restricted-ingest gate nb 03, SLA window nb 04) are Python assertions rather than SQL — verify by running the notebook cells, not a warehouse query.",
+
+  "unresolved": []
+}

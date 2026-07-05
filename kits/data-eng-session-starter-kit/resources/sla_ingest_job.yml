@@ -1,0 +1,47 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# PRE-BUILT — a scheduled OMOP ingest job that respects the SLA blackout window.
+#
+# This is the SCHEDULER-level half of notebook 04: the quartz cron only fires from
+# 08:00 to 22:00 PT, so a *scheduled* run never starts inside the 23:00–08:00 source
+# blackout. The runtime guard you build in nb 04 (`in_sla_window`) is the second layer
+# that also catches manual / backfill runs.
+#
+# `pause_status` lets a steward pause ALL scheduled runs (e.g. a source outage) without
+# a deploy. To use it as a real ingest, point the notebook_task at your ingest notebook
+# and add the SLA guard cell at the top.
+# ─────────────────────────────────────────────────────────────────────────────
+resources:
+  jobs:
+    sla_aware_ingest_job:
+      name: "[${bundle.target}] Fred Hutch OMOP Ingest (SLA-window aware)"
+      description: >
+        Runs the OMOP source pull HOURLY but ONLY between 08:00 and 22:00 PT — never inside the
+        23:00–08:00 source SLA blackout. Pair with the nb 04 runtime guard for defense in depth.
+
+      schedule:
+        # Fire at minute 0 of hours 8 through 22 (inclusive) every day — i.e. 08:00..22:00 PT.
+        # The 23:00–08:00 window is never scheduled. Flip pause_status to PAUSED to stop all runs.
+        quartz_cron_expression: "0 0 8-22 * * ?"
+        timezone_id: "America/Los_Angeles"
+        pause_status: "PAUSED"   # ships PAUSED so the kit never fires unattended; UNPAUSE to enable.
+
+      tasks:
+        - task_key: sla_window_guard
+          # The nb 04 guard runs first; in a real pipeline its downstream ingest tasks depend on it.
+          notebook_task:
+            notebook_path: ../notebooks/04_sla_job_windows
+            base_parameters:
+              catalog: "${var.client_catalog}"
+              schema: "${var.client_schema}"
+              source_schema: "${var.source_schema}"
+              warehouse_id: "${var.warehouse_id}"
+          environment_key: default
+
+      environments:
+        - environment_key: default
+          spec:
+            environment_version: "3"
+
+      permissions:
+        - level: CAN_VIEW
+          group_name: "users"

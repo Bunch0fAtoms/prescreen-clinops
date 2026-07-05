@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="warm">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Admin / Genie One session — Fred Hutch × Databricks</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#F6F2EC; --paper:#FFFFFF; --ink:#0F1419; --ink-2:#38434B; --muted:#6B7780;
+    --line:#E2DCD2; --line-strong:#C9C0B2;
+    --db-red:#FF3621; --db-navy:#1B3139;
+    --db-coral:#FCE7DC; --db-mint:#DCEFE6; --db-sky:#DCE6F2; --db-sand:#F1EADC;
+    --amber:#C8870B; --amber-bg:#FBF1DC; --amber-line:#E8CF94;
+    --green:#1F8A5B;
+    --tint:var(--db-sand);            /* session color: Admin / Genie One = sand */
+  }
+  html[data-theme="dark"] {
+    --bg:#14181B; --paper:#1C2227; --ink:#ECECEA; --ink-2:#B7BFC4; --muted:#8993A0;
+    --line:#2A323A; --line-strong:#404B55;
+    --db-coral:#3A1E15; --db-sand:#2A2620; --db-sky:#1E2A3A; --db-mint:#1E2E26;
+    --amber:#E0A22B; --amber-bg:#2C2517; --amber-line:#5A4A24; --green:#4CD08A;
+  }
+  * { box-sizing:border-box; }
+  html,body { margin:0; background:var(--bg); color:var(--ink);
+    font-family:"DM Sans","Helvetica Neue",Helvetica,Arial,sans-serif; font-size:14px; line-height:1.45;
+    -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility; }
+  .mono, code { font-family:"DM Mono","SF Mono",Menlo,monospace; }
+  code { font-size:0.9em; color:var(--db-red); background:color-mix(in oklab, var(--db-red) 8%, transparent); padding:1px 5px; border-radius:4px; }
+  html[data-theme="dark"] code { color:#FF6A52; }
+  a { color:var(--green); }
+  .page { max-width:1180px; margin:0 auto; padding:40px 44px 72px; }
+
+  .hdr { text-align:center; padding-bottom:18px; border-bottom:1px solid var(--line); margin-bottom:26px; }
+  .hdr .eyebrow { font-family:"DM Mono",monospace; font-size:11px; letter-spacing:0.14em; text-transform:uppercase; color:var(--muted); }
+  .hdr h1 { margin:8px 0 0; font-size:29px; font-weight:700; letter-spacing:-0.015em; }
+  .hdr h1 .accent { color:var(--green); }
+  .hdr .sub { margin:9px auto 0; color:var(--ink-2); font-size:14px; max-width:860px; }
+  .hdr .facts { display:flex; flex-wrap:wrap; justify-content:center; gap:8px; margin-top:16px; }
+  .hdr .fact { font-family:"DM Mono",monospace; font-size:10.5px; letter-spacing:0.04em; color:var(--ink-2); background:var(--paper); border:1px solid var(--line); border-radius:999px; padding:6px 12px; }
+  .hdr .fact b { color:var(--ink); }
+  .toolbar { display:flex; gap:8px; justify-content:center; margin-top:16px; }
+  .toolbar button { font-family:"DM Mono",monospace; font-size:10.5px; letter-spacing:0.04em; color:var(--ink-2); background:var(--paper); border:1px solid var(--line); border-radius:999px; padding:6px 13px; cursor:pointer; transition:all 140ms ease; }
+  .toolbar button:hover { border-color:var(--db-red); color:var(--db-red); }
+
+  .banner { background:color-mix(in oklab, var(--tint) 55%, var(--paper)); border:1px solid color-mix(in oklab, var(--amber) 20%, var(--line)); border-radius:11px; padding:14px 17px; font-size:13px; color:var(--ink-2); line-height:1.55; }
+  .banner b { color:var(--ink); }
+  .banner .lbl { font-family:"DM Mono",monospace; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--green); display:block; margin-bottom:5px; }
+
+  .agenda { display:flex; flex-wrap:wrap; align-items:center; gap:10px 8px; margin:22px 0 34px; padding:14px 16px; background:var(--paper); border:1px solid var(--line); border-radius:12px; }
+  .agenda .lbl { font-family:"DM Mono",monospace; font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--muted); margin-right:4px; }
+  .agenda a { display:inline-flex; align-items:center; gap:8px; text-decoration:none; color:var(--ink-2); font-size:12.5px; border:1px solid var(--line); border-radius:999px; padding:6px 12px; transition:all 140ms ease; }
+  .agenda a:hover { border-color:var(--db-red); color:var(--db-red); }
+  .agenda a .an { font-family:"DM Mono",monospace; font-size:10px; font-weight:700; width:17px; height:17px; border-radius:5px; background:var(--tint); color:var(--amber); display:inline-flex; align-items:center; justify-content:center; }
+
+  .sec { margin-bottom:34px; scroll-margin-top:20px; }
+  .sec-head .kicker { font-family:"DM Mono",monospace; font-size:10.5px; letter-spacing:0.16em; text-transform:uppercase; color:var(--db-red); display:flex; align-items:center; gap:9px; }
+  .sec-head .kicker .n { width:20px; height:20px; border-radius:6px; background:var(--db-red); color:#fff; display:inline-flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; }
+  .sec-head h2 { margin:9px 0 3px; font-size:20px; font-weight:700; letter-spacing:-0.01em; }
+  .sec-head h2 .accent { color:var(--green); }
+  .sec-head .lede { margin:0 0 16px; color:var(--ink-2); font-size:13.5px; max-width:920px; }
+  p.body { font-size:13.5px; color:var(--ink-2); max-width:920px; }
+
+  .grid { display:grid; gap:14px; }
+  .g2 { grid-template-columns:repeat(2,1fr); }
+  .g3 { grid-template-columns:repeat(3,1fr); }
+  .card { background:var(--paper); border:1px solid var(--line); border-radius:12px; padding:15px 16px; }
+  .card.tinted { background:color-mix(in oklab, var(--tint) 55%, var(--paper)); }
+  .card .n { font-family:"DM Mono",monospace; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--db-red); }
+  .card h3 { margin:6px 0 6px; font-size:14px; font-weight:700; }
+  .card p { margin:0; font-size:12.5px; color:var(--ink-2); line-height:1.5; }
+
+  .cols { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .colbox { border:1px solid var(--line); border-radius:12px; padding:15px 17px; }
+  .colbox.built { background:color-mix(in oklab, var(--db-mint) 40%, var(--paper)); border-color:color-mix(in oklab, var(--green) 22%, var(--line)); }
+  .colbox.build { background:color-mix(in oklab, var(--db-sand) 62%, var(--paper)); border-color:color-mix(in oklab, var(--amber) 26%, var(--line)); }
+  .colbox .lbl { font-family:"DM Mono",monospace; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; margin-bottom:9px; }
+  .colbox.built .lbl { color:var(--green); }
+  .colbox.build .lbl { color:var(--amber); }
+  .colbox ul { margin:0; padding-left:18px; }
+  .colbox li { font-size:12.5px; color:var(--ink-2); margin-bottom:6px; line-height:1.45; }
+
+  .callout { background:var(--amber-bg); border:1px solid var(--amber-line); border-left:4px solid var(--amber); border-radius:10px; padding:14px 18px; margin-top:14px; }
+  .callout h3 { margin:0 0 6px; font-size:14px; color:var(--amber); }
+  .callout p { margin:0; font-size:13px; color:var(--ink-2); line-height:1.5; }
+
+  .oneliner { background:var(--paper); border:1px dashed var(--line-strong); border-radius:12px; padding:18px 22px; }
+  .oneliner .k { font-family:"DM Mono",monospace; font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--muted); }
+  .oneliner p { margin:8px 0 0; font-size:15px; color:var(--ink); line-height:1.55; font-weight:500; }
+
+  .chips { display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; }
+  .chip { font-family:"DM Mono",monospace; font-size:11.5px; background:var(--paper); border:1px solid var(--line); border-radius:999px; padding:6px 12px; color:var(--ink-2); }
+  .chip b { color:var(--ink); }
+
+  .foot { margin-top:30px; padding-top:16px; border-top:1px solid var(--line); display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; font-family:"DM Mono",monospace; font-size:10.5px; color:var(--muted); letter-spacing:0.04em; }
+  .foot a { color:var(--muted); }
+
+  .to-top { position:fixed; bottom:20px; left:20px; z-index:9999; display:inline-flex; align-items:center; gap:7px; padding:9px 14px; border-radius:999px; border:1px solid var(--line-strong); background:var(--paper); color:var(--ink); box-shadow:0 6px 18px -6px rgba(0,0,0,0.18); cursor:pointer; font-family:"DM Mono",monospace; font-size:11px; letter-spacing:0.06em; text-transform:uppercase; opacity:0; transform:translateY(8px); pointer-events:none; transition:opacity 160ms ease, transform 160ms ease, border-color 140ms ease, color 140ms ease; }
+  .to-top.show { opacity:1; transform:translateY(0); pointer-events:auto; }
+  .to-top:hover { border-color:var(--db-red); color:var(--db-red); }
+  .to-top .ar { font-size:13px; transform:translateY(-1px); }
+
+  @media (max-width:900px){ .g2,.g3,.cols{ grid-template-columns:1fr; } }
+  @media print { .toolbar,.to-top,.agenda { display:none; } body { background:#fff; } .page { padding:12px; } .banner { -webkit-print-color-adjust:exact; print-color-adjust:exact; } }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="hdr">
+    <div class="eyebrow">Fred Hutch × Databricks · Build Days · Admin / Genie One session</div>
+    <h1>Clear spend by group, <span class="accent">answered in plain language</span></h1>
+    <div class="sub">This session gives the data office clear visibility into cost by team and a proactive alert as any category nears its budget. Both are asked and answered through Genie One, over the account's own billing data. Nothing to ingest or model.</div>
+    <div class="facts">
+      <span class="fact"><b>Surface:</b> Genie One · system tables</span>
+      <span class="fact"><b>Lead:</b> Amy Paguirigan</span>
+      <span class="fact"><b>Window:</b> ~3 hours, Day 1</span>
+      <span class="fact"><b>Data:</b> billing telemetry · no PHI</span>
+    </div>
+    <div class="toolbar">
+      <button onclick="document.documentElement.dataset.theme = document.documentElement.dataset.theme==='dark'?'warm':'dark'">◐ theme</button>
+      <button onclick="window.print()">⎙ print</button>
+    </div>
+  </div>
+
+  <div class="banner">
+    <span class="lbl">Key takeaway</span>
+    <b>Two questions, no engineering.</b> Genie One is natural-language and click-driven, so the deliverable is a clean path to two answers Amy needs: monthly cost by chargeback group, and an alert when a category nears its budget. Both run against Databricks system tables, the account's own billing telemetry. The hard math is pre-built and validated. Amy owns the questions.
+  </div>
+
+  <nav class="agenda" aria-label="On this page">
+    <span class="lbl">On this page</span>
+    <a href="#s1"><span class="an">1</span> Why this session</a>
+    <a href="#s2"><span class="an">2</span> How it works</a>
+    <a href="#s3"><span class="an">3</span> The flow</a>
+    <a href="#s4"><span class="an">4</span> Ground rules</a>
+    <a href="#s5"><span class="an">5</span> Your Day-2 demo</a>
+  </nav>
+
+  <!-- 1 -->
+  <section class="sec" id="s1">
+    <div class="sec-head">
+      <div class="kicker"><span class="n">1</span> Why this session</div>
+      <h2>Two questions, <span class="accent">no engineering</span></h2>
+      <p class="lede">Genie One is natural-language and click-driven. So the deliverable is a clean path to two answers Amy needs, over data the account already collects.</p>
+    </div>
+    <div class="grid g2">
+      <div class="card tinted"><div class="n">Amy · ask #1</div><h3>Monthly cost, by chargeback group</h3><p>Cost broken down for Data Engineering, Data Science, and Research, ready to send as a CSV.</p></div>
+      <div class="card tinted"><div class="n">Amy · ask #2</div><h3>A budget alert</h3><p>Tell me when a category is within 10% of its budget, before it goes over.</p></div>
+    </div>
+    <p class="body" style="margin-top:12px;">Both questions run against Databricks <b>system tables</b>, the account's own billing telemetry. You point Genie One at them and ask.</p>
+  </section>
+
+  <!-- 2 -->
+  <section class="sec" id="s2">
+    <div class="sec-head">
+      <div class="kicker"><span class="n">2</span> How the session works</div>
+      <h2>The hard math is done. <span class="accent">You own the questions.</span></h2>
+      <p class="lede">This is a lighter kit than the build sessions: a guided runbook, ready prompts, and working SQL Amy can run today and schedule tomorrow. Not a heavy notebook bundle.</p>
+    </div>
+    <div class="cols">
+      <div class="colbox built">
+        <div class="lbl">✅ Pre-built &amp; validated</div>
+        <ul>
+          <li>The <code>usage</code> ↔ <code>list_prices</code> join, using the price in effect at usage time.</li>
+          <li>The chargeback category logic — department tag, product fallback, DE / DS / Research buckets.</li>
+          <li>The 10%-of-budget threshold math, with OVER / WITHIN 10% / OK status.</li>
+        </ul>
+      </div>
+      <div class="colbox build">
+        <div class="lbl">🛠️ Amy does</div>
+        <ul>
+          <li>Point Genie One at the billing tables and ask the cost questions.</li>
+          <li>Write her own follow-up questions and tune the budgets and thresholds.</li>
+          <li>Schedule the monthly report and the budget alert.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="callout">
+      <h3>Validated on a live workspace</h3>
+      <p>Both queries ran against live <code>system.billing</code> tables and returned correct month-over-month chargeback breakdowns and budget-status flags. The SQL is the trusted version Genie One is approximating.</p>
+    </div>
+  </section>
+
+  <!-- 3 -->
+  <section class="sec" id="s3">
+    <div class="sec-head">
+      <div class="kicker"><span class="n">3</span> The flow</div>
+      <h2>From a plain question to a scheduled answer</h2>
+      <p class="lede">Three steps, all in Genie One, then an optional self-serve space for the wider team.</p>
+    </div>
+    <div class="grid g3">
+      <div class="card tinted"><div class="n">step 1</div><h3>Ask</h3><p>Open Genie One, point it at the billing system tables, and ask a cost question from the prompt sheet. Each prompt has a one-line "what good looks like" so Amy knows the answer is right.</p></div>
+      <div class="card tinted"><div class="n">step 2</div><h3>Trust</h3><p>Add the validated <code>cost_by_category.sql</code> as a trusted sample query, so Genie One's answers sharpen and stay consistent.</p></div>
+      <div class="card tinted"><div class="n">step 3</div><h3>Schedule</h3><p>Stand up the monthly report and the budget alert. The right primitive is a SQL Alert or dashboard subscription, since job emails carry run status, not query results.</p></div>
+    </div>
+    <p class="body" style="margin-top:12px;">An optional next step: a self-serve cost Genie space, so finance and team leads can ask their own spend questions in plain language.</p>
+  </section>
+
+  <!-- 4 -->
+  <section class="sec" id="s4">
+    <div class="sec-head">
+      <div class="kicker"><span class="n">4</span> Ground rules</div>
+      <h2>Read-only, governed, no patient data</h2>
+      <p class="lede">The same governance spine as every other session, applied to billing telemetry.</p>
+    </div>
+    <div class="grid g2">
+      <div class="card"><h3>Read-only</h3><p>Everything reads <code>system.billing</code>. The queries write nothing. Any scratch table lands in an admin schema, never in <code>system</code>.</p></div>
+      <div class="card"><h3>No PHI</h3><p>Billing tables hold usage, SKUs, tags, and dollars. No patient data. This session never touches a clinical schema.</p></div>
+      <div class="card"><h3>Unity-Catalog-scoped</h3><p><code>system.billing</code> is governed by Unity Catalog. An account admin enables it and grants access.</p></div>
+      <div class="card"><h3>Works even without live billing</h3><p>If billing is not yet enabled, the queries are still correct. Point them at a small synthetic fallback to demo the shape and Genie One's behavior.</p></div>
+    </div>
+  </section>
+
+  <!-- 5 -->
+  <section class="sec" id="s5">
+    <div class="sec-head">
+      <div class="kicker"><span class="n">5</span> Your Day-2 demo</div>
+      <h2>What you'll show the room</h2>
+    </div>
+    <div class="oneliner">
+      <div class="k">The one line</div>
+      <p>"We have clear visibility into spend by group, and we get a proactive alert as any category approaches its budget threshold."</p>
+    </div>
+    <div class="chips">
+      <span class="chip"><b>ask</b> → plain-language cost question</span>
+      <span class="chip"><b>break down</b> → DE / DS / Research</span>
+      <span class="chip"><b>alert</b> → within 10% of budget</span>
+      <span class="chip"><b>schedule</b> → monthly, automatic</span>
+    </div>
+    <p class="body" style="margin-top:14px;">You finish this section on Day 1 and return Day 2 only to present.</p>
+  </section>
+
+  <div class="foot">
+    <span>Fred Hutch × Databricks · Admin / Genie One session brief</span>
+    <span>Build Days · July 7–8, 2026 · read-only billing telemetry, no PHI · kit: <code>admin-session-starter-kit</code></span>
+  </div>
+
+</div>
+<button class="to-top" id="to-top" title="Back to top" aria-label="Back to top"><span class="ar">↑</span>Top</button>
+<script>
+  const toTop = document.getElementById("to-top");
+  const onScroll = () => { toTop.classList.toggle("show", window.scrollY > 360); };
+  window.addEventListener("scroll", onScroll, { passive:true });
+  toTop.addEventListener("click", () => { window.scrollTo({ top:0, behavior:"smooth" }); });
+  onScroll();
+</script>
+</body>
+</html>
