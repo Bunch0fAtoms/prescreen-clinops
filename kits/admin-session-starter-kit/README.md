@@ -80,7 +80,7 @@ admin-session-starter-kit/
    gh repo clone sean-zhang-dbx/prompt-to-genie /tmp/prompt-to-genie
    databricks workspace import-dir \
      /tmp/prompt-to-genie \
-     /Workspace/Users/<you>/.assistant/skills/prompt-to-genie --profile <profile>
+     /Workspace/.assistant/skills/prompt-to-genie --profile <profile>
    ```
 
 ---

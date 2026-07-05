@@ -111,7 +111,7 @@ from a fresh chat in this kit's folder:
    ```bash
    databricks workspace import-dir \
      ../.assistant/skills/fred-hutch-onsite-adaptation \
-     /Workspace/Users/<you>/.assistant/skills/fred-hutch-onsite-adaptation --profile <profile>
+     /Workspace/.assistant/skills/fred-hutch-onsite-adaptation --profile <profile>
    ```
 2. **Open Genie Code in a fresh chat, in this kit's folder** (hard-refresh the tab first — skills cache
    per tab) and say:
@@ -160,7 +160,7 @@ deploy → benchmark. Like the onsite adaptation skill, install it **once at the
 gh repo clone sean-zhang-dbx/prompt-to-genie /tmp/prompt-to-genie
 databricks workspace import-dir \
   /tmp/prompt-to-genie \
-  /Workspace/Users/<you>/.assistant/skills/prompt-to-genie --profile <profile>
+  /Workspace/.assistant/skills/prompt-to-genie --profile <profile>
 ```
 
 Then open a fresh Genie Code chat (hard-refresh — skills cache per tab) and say **"create a Genie

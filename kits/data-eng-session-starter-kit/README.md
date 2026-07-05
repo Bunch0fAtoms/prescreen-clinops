@@ -85,7 +85,7 @@ from a fresh chat in this kit's folder:
    ```bash
    databricks workspace import-dir \
      ../.assistant/skills/fred-hutch-onsite-adaptation \
-     /Workspace/Users/<you>/.assistant/skills/fred-hutch-onsite-adaptation --profile <profile>
+     /Workspace/.assistant/skills/fred-hutch-onsite-adaptation --profile <profile>
    ```
 2. **Open Genie Code in a fresh chat, in this kit's folder** (hard-refresh the tab first — skills cache
    per tab) and say:
@@ -113,7 +113,7 @@ a multi-file skill repo, so clone then import the whole folder):
 gh repo clone sean-zhang-dbx/prompt-to-genie /tmp/prompt-to-genie
 databricks workspace import-dir \
   /tmp/prompt-to-genie \
-  /Workspace/Users/<you>/.assistant/skills/prompt-to-genie --profile <profile>
+  /Workspace/.assistant/skills/prompt-to-genie --profile <profile>
 ```
 Then in a fresh Genie Code chat say **"create a Genie space"** over `recon_summary` / your ingest audit
 so a steward can ask *"which tables failed reconciliation last night?"* in plain English. See

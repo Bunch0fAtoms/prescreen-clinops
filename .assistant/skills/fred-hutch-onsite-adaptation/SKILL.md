@@ -8,7 +8,7 @@ description: Configure, deploy, and adapt ANY Fred Hutch onsite starter kit (Gov
 <!-- SKILL_VERSION: 1.0.0 -->
 `SKILL_VERSION: 1.0.0`
 
-> This is ONE skill installed once at the **workspace level** (`/Workspace/Users/<you>/.assistant/skills/`).
+> This is ONE skill installed once at the **workspace level** (`/Workspace/.assistant/skills/`).
 > It is **kit-agnostic**: every per-kit value is read from the **`ADAPTATION_FACTS.json` that ships
 > beside the active kit** (the folder the user cloned + is working in). It does NOT reconstruct a
 > kit's shape by guessing. A wrong fact is worse than a missing one — when a value lives in

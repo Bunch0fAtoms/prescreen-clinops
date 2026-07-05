@@ -55,7 +55,7 @@ must run before the groups split.
 
 **Step 2 — install two Genie Code skills, once, at the workspace level.** Genie Code is the
 in-workspace assistant that writes and runs code from plain-language prompts. Install both skills
-under `/Workspace/Users/<you>/.assistant/skills/`:
+under `/Workspace/.assistant/skills/`:
 
 | Skill | What it does | Who uses it |
 |---|---|---|
@@ -64,6 +64,14 @@ under `/Workspace/Users/<you>/.assistant/skills/`:
 
 **Step 3 — each group opens its kit** in `kits/` and follows that kit's `README.md` and
 `RUNBOOK.md`.
+
+**Standing up a kit — just say "run in my workspace."** In a fresh Genie Code chat opened in the
+kit's folder, say `run in my workspace`. The `fred-hutch-onsite-adaptation` skill reads that kit's
+`ADAPTATION_FACTS.json`, auto-detects your workspace, catalog, schema, and warehouse, asks
+synthetic-vs-real, and **writes the `client` target variables (`client_catalog`, `client_schema`,
+`warehouse_id`) into `databricks.yml` for you.** You review and Accept the diff, then it hands you
+the deploy commands to paste into a Web Terminal. Editing `databricks.yml` by hand is only the
+fallback if you would rather not use the skill.
 
 ## How to work with Genie Code well
 
