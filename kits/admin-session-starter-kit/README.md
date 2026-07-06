@@ -75,12 +75,11 @@ admin-session-starter-kit/
 5. **Optional — a self-serve cost Genie space.** The build is free-form; Amy may want finance/leads
    to self-serve cost questions in natural language. Install the workspace-level `prompt-to-genie`
    skill (shared across all four onsite sections) and say **"create a Genie space"** over the billing
-   tables / the `cost_by_category` output:
+   tables / the `cost_by_category` output. Install it as a Git folder at the skill path, so it stays
+   updatable from source:
    ```bash
-   gh repo clone sean-zhang-dbx/prompt-to-genie /tmp/prompt-to-genie
-   databricks workspace import-dir \
-     /tmp/prompt-to-genie \
-     /Workspace/.assistant/skills/prompt-to-genie --profile <profile>
+   databricks repos create https://github.com/sean-zhang-dbx/prompt-to-genie.git gitHub \
+     --path /Workspace/.assistant/skills/prompt-to-genie
    ```
 
 ---

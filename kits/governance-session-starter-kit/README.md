@@ -64,11 +64,13 @@ generate) are the fallback and are what the skill runs for you.
 Genie Code does **not** auto-load skills, so install the shared skill once per workspace, then drive it
 from a fresh chat in this kit's folder:
 
-1. **Install the skill once per workspace** (shared across all four onsite kits — skip if already done):
+1. **Install the skill once per workspace** (shared across all four onsite kits — skip if already done).
+   Run it in a **workspace web terminal** (authenticates as you, nothing to edit); the wildcard finds
+   your imported repo copy, so it works from any directory:
    ```bash
-   databricks workspace import-dir \
-     ../.assistant/skills/fred-hutch-onsite-adaptation \
-     /Workspace/.assistant/skills/fred-hutch-onsite-adaptation --profile <profile>
+   cd /Workspace/Users/*/prescreen-clinops && databricks workspace import-dir \
+     .assistant/skills/fred-hutch-onsite-adaptation \
+     /Workspace/.assistant/skills/fred-hutch-onsite-adaptation
    ```
 2. **Open Genie Code in a fresh chat, in this kit's folder** (hard-refresh first — skills cache per tab) and say:
    > run in my workspace
@@ -83,13 +85,11 @@ from a fresh chat in this kit's folder:
 
 ### Also install the Genie-space skill (any team may want one)
 The build is free-form — your team may decide a **self-serve Genie space** over the governed tables is
-part of the solution. Install the community `prompt-to-genie` skill once at the workspace level (it's a
-multi-file skill repo, so clone then import the whole folder):
+part of the solution. Install the community `prompt-to-genie` skill once at the workspace level as a
+Git folder at the skill path, so it stays updatable from source:
 ```bash
-gh repo clone sean-zhang-dbx/prompt-to-genie /tmp/prompt-to-genie
-databricks workspace import-dir \
-  /tmp/prompt-to-genie \
-  /Workspace/.assistant/skills/prompt-to-genie --profile <profile>
+databricks repos create https://github.com/sean-zhang-dbx/prompt-to-genie.git gitHub \
+  --path /Workspace/.assistant/skills/prompt-to-genie
 ```
 Then in a fresh Genie Code chat say **"create a Genie space"** over your **masked/filtered** views — a
 Genie space that inherits your governance is a strong governance demo. See `GENIE_CODE_PROMPTS.md` for

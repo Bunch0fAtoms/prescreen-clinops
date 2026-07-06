@@ -107,11 +107,13 @@ the fallback.
 Genie Code does **not** auto-load skills, so install the shared skill once per workspace, then drive it
 from a fresh chat in this kit's folder:
 
-1. **Install the skill once per workspace** (shared across all four onsite kits — skip if already done):
+1. **Install the skill once per workspace** (shared across all four onsite kits — skip if already done).
+   Run it in a **workspace web terminal** (authenticates as you, nothing to edit); the wildcard finds
+   your imported repo copy, so it works from any directory:
    ```bash
-   databricks workspace import-dir \
-     ../.assistant/skills/fred-hutch-onsite-adaptation \
-     /Workspace/.assistant/skills/fred-hutch-onsite-adaptation --profile <profile>
+   cd /Workspace/Users/*/prescreen-clinops && databricks workspace import-dir \
+     .assistant/skills/fred-hutch-onsite-adaptation \
+     /Workspace/.assistant/skills/fred-hutch-onsite-adaptation
    ```
 2. **Open Genie Code in a fresh chat, in this kit's folder** (hard-refresh the tab first — skills cache
    per tab) and say:
@@ -153,14 +155,12 @@ Notebook `08_genie_space_setup` stands up the self-serve Genie space. You can po
 in the UI, or drive it conversationally with the community **`prompt-to-genie`** Genie Code skill
 ([sean-zhang-dbx/prompt-to-genie](https://github.com/sean-zhang-dbx/prompt-to-genie)) — it walks you
 through requirements → data sources → sample questions → validated `serialized_space` JSON → API
-deploy → benchmark. Like the onsite adaptation skill, install it **once at the workspace level**
-(it's a multi-file skill repo, so clone then import the whole folder):
+deploy → benchmark. Install it **once at the workspace level** as a Git folder at the skill path, so
+it stays updatable from source:
 
 ```bash
-gh repo clone sean-zhang-dbx/prompt-to-genie /tmp/prompt-to-genie
-databricks workspace import-dir \
-  /tmp/prompt-to-genie \
-  /Workspace/.assistant/skills/prompt-to-genie --profile <profile>
+databricks repos create https://github.com/sean-zhang-dbx/prompt-to-genie.git gitHub \
+  --path /Workspace/.assistant/skills/prompt-to-genie
 ```
 
 Then open a fresh Genie Code chat (hard-refresh — skills cache per tab) and say **"create a Genie

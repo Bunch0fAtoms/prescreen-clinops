@@ -48,14 +48,26 @@ the same 300 patients.
 `../.assistant/skills/`) reads your bundle and writes the `databricks.yml` variables for you. A
 workspace admin installs it once, for everyone — this is separate from deploying the bundle:
 
+Run this once in a **workspace web terminal** (it authenticates as you, nothing to edit); the
+wildcard finds your imported repo copy, so it works from any directory:
+
 ```bash
-databricks workspace import-dir \
-  ../.assistant/skills/fred-hutch-onsite-adaptation \
-  /Workspace/.assistant/skills/fred-hutch-onsite-adaptation --profile <profile>
+cd /Workspace/Users/*/prescreen-clinops && databricks workspace import-dir \
+  .assistant/skills/fred-hutch-onsite-adaptation \
+  /Workspace/.assistant/skills/fred-hutch-onsite-adaptation
 ```
 
 Then open Genie Code and ask: **"set up and run the foundation in my workspace."** See the repo
 `README.md` (Step 2) for the full install note and the per-user fallback.
+
+The admin also installs a second, community skill, `prompt-to-genie`, which builds the optional
+discovery Genie space described below (see `genie/genie_space.md`). Create it as a Git folder at the
+workspace skill path so it stays updatable from source:
+
+```bash
+databricks repos create https://github.com/sean-zhang-dbx/prompt-to-genie.git gitHub \
+  --path /Workspace/.assistant/skills/prompt-to-genie
+```
 
 ## Synthetic today, real tomorrow
 

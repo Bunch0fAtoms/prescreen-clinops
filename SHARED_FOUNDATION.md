@@ -17,6 +17,25 @@ The six tables are the seed. Both the Data Engineering and the Applied AI groups
 same six tables and build independently. Neither group waits on the other to produce a data layer,
 so they run fully in parallel.
 
+## How the code is packaged: one foundation bundle, one bundle per group
+
+Expect to see **five** Databricks Asset Bundles (DABs), not one. This is intentional. The
+`foundation/` bundle is deployed and run **once** to stand up the shared six tables and the trials
+feed. Each of the four kits (`data-eng`, `ml`, `governance`, `admin`) is its **own** bundle that a
+group deploys into its **own** schema, reading the foundation tables read-only.
+
+| Bundle | Who deploys it | When | Writes to |
+|---|---|---|---|
+| `foundation/` | Whoever stands up Day 1 (DE SSA shadows) | Once, before groups split | The shared foundation schema |
+| One per kit (×4) | Each group, for itself | During the build, as often as needed | That group's own schema |
+
+The split exists so the four groups stay independent. Each group deploys, redeploys, and iterates on
+its own bundle without touching the foundation or the other groups, so a mistake in one bundle has a
+**contained blast radius** and never disturbs the shared tables. Each `databricks.yml` also asks a
+group for only its own handful of values (for example, Governance needs a group name, Data
+Engineering and ML need a source schema), which keeps each team's setup short and relevant. The
+packaging mirrors the data model: one shared source everyone reads, one writable schema per team.
+
 ## Discovery comes first
 
 Before either group builds, both run the discovery step in `foundation/DISCOVERY.md`. They
