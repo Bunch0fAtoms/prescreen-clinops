@@ -84,6 +84,21 @@ dbutils.library.restartPython()
 
 # COMMAND ----------
 
+# DBTITLE 1,Set the working context: read OMOP from the source schema
+# This notebook READS the read-only OMOP `note` table, which lives in your SOURCE schema
+# (e.g. clinops_foundation), and WRITES its embeddings to your OWN schema. `_config` set the
+# default catalog/schema to your write schema; here we point the default at the SOURCE so the
+# `note` reads resolve by bare name (same pattern as notebook 01). Everything this notebook
+# CREATES is written fully-qualified through fqn(), so it still lands in your write schema
+# regardless of the default. The two schemas are usually different, so one default cannot
+# cover both; reads follow the default, writes are pinned by fqn().
+spark.sql(f"USE CATALOG {SOURCE_CATALOG}")
+spark.sql(f"USE SCHEMA {SOURCE_SCHEMA}")
+print(f"Reading OMOP source from {SOURCE_CATALOG}.{SOURCE_SCHEMA}")
+print(f"Writing tables to {CATALOG}.{SCHEMA} (via fqn())")
+
+# COMMAND ----------
+
 # DBTITLE 1,Point MLflow at Unity Catalog as the model registry
 import mlflow
 
@@ -312,11 +327,13 @@ print(f"✅ Wrote {fqn('silver_clinicalbert_note_embeddings')}")
 # COMMAND ----------
 
 # DBTITLE 1,Peek at the embeddings table
-# MAGIC %sql
-# MAGIC SELECT person_id, note_id, size(embedding) AS embedding_dim, model_source
-# MAGIC FROM silver_clinicalbert_note_embeddings
-# MAGIC ORDER BY person_id
-# MAGIC LIMIT 10;
+# The default schema points at the SOURCE, so we read our write-schema table via fqn().
+display(spark.sql(f"""
+    SELECT person_id, note_id, size(embedding) AS embedding_dim, model_source
+    FROM {fqn('silver_clinicalbert_note_embeddings')}
+    ORDER BY person_id
+    LIMIT 10
+"""))
 
 # COMMAND ----------
 
@@ -361,9 +378,10 @@ for rank, i in enumerate(top, 1):
 # COMMAND ----------
 
 # DBTITLE 1,Final verification, row count + embedding dimension
-# MAGIC %sql
-# MAGIC SELECT COUNT(*) AS n_notes, MIN(size(embedding)) AS min_dim, MAX(size(embedding)) AS max_dim
-# MAGIC FROM silver_clinicalbert_note_embeddings;
+display(spark.sql(f"""
+    SELECT COUNT(*) AS n_notes, MIN(size(embedding)) AS min_dim, MAX(size(embedding)) AS max_dim
+    FROM {fqn('silver_clinicalbert_note_embeddings')}
+"""))
 
 # COMMAND ----------
 

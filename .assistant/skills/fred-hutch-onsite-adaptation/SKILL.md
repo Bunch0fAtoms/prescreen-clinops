@@ -182,6 +182,17 @@ gates. Use judgment.
    `permission denied` on catalog → user lacks `CREATE SCHEMA`; serverless not available → change job
    environment client id to a cluster policy; DE/ML "source table not found" → wrong `source_catalog`
    **or** `source_schema` (real OMOP is a different catalog — check both, in the widget defaults too).
+A **pre-built notebook that reads OMOP by bare name** (e.g. `FROM note`) fails with
+`TABLE_OR_VIEW_NOT_FOUND` in onsite mode: bare reads resolve against the notebook's DEFAULT schema,
+which `_config` sets to the WRITE schema (`clinops_ml`), but the OMOP source lives in a DIFFERENT
+schema (`clinops_foundation`). Fix: add an explicit `USE CATALOG {SOURCE_CATALOG}; USE SCHEMA
+{SOURCE_SCHEMA}` right after `%run ./_config` so reads hit the source; writes stay pinned by `fqn()`,
+so they still land in the write schema. The ML **HuggingFace notebook `05` ships with this section**,
+it is the one pre-built notebook that MUST run in the onsite because Genie Code cannot register a
+Hugging Face model to Unity Catalog. Validated this session: with HF egress, `05` runs end to end on
+serverless (pip install, ~440 MB weight download, register to UC, `spark_udf` embed), and the UC
+registration happens BEFORE the note reads, so a mis-scoped notebook still registers the model,
+only the embeddings table and similarity break.
 6. **Idempotency:** if `databricks.yml` already matches the workspace + chosen targets, say "no edits
    needed, ready to redeploy" and point at the run command.
 7. **Real mode is more than a var flip — rebuild what was built on synthetic.** If the team is
