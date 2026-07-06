@@ -8,7 +8,7 @@
 --   Returns one row per category with a status: OVER_BUDGET / WITHIN_10PCT / OK.
 --   The scheduled job (resources/cost_report_job.yml) emails on any non-OK row.
 --
--- HOW TO MAKE IT YOURS  (the learnable bit — leave this open for Amy)
+-- HOW TO MAKE IT YOURS  (the learnable bit, leave this open for Amy)
 --   - Budgets live in the `budget_config` CTE below as a tiny inline table.
 --     For production, replace that CTE with a real UC table so finance can edit
 --     budgets without touching SQL, e.g.:

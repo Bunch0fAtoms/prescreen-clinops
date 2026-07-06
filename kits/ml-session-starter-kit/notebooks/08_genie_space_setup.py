@@ -4,7 +4,7 @@
 # MAGIC   <div style="font-size:0.95em; letter-spacing:2px; opacity:0.85">NOTEBOOK 08 · GENIE SPACE · ✅ GUIDED SETUP</div>
 # MAGIC   <div style="font-size:2.3em; font-weight:700; margin-top:6px">💬 Self-Serve Cohort Questions with Genie</div>
 # MAGIC   <div style="font-size:1.15em; margin-top:10px; max-width:880px; opacity:0.95">
-# MAGIC     Hand the finished pre-screening tables to a research coordinator who has never written SQL —
+# MAGIC     Hand the finished pre-screening tables to a research coordinator who has never written SQL,
 # MAGIC     and let them ask <i>"How many patients are eligible for Trial A?"</i> in plain English.
 # MAGIC   </div>
 # MAGIC </div>
@@ -16,7 +16,7 @@
 # MAGIC
 # MAGIC A **Genie space** is a natural-language analytics surface over a set of **governed Unity Catalog
 # MAGIC tables** you choose. A user types a question; Genie writes the SQL, runs it on a warehouse, and
-# MAGIC shows the answer. The user never sees a `JOIN` — and every query still runs against your
+# MAGIC shows the answer. The user never sees a `JOIN`, and every query still runs against your
 # MAGIC permissioned tables.
 # MAGIC
 # MAGIC This notebook is **setup guidance + curated content**: prepare the tables, then stand up the space
@@ -29,10 +29,10 @@
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 🏷️ Step 1 — Make the tables legible to Genie (PRE-BUILT)
+# MAGIC ## 🏷️ Step 1: Make the tables legible to Genie (PRE-BUILT)
 # MAGIC
 # MAGIC Genie reads your **table and column comments** as the primary signal for what each field means.
-# MAGIC Good comments are the single highest-leverage accuracy lever — so we describe `gold_trial_prescreen`
+# MAGIC Good comments are the single highest-leverage accuracy lever, so we describe `gold_trial_prescreen`
 # MAGIC before creating the space. (These run against the table you built in nb 06.)
 
 # COMMAND ----------
@@ -42,7 +42,7 @@
 # MAGIC COMMENT ON TABLE gold_trial_prescreen IS
 # MAGIC   'One row per patient with their final HER2/ER/PR biomarker status (structured + NLP-recovered) and a TRUE/FALSE eligibility flag for each breast-cancer trial. The pre-screening cohort a coordinator works from.';
 # MAGIC
-# MAGIC ALTER TABLE gold_trial_prescreen ALTER COLUMN person_id            COMMENT 'OMOP person identifier — one patient.';
+# MAGIC ALTER TABLE gold_trial_prescreen ALTER COLUMN person_id            COMMENT 'OMOP person identifier, one patient.';
 # MAGIC ALTER TABLE gold_trial_prescreen ALTER COLUMN her2_status          COMMENT 'Final HER2 status: Positive, Negative, or Unknown.';
 # MAGIC ALTER TABLE gold_trial_prescreen ALTER COLUMN er_status            COMMENT 'Final estrogen-receptor (ER) status: Positive, Negative, or Unknown.';
 # MAGIC ALTER TABLE gold_trial_prescreen ALTER COLUMN pr_status            COMMENT 'Final progesterone-receptor (PR) status: Positive, Negative, or Unknown.';
@@ -58,7 +58,7 @@
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 🛠️ Step 2 — Create the Genie space (PRE-BUILT UI steps)
+# MAGIC ## 🛠️ Step 2: Create the Genie space (PRE-BUILT UI steps)
 # MAGIC
 # MAGIC This part happens in the Databricks UI (~2 min):
 # MAGIC
@@ -68,11 +68,11 @@
 # MAGIC 3. Pick the **SQL warehouse** from your `warehouse_id` widget (printed below).
 # MAGIC 4. Under **Tables**, add the gold tables from `{catalog}.{schema}`:
 # MAGIC    `gold_trial_prescreen`, `gold_unified_biomarker_profile`, `silver_demographics`.
-# MAGIC 5. **Save** — the space is live.
+# MAGIC 5. **Save**, the space is live.
 # MAGIC
 # MAGIC <div style="background:#FFF8E1; border-left:6px solid #F2A900; padding:12px 16px; border-radius:4px">
 # MAGIC <b>Keep the table count tight.</b> Genie is most accurate with a small, well-described set. Three
-# MAGIC is plenty — resist adding every silver table. The exact instructions, sample questions, and
+# MAGIC is plenty. Resist adding every silver table. The exact instructions, sample questions, and
 # MAGIC trusted SQL to paste into the space are in <code>genie/genie_space.md</code>.
 # MAGIC </div>
 
@@ -92,47 +92,47 @@ show_md(f"""
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 🎯 Step 3 — Verify the answers before you demo (YOU BUILD THESE)
+# MAGIC ## 🎯 Step 3: Verify the answers before you demo (YOU BUILD THESE)
 # MAGIC
 # MAGIC Run the SQL you *expect* Genie to generate so you can confirm its number is right. The full set of
-# MAGIC curated questions + trusted example SQL lives in `genie/genie_space.md` — add them to the space.
+# MAGIC curated questions + trusted example SQL lives in `genie/genie_space.md`, add them to the space.
 
 # COMMAND ----------
 
-# DBTITLE 1,TODO — verify: how many patients are eligible for Trial A?
+# DBTITLE 1,TODO, verify: how many patients are eligible for Trial A?
 # MAGIC %sql
 # MAGIC -- TODO (you build this): COUNT patients where trial_a_eligible = TRUE in gold_trial_prescreen.
 # MAGIC -- This is the number Genie should return for "How many patients are eligible for Trial A?"
 
 # COMMAND ----------
 
-# DBTITLE 1,TODO — verify: Trial A–eligible patients found ONLY via pathology-note NLP (the headline)
+# DBTITLE 1,TODO, verify: Trial A-eligible patients found ONLY via pathology-note NLP (the headline)
 # MAGIC %sql
 # MAGIC -- TODO (you build this): COUNT where trial_a_eligible = TRUE AND biomarker_source = 'nlp'.
-# MAGIC -- WHY this one matters most: it's the patients invisible to a structured query — the headline
+# MAGIC -- WHY this one matters most: it's the patients invisible to a structured query, the headline
 # MAGIC --   demo question. Verify the number so you can trust Genie's answer live.
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 📚 Step 4 — Add instructions & trusted SQL to the space (content in genie/)
+# MAGIC ## 📚 Step 4: Add instructions & trusted SQL to the space (content in genie/)
 # MAGIC
-# MAGIC Two settings turn a decent Genie into an accurate one — both under the space's
+# MAGIC Two settings turn a decent Genie into an accurate one, both under the space's
 # MAGIC **Instructions / Knowledge** panel:
-# MAGIC - **General instructions** — plain-language rules (what "eligible" means, that `biomarker_source =
+# MAGIC - **General instructions**: plain-language rules (what "eligible" means, that `biomarker_source =
 # MAGIC   'nlp'` was recovered from a note, the valid status strings).
-# MAGIC - **Trusted example SQL** — save 2–3 verified queries with plain-English titles; Genie generalizes
+# MAGIC - **Trusted example SQL**: save 2 to 3 verified queries with plain-English titles; Genie generalizes
 # MAGIC   from them. This is the strongest accuracy boost.
 # MAGIC
-# MAGIC **Both are written for you in `genie/genie_space.md` — copy them into the space.**
+# MAGIC **Both are written for you in `genie/genie_space.md`. Copy them into the space.**
 
 # COMMAND ----------
 
 # MAGIC %md-sandbox
 # MAGIC ## ✅ Takeaway
 # MAGIC <div style="background:#E8F5E9; border-left:6px solid #2E7D32; padding:16px 20px; border-radius:6px">
-# MAGIC The trial coordinator can now <b>self-serve every cohort question</b> — counts, lists, eligibility,
-# MAGIC even "who was found only in the notes" — in plain English, on governed, permissioned data, with no
+# MAGIC The trial coordinator can now <b>self-serve every cohort question</b>: counts, lists, eligibility,
+# MAGIC even "who was found only in the notes", in plain English, on governed, permissioned data, with no
 # MAGIC SQL and no engineer in the loop.
 # MAGIC </div>
 # MAGIC

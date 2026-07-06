@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Admin / Genie One session — Fred Hutch × Databricks</title>
+<title>Admin / Genie One session, Fred Hutch × Databricks</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -111,11 +111,11 @@
 
   <div class="hdr">
     <div class="eyebrow">Fred Hutch × Databricks · Build Days · Admin / Genie One session</div>
-    <h1>Clear spend by group, <span class="accent">answered in plain language</span></h1>
-    <div class="sub">This session gives the data office clear visibility into cost by team and a proactive alert as any category nears its budget. Both are asked and answered through Genie One, over the account's own billing data. Nothing to ingest or model.</div>
+    <h1>Get answers from your data, <span class="accent">in plain language</span></h1>
+    <div class="sub">Genie One answers questions about your data in plain English, with no dashboard to build and no query to write. This session shows how to use it, starting with two questions the data office often needs first: cost by team, and a notice as any category approaches a budget you set. Both run over the account's own billing telemetry, so there is nothing to ingest or model.</div>
     <div class="facts">
       <span class="fact"><b>Surface:</b> Genie One · system tables</span>
-      <span class="fact"><b>Lead:</b> Amy Paguirigan</span>
+      <span class="fact"><b>Lead:</b> Admin team</span>
       <span class="fact"><b>Window:</b> ~3 hours, Day 1</span>
       <span class="fact"><b>Data:</b> billing telemetry · no PHI</span>
     </div>
@@ -126,8 +126,8 @@
   </div>
 
   <div class="banner">
-    <span class="lbl">Key takeaway</span>
-    <b>Two questions, no engineering.</b> Genie One is natural-language and click-driven, so the deliverable is a clean path to two answers Amy needs: monthly cost by chargeback group, and an alert when a category nears its budget. Both run against Databricks system tables, the account's own billing telemetry. The hard math is pre-built and validated. Amy owns the questions.
+    <span class="lbl">Your goal</span>
+    <b>Use Genie One to answer cost and usage questions in plain language.</b> Genie One works through natural language and clicks, so the path leads to two answers the data office needs: monthly cost by chargeback group, and a notice as a category approaches a budget you set. Both run against Databricks system tables, the account's own billing telemetry. The calculations are pre-built and validated. You supply the questions, and the same method answers the ones you ask later.
   </div>
 
   <nav class="agenda" aria-label="On this page">
@@ -143,12 +143,12 @@
   <section class="sec" id="s1">
     <div class="sec-head">
       <div class="kicker"><span class="n">1</span> Why this session</div>
-      <h2>Two questions, <span class="accent">no engineering</span></h2>
-      <p class="lede">Genie One is natural-language and click-driven. So the deliverable is a clean path to two answers Amy needs, over data the account already collects.</p>
+      <h2>Two questions, <span class="accent">no code required</span></h2>
+      <p class="lede">Genie One works through natural language and clicks. The session leads to two answers the data office needs, over data the account already collects.</p>
     </div>
     <div class="grid g2">
-      <div class="card tinted"><div class="n">Amy · ask #1</div><h3>Monthly cost, by chargeback group</h3><p>Cost broken down for Data Engineering, Data Science, and Research, ready to send as a CSV.</p></div>
-      <div class="card tinted"><div class="n">Amy · ask #2</div><h3>A budget alert</h3><p>Tell me when a category is within 10% of its budget, before it goes over.</p></div>
+      <div class="card tinted"><div class="n">ask #1</div><h3>Monthly cost, by chargeback group</h3><p>Cost broken down for Data Engineering, Data Science, and Research, ready to share as a CSV file.</p></div>
+      <div class="card tinted"><div class="n">ask #2</div><h3>A budget notice</h3><p>A notice as a category comes within 10% of its budget, so you can plan ahead.</p></div>
     </div>
     <p class="body" style="margin-top:12px;">Both questions run against Databricks <b>system tables</b>, the account's own billing telemetry. You point Genie One at them and ask.</p>
   </section>
@@ -157,24 +157,24 @@
   <section class="sec" id="s2">
     <div class="sec-head">
       <div class="kicker"><span class="n">2</span> How the session works</div>
-      <h2>The hard math is done. <span class="accent">You own the questions.</span></h2>
-      <p class="lede">This is a lighter kit than the build sessions: a guided runbook, ready prompts, and working SQL Amy can run today and schedule tomorrow. Not a heavy notebook bundle.</p>
+      <h2>The calculations are ready. <span class="accent">You ask the questions.</span></h2>
+      <p class="lede">This kit is a guided runbook, ready prompts, and validated SQL you can run today and schedule tomorrow. It runs on natural language and clicks, with no code required.</p>
     </div>
     <div class="cols">
       <div class="colbox built">
         <div class="lbl">✅ Pre-built &amp; validated</div>
         <ul>
           <li>The <code>usage</code> ↔ <code>list_prices</code> join, using the price in effect at usage time.</li>
-          <li>The chargeback category logic — department tag, product fallback, DE / DS / Research buckets.</li>
+          <li>The chargeback category logic: department tag, product fallback, DE / DS / Research buckets.</li>
           <li>The 10%-of-budget threshold math, with OVER / WITHIN 10% / OK status.</li>
         </ul>
       </div>
       <div class="colbox build">
-        <div class="lbl">🛠️ Amy does</div>
+        <div class="lbl">🛠️ What you'll do</div>
         <ul>
-          <li>Point Genie One at the billing tables and ask the cost questions.</li>
-          <li>Write her own follow-up questions and tune the budgets and thresholds.</li>
-          <li>Schedule the monthly report and the budget alert.</li>
+          <li>Point Genie One at the billing tables and ask your cost and usage questions.</li>
+          <li>Write follow-up questions and set the budgets and thresholds that fit your teams.</li>
+          <li>Schedule the monthly report and the budget notice.</li>
         </ul>
       </div>
     </div>
@@ -192,11 +192,11 @@
       <p class="lede">Three steps, all in Genie One, then an optional self-serve space for the wider team.</p>
     </div>
     <div class="grid g3">
-      <div class="card tinted"><div class="n">step 1</div><h3>Ask</h3><p>Open Genie One, point it at the billing system tables, and ask a cost question from the prompt sheet. Each prompt has a one-line "what good looks like" so Amy knows the answer is right.</p></div>
+      <div class="card tinted"><div class="n">step 1</div><h3>Ask</h3><p>Open Genie One, point it at the billing system tables, and ask a cost question from the prompt sheet. Each prompt has a one-line "what good looks like" so you know the answer is right.</p></div>
       <div class="card tinted"><div class="n">step 2</div><h3>Trust</h3><p>Add the validated <code>cost_by_category.sql</code> as a trusted sample query, so Genie One's answers sharpen and stay consistent.</p></div>
-      <div class="card tinted"><div class="n">step 3</div><h3>Schedule</h3><p>Stand up the monthly report and the budget alert. The right primitive is a SQL Alert or dashboard subscription, since job emails carry run status, not query results.</p></div>
+      <div class="card tinted"><div class="n">step 3</div><h3>Schedule</h3><p>Stand up the monthly report and the budget notice. The right primitive is a SQL Alert or dashboard subscription, since job emails carry run status, not query results.</p></div>
     </div>
-    <p class="body" style="margin-top:12px;">An optional next step: a self-serve cost Genie space, so finance and team leads can ask their own spend questions in plain language.</p>
+    <p class="body" style="margin-top:12px;">An optional next step: a self-serve cost Genie space, so finance and team leads can ask their own cost and usage questions in plain language.</p>
   </section>
 
   <!-- 4 -->
@@ -204,7 +204,7 @@
     <div class="sec-head">
       <div class="kicker"><span class="n">4</span> Ground rules</div>
       <h2>Read-only, governed, no patient data</h2>
-      <p class="lede">The same governance spine as every other session, applied to billing telemetry.</p>
+      <p class="lede">The same governance foundation as every other session, applied to billing telemetry.</p>
     </div>
     <div class="grid g2">
       <div class="card"><h3>Read-only</h3><p>Everything reads <code>system.billing</code>. The queries write nothing. Any scratch table lands in an admin schema, never in <code>system</code>.</p></div>
@@ -222,12 +222,12 @@
     </div>
     <div class="oneliner">
       <div class="k">The one line</div>
-      <p>"We have clear visibility into spend by group, and we get a proactive alert as any category approaches its budget threshold."</p>
+      <p>"We answer cost and usage questions in plain language through Genie One, and we get a proactive notice as any category approaches a budget we set. All over the account's own billing data."</p>
     </div>
     <div class="chips">
-      <span class="chip"><b>ask</b> → plain-language cost question</span>
+      <span class="chip"><b>ask</b> → plain-language usage question</span>
       <span class="chip"><b>break down</b> → DE / DS / Research</span>
-      <span class="chip"><b>alert</b> → within 10% of budget</span>
+      <span class="chip"><b>notice</b> → within 10% of budget</span>
       <span class="chip"><b>schedule</b> → monthly, automatic</span>
     </div>
     <p class="body" style="margin-top:14px;">You finish this section on Day 1 and return Day 2 only to present.</p>
@@ -235,7 +235,7 @@
 
   <div class="foot">
     <span>Fred Hutch × Databricks · Admin / Genie One session brief</span>
-    <span>Build Days · July 7–8, 2026 · read-only billing telemetry, no PHI · kit: <code>admin-session-starter-kit</code></span>
+    <span>Build Days · July 7 to 8, 2026 · read-only billing telemetry, no PHI · kit: <code>admin-session-starter-kit</code></span>
   </div>
 
 </div>

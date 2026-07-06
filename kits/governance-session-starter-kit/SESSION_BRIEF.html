@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Governance session — Fred Hutch × Databricks</title>
+<title>Governance session, Fred Hutch × Databricks</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -137,7 +137,7 @@
   <div class="hdr">
     <div class="eyebrow">Fred Hutch × Databricks · Build Days · Governance session</div>
     <h1>Governing PHI on OMOP <span class="accent">with Unity Catalog</span></h1>
-    <div class="sub">Fred Hutch's data office (OCDO/DASL) protects patient data while opening it up for research. This session builds that balance once, in Unity Catalog (UC), so every other group inherits classification, masking, and access policy automatically. Governance is the spine of the two days.</div>
+    <div class="sub">Fred Hutch's data office (OCDO/DASL) protects patient data while opening it up for research. This session builds that balance once, in Unity Catalog (UC), so every other group inherits classification, masking, and access policy automatically. Governance is the common thread every section inherits across the two days.</div>
     <div class="facts">
       <span class="fact"><b>Surface:</b> Unity Catalog · Genie</span>
       <span class="fact"><b>Group:</b> Josh · Gina · Ty</span>
@@ -160,7 +160,7 @@
     <a href="#s1"><span class="an">1</span> Why this session</a>
     <a href="#s2"><span class="an">2</span> What you ship</a>
     <a href="#s3"><span class="an">3</span> How the build works</a>
-    <a href="#s4"><span class="an">4</span> The spine in action</a>
+    <a href="#s4"><span class="an">4</span> The common thread in action</a>
     <a href="#s5"><span class="an">5</span> Ground rules</a>
     <a href="#s6"><span class="an">6</span> Your Day-2 demo</a>
   </nav>
@@ -169,7 +169,7 @@
   <section class="sec" id="s1">
     <div class="sec-head">
       <div class="kicker"><span class="n">1</span> Why this session</div>
-      <h2>Governance is the <span class="accent">spine</span> of the two days</h2>
+      <h2>Governance is the <span class="accent">common thread</span> every section inherits</h2>
       <p class="lede">Protecting patient data while opening it for research is the whole game. We build the balance once, in Unity Catalog, so every other group inherits it. Here is what makes it matter now.</p>
     </div>
     <div class="grid g3">
@@ -246,14 +246,14 @@
   <!-- 4 -->
   <section class="sec" id="s4">
     <div class="sec-head">
-      <div class="kicker"><span class="n">4</span> The spine in action</div>
+      <div class="kicker"><span class="n">4</span> The common thread in action</div>
       <h2>Built on the foundation first, applied as the others build</h2>
       <p class="lede">Governance is not a separate two-day track. It is the layer under all four sessions.</p>
     </div>
     <div class="spine">
       <div class="k">Governance runs through everything</div>
       <h3>One pattern, <span class="ok">re-applied to every new table and model</span></h3>
-      <p>On Day 1 we apply the tag → classify → mask → row-filter pattern to the shared bronze and the curated structured layer. That is the spine every group inherits. Then, as the Data Engineering and Applied AI groups compose new silver tables, gold tables, and a registered model, the same pattern re-applies to each.</p>
+      <p>It starts in the Day 1 whole-room Genie discovery session. As the room asks real questions of the data, you see which columns identify a patient and who should see what. That is your requirements list, gathered live. Then, still on Day 1, you apply the tag → classify → mask → row-filter pattern to the shared bronze and the curated structured layer. That is the pattern every group inherits. On Day 2, as the Data Engineering and Applied AI groups compose new silver tables, gold tables, and a registered model, the same pattern re-applies to each.</p>
     </div>
     <div class="chips">
       <span class="chip"><b>tag</b> → classify sensitive columns</span>
@@ -286,14 +286,14 @@
     </div>
     <div class="oneliner">
       <div class="k">The one line</div>
-      <p>"Here is our governed foundation — classified, masked, and access-controlled — and here is how it applies automatically to everything the other teams built."</p>
+      <p>"Here is our governed foundation, classified, masked, and access-controlled, and here is how it applies automatically to everything the other teams built."</p>
     </div>
-    <p class="body" style="margin-top:14px;">You finish this section on Day 1 and return Day 2 only to present. If time allows, Josh can help apply the same controls to the tables the Data Engineering and Applied AI groups produced, a live proof that the spine holds.</p>
+    <p class="body" style="margin-top:14px;">Your core section lands on Day 1. On Day 2, as the Data Engineering and Applied AI groups build, you rotate across both and re-apply the same controls to the new tables and models they produce, a live proof that the pattern holds. Then everyone presents together.</p>
   </section>
 
   <div class="foot">
     <span>Fred Hutch × Databricks · Governance session brief</span>
-    <span>Build Days · July 7–8, 2026 · synthetic data only, Unity-Catalog-scoped · kit: <code>governance-session-starter-kit</code></span>
+    <span>Build Days · July 7 to 8, 2026 · synthetic data only, Unity-Catalog-scoped · kit: <code>governance-session-starter-kit</code></span>
   </div>
 
 </div>

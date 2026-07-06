@@ -5,11 +5,17 @@
 #   Task 1 (cost_by_category)  -> Amy #1: monthly chargeback cost, emailed.
 #   Task 2 (budget_alert)      -> Amy #2: alert when within 10% of budget.
 #
-# This is documentation-grade: it does NOT have to be deployed for the onsite.
-# It shows Amy how to turn the two ad-hoc queries into a monthly, hands-off
-# report + alert. Deploy with the Databricks CLI:
-#     databricks bundle deploy --target <your-target>
-# (or paste the task SQL into a Job in the Workflows UI — no bundle required).
+# This is documentation-grade: it does NOT have to be deployed for the onsite, and
+# it is not wired into a bundle. This kit ships no databricks.yml, so
+# `databricks bundle deploy` does not apply here. The point of the session is that
+# Amy stands the schedule up herself, the way she will in production. Three ways,
+# lightest first:
+#   1. Genie One: ask it to save the budget check as a scheduled SQL alert
+#      (GENIE_ONE_PROMPTS.md prompt 5). This is the recommended path.
+#   2. Workflows UI: create a Job and paste the task SQL below (no bundle needed).
+#   3. Bundle it: add this file to the foundation bundle's `include:` if you want
+#      it deployed as code with everything else.
+# Use this YAML as the reference for what those tasks should contain.
 #
 # WHAT IT DOES NOT DO OUT OF THE BOX
 #   - Email a CSV *attachment*. Databricks Job email_notifications send run
@@ -48,7 +54,7 @@ resources:
 
         # ---- Task 2: budget threshold alert (Amy #2) -----------------------
         # A SQL Alert is the right primitive for "email me when a condition is
-        # met" — it evaluates the query and only notifies when the trigger
+        # met". It evaluates the query and only notifies when the trigger
         # fires. Point the alert at sql/budget_threshold_alert.sql and trigger
         # when any row has status != 'OK'. Defined here as an alert resource:
         - task_key: budget_alert

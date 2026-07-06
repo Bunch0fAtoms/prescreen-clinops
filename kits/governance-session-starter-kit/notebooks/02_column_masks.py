@@ -1,10 +1,10 @@
 # Databricks notebook source
 # MAGIC %md-sandbox
 # MAGIC <div style="background:linear-gradient(90deg,#C8102E 0%,#7A0019 100%); color:white; padding:22px 28px; border-radius:8px">
-# MAGIC   <div style="font-size:0.9em; letter-spacing:2px; opacity:0.85">NOTEBOOK 02 · COLUMN MASKS · 🧠 THE MASKING CORE — YOU BUILD THIS</div>
+# MAGIC   <div style="font-size:0.9em; letter-spacing:2px; opacity:0.85">NOTEBOOK 02 · COLUMN MASKS · 🧠 THE MASKING CORE: YOU BUILD THIS</div>
 # MAGIC   <div style="font-size:2.0em; font-weight:700; margin-top:4px">🎭 Mask the identifiers by group</div>
 # MAGIC   <div style="font-size:1.1em; margin-top:8px; max-width:880px; opacity:0.95">
-# MAGIC     Same <code>SELECT person_id, note_text FROM …</code> — the data office sees the real value, an
+# MAGIC     Same <code>SELECT person_id, note_text FROM …</code>: the data office sees the real value, an
 # MAGIC     OCDO researcher sees <code>***MASKED***</code>. The gate is a function you write, applied to the
 # MAGIC     column once and enforced everywhere. <b>This is Josh's core ask.</b>
 # MAGIC   </div>
@@ -15,12 +15,12 @@
 # MAGIC %md
 # MAGIC ## How UC column masking works
 # MAGIC
-# MAGIC A **column mask** is a SQL UDF bound to a column. Whenever *anyone* reads that column — notebook,
-# MAGIC SQL, Genie, an app, a BI tool — UC runs the function first and returns whatever it returns. The
+# MAGIC A **column mask** is a SQL UDF bound to a column. Whenever *anyone* reads that column (notebook,
+# MAGIC SQL, Genie, an app, a BI tool) UC runs the function first and returns whatever it returns. The
 # MAGIC function decides, per the **current user's group membership**, whether to reveal or redact.
 # MAGIC
 # MAGIC Two moving parts:
-# MAGIC 1. A **masking UDF** — `mask_value(col)` → returns `col` if the caller is privileged, else a redacted value.
+# MAGIC 1. A **masking UDF**: `mask_value(col)` → returns `col` if the caller is privileged, else a redacted value.
 # MAGIC 2. **Binding** it: `ALTER TABLE … ALTER COLUMN … SET MASK <udf>`.
 # MAGIC
 # MAGIC The privilege test is `is_account_group_member('<group>')`. **Important nuance:** in UC, by default
@@ -35,7 +35,7 @@
 
 # COMMAND ----------
 
-# DBTITLE 1,Where do we stand before masking? (PRE-BUILT — the "before")
+# DBTITLE 1,Where do we stand before masking? (PRE-BUILT, the "before")
 # MAGIC %sql
 # MAGIC -- As the owner, raw values are visible. Note the real person_id and the raw note text.
 # MAGIC SELECT person_id, LEFT(note_text, 80) AS note_preview
@@ -75,7 +75,7 @@
 
 # COMMAND ----------
 
-# DBTITLE 1,TODO — create the person_id masking UDF
+# DBTITLE 1,TODO: create the person_id masking UDF
 # TODO (you build this): create a SQL UDF `mask_person_id(pid BIGINT) RETURNS BIGINT` that returns NULL
 #   when the caller is a member of OCDO_GROUP, else returns pid. Use is_account_group_member('<group>').
 #   Interpolate OCDO_GROUP from _config. Run it with spark.sql(f""" ... """).
@@ -88,19 +88,19 @@
 
 # COMMAND ----------
 
-# DBTITLE 1,TODO — create the note_text masking UDF
+# DBTITLE 1,TODO: create the note_text masking UDF
 # TODO (you build this): create `mask_note_text(txt STRING) RETURNS STRING` that returns a redaction
 #   literal (e.g. '***REDACTED PATHOLOGY NOTE***') for OCDO_GROUP members, else the real txt.
 #   Same is_account_group_member gate.
 
 # COMMAND ----------
 
-# DBTITLE 1,TODO — bind the masks to the columns
+# DBTITLE 1,TODO: bind the masks to the columns
 # TODO (you build this): apply the masks with ALTER TABLE ... ALTER COLUMN ... SET MASK.
 #   • person.person_id        -> mask_person_id
 #   • note.person_id          -> mask_person_id
 #   • note.note_text          -> mask_note_text
-#   (person_id is a direct identifier on EVERY table — EXTENSION below extends to all 6.)
+#   (person_id is a direct identifier on EVERY table; EXTENSION below extends to all 6.)
 #
 # Skeleton:
 # spark.sql(f"ALTER TABLE {fqn('person')} ALTER COLUMN person_id SET MASK {fqn('mask_person_id')}")
@@ -113,7 +113,7 @@
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 2️⃣ Prove it — same query, masked vs. unmasked (PRE-BUILT verification)
+# MAGIC ## 2️⃣ Prove it: same query, masked vs. unmasked (PRE-BUILT verification)
 # MAGIC
 # MAGIC As the table owner you (likely) **bypass** the mask, so to make the effect visible regardless we
 # MAGIC show two things: (a) the mask UDF's own decision for the **current user**, and (b) the actual
@@ -154,7 +154,7 @@
 
 # MAGIC %md
 # MAGIC <div style="background:#E8F5E9; border-left:6px solid #2E7D32; padding:12px 16px; border-radius:4px">
-# MAGIC <b>What you just did:</b> bound a policy to the <i>column</i>, not the query — so a researcher can
+# MAGIC <b>What you just did:</b> bound a policy to the <i>column</i>, not the query, so a researcher can
 # MAGIC run any SQL, open Genie, or hit an app, and the identifier is gone every time. That's the difference
 # MAGIC between a governed warehouse and a hopeful one. <b>This satisfies Josh's "mask patient data by OCDO
 # MAGIC user group."</b>

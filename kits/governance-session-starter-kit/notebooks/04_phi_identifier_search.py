@@ -19,10 +19,10 @@
 # MAGIC to answer, on demand: **"Does patient identifier X show up anywhere a researcher can read it?"** Two
 # MAGIC complementary searches, both driven from metadata you already created in nb 01:
 # MAGIC
-# MAGIC 1. **Structural** — every column tagged `phi=other_identifier`, or *named* `person_id` / `note_text`,
+# MAGIC 1. **Structural**: every column tagged `phi=other_identifier`, or *named* `person_id` / `note_text`,
 # MAGIC    across all schemas the data office can see (`information_schema` + `system.information_schema`).
 # MAGIC    This catches a researcher who copied `person_id` into a new table without tagging it.
-# MAGIC 2. **By value** — given a concrete identifier, scan the candidate columns and report which
+# MAGIC 2. **By value**: given a concrete identifier, scan the candidate columns and report which
 # MAGIC    tables/columns actually contain it. This is the "did it leak into *this* shared table?" check.
 
 # COMMAND ----------
@@ -32,10 +32,10 @@
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 1️⃣ Structural search — every PHI-shaped column (PRE-BUILT)
+# MAGIC ## 1️⃣ Structural search: every PHI-shaped column (PRE-BUILT)
 # MAGIC
 # MAGIC `system.information_schema.columns` spans the whole metastore. We find columns that are either
-# MAGIC **tagged** as direct identifiers (your nb 01 work) or **named/typed** like one — the union catches
+# MAGIC **tagged** as direct identifiers (your nb 01 work) or **named/typed** like one, the union catches
 # MAGIC both the governed tables and untagged copies a researcher may have made.
 
 # COMMAND ----------
@@ -49,7 +49,7 @@
 
 # COMMAND ----------
 
-# DBTITLE 1,Identifier-SHAPED columns even if untagged (PRE-BUILT — catches leaks)
+# DBTITLE 1,Identifier-SHAPED columns even if untagged (PRE-BUILT, catches leaks)
 # MAGIC %sql
 # MAGIC -- A researcher who SELECT person_id INTO my_cohort created a new identifier column with no tag.
 # MAGIC -- Name/type heuristics find it. Scope to your catalog; widen to all catalogs for a full sweep.
@@ -64,10 +64,10 @@
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 2️⃣ By-value search — does THIS identifier appear? 🛠️
+# MAGIC ## 2️⃣ By-value search: does THIS identifier appear? 🛠️
 # MAGIC
 # MAGIC Pick a real `person_id`, then check which candidate tables actually contain it. The structural
-# MAGIC search (step 1) gives you the **candidate columns**; this step confirms the **value** is present —
+# MAGIC search (step 1) gives you the **candidate columns**; this step confirms the **value** is present:
 # MAGIC the difference between "a table has a person_id column" and "a table has *this patient*."
 
 # COMMAND ----------
@@ -78,7 +78,7 @@ print(f"Hunting for person_id = {TARGET_PERSON_ID} across the governed tables.")
 
 # COMMAND ----------
 
-# DBTITLE 1,TODO — scan the candidate tables for the target identifier
+# DBTITLE 1,TODO: scan the candidate tables for the target identifier
 # TODO (you build this): for each table in OMOP_TABLES that has a person_id column, count rows where
 #   person_id = TARGET_PERSON_ID, and collect (table, hit_count). Return a tidy result showing which
 #   tables contain the identifier. (Bonus: union the per-table counts into one DataFrame and display it.)
@@ -90,21 +90,21 @@ print(f"Hunting for person_id = {TARGET_PERSON_ID} across the governed tables.")
 #     hits.append((t, n))
 # display(spark.createDataFrame(hits, ["table", "rows_with_identifier"]))
 #
-# EXTENSION (optional): make it generic — accept a list of (catalog.schema.table, column) candidates from
+# EXTENSION (optional): make it generic: accept a list of (catalog.schema.table, column) candidates from
 #   the structural search above and scan all of them, so it works against researcher-created tables too.
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 3️⃣ Bonus — lineage: where did the identifier flow? (PRE-BUILT)
+# MAGIC ## 3️⃣ Bonus, lineage: where did the identifier flow? (PRE-BUILT)
 # MAGIC
 # MAGIC `system.access.table_lineage` records which tables were read to produce which others. If a researcher
-# MAGIC built a derived table from `person`, this shows the edge — a second angle on "where did PHI go."
+# MAGIC built a derived table from `person`, this shows the edge, a second angle on "where did PHI go."
 # MAGIC (Lineage is captured automatically for UC tables; may be empty if no downstream tables exist yet.)
 
 # COMMAND ----------
 
-# DBTITLE 1,Downstream of person / note (PRE-BUILT — read-only audit)
+# DBTITLE 1,Downstream of person / note (PRE-BUILT, read-only audit)
 # MAGIC %sql
 # MAGIC SELECT source_table_full_name, target_table_full_name, event_time
 # MAGIC FROM system.access.table_lineage
@@ -117,8 +117,8 @@ print(f"Hunting for person_id = {TARGET_PERSON_ID} across the governed tables.")
 
 # MAGIC %md
 # MAGIC <div style="background:#E8F5E9; border-left:6px solid #2E7D32; padding:12px 16px; border-radius:4px">
-# MAGIC <b>What you just did:</b> answered "where does this patient identifier live?" three ways — by tag,
-# MAGIC by column shape, and by value — plus a lineage trace. That's exactly the audit the data office runs
+# MAGIC <b>What you just did:</b> answered "where does this patient identifier live?" three ways, by tag,
+# MAGIC by column shape, and by value, plus a lineage trace. That's exactly the audit the data office runs
 # MAGIC when a researcher shares a derived dataset. <b>This answers Gina and Ty's identifier-search ask (#4).</b>
 # MAGIC </div>
 # MAGIC

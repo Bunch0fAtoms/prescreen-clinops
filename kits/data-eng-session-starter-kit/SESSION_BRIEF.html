@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Data Engineering session — Fred Hutch × Databricks</title>
+<title>Data Engineering session, Fred Hutch × Databricks</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -92,12 +92,12 @@
   .callout h3 { margin:0 0 6px; font-size:14px; color:var(--amber); }
   .callout p { margin:0; font-size:13px; color:var(--ink-2); line-height:1.5; }
 
-  .spine { background:var(--db-navy); border-radius:14px; padding:22px 26px; }
-  .spine .k { font-family:"DM Mono",monospace; font-size:10.5px; letter-spacing:0.16em; text-transform:uppercase; color:#9AA7B0; }
-  .spine h3 { color:#fff; margin:8px 0 8px; font-size:19px; font-weight:700; letter-spacing:-0.01em; }
-  .spine h3 .ok { color:#4CD08A; }
-  .spine p { color:#C6CDD3; font-size:13.5px; max-width:860px; margin:0; line-height:1.55; }
-  .spine code { color:#FFB59F; background:rgba(255,255,255,0.08); }
+  .keystone { background:var(--db-navy); border-radius:14px; padding:22px 26px; }
+  .keystone .k { font-family:"DM Mono",monospace; font-size:10.5px; letter-spacing:0.16em; text-transform:uppercase; color:#9AA7B0; }
+  .keystone h3 { color:#fff; margin:8px 0 8px; font-size:19px; font-weight:700; letter-spacing:-0.01em; }
+  .keystone h3 .ok { color:#4CD08A; }
+  .keystone p { color:#C6CDD3; font-size:13.5px; max-width:860px; margin:0; line-height:1.55; }
+  .keystone code { color:#FFB59F; background:rgba(255,255,255,0.08); }
 
   .oneliner { background:var(--paper); border:1px dashed var(--line-strong); border-radius:12px; padding:18px 22px; }
   .oneliner .k { font-family:"DM Mono",monospace; font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--muted); }
@@ -116,7 +116,7 @@
   .to-top .ar { font-size:13px; transform:translateY(-1px); }
 
   @media (max-width:900px){ .g2,.g3,.cols{ grid-template-columns:1fr; } }
-  @media print { .toolbar,.to-top,.agenda { display:none; } body { background:#fff; } .page { padding:12px; } .spine,.banner { -webkit-print-color-adjust:exact; print-color-adjust:exact; } }
+  @media print { .toolbar,.to-top,.agenda { display:none; } body { background:#fff; } .page { padding:12px; } .keystone,.banner { -webkit-print-color-adjust:exact; print-color-adjust:exact; } }
 </style>
 </head>
 <body>
@@ -164,7 +164,7 @@
       <div class="card tinted"><div class="n">Chetan #15</div><h3>1 · Schema drift</h3><p>The source adds a column and the ingest breaks, or silently drops it. → schema evolution on ingest.</p></div>
       <div class="card tinted"><div class="n">Chetan #17</div><h3>2 · Missing records</h3><p>Did we load every row? Which records are missing? → a reconciliation framework.</p></div>
       <div class="card tinted"><div class="n">Jenn #16</div><h3>3 · Restricted data</h3><p>A restricted table gets ingested by accident. → a config-driven ingest gate.</p></div>
-      <div class="card tinted"><div class="n">Jennifer #9</div><h3>4 · SLA windows</h3><p>A job hammers the source during its 11pm–8am window. → an SLA-window guard.</p></div>
+      <div class="card tinted"><div class="n">Jennifer #9</div><h3>4 · SLA windows</h3><p>A job hammers the source during its 11pm to 8am window. → an SLA-window guard.</p></div>
       <div class="card tinted" style="grid-column:1 / -1;"><div class="n">net-new · feeds ML</div><h3>5 · A live trials feed</h3><p>A registry drips trial files with drift and bad rows. → an <b>Auto Loader</b> incremental ingest into <code>silver_trial_criteria</code>, bad records quarantined. Adding a trial becomes a file landing.</p></div>
     </div>
   </section>
@@ -226,10 +226,10 @@
       <h2>You own the curated structured layer the pre-screen builds on</h2>
       <p class="lede">This is the contract that lets both groups run in parallel.</p>
     </div>
-    <div class="spine">
+    <div class="keystone">
       <div class="k">The decoupling</div>
       <h3>You produce the <span class="ok">structured silver</span> the Applied AI group consumes</h3>
-      <p>The structured silver tables — <code>silver_biomarker_profile</code>, <code>silver_demographics</code>, <code>silver_prior_therapy</code> — are produced by your pipeline. So the Applied AI group is never blocked, that layer is pre-seeded as a reference on Day 1. They start from it while you rebuild and harden the pipeline that produces it. Your success bar includes parity: your output matches the reference table names and counts, about 240 / 300 / 146.</p>
+      <p>The structured silver tables, <code>silver_biomarker_profile</code>, <code>silver_demographics</code>, <code>silver_prior_therapy</code>, are produced by your pipeline. So the Applied AI group is never blocked, that layer is pre-seeded as a reference on Day 1. They start from it while you rebuild and harden the pipeline that produces it. Your success bar includes parity: your output matches the reference table names and counts, about 240 / 300 / 146.</p>
     </div>
     <div class="callout">
       <h3>Day-2 highlight, never a blocker</h3>
@@ -260,7 +260,7 @@
     </div>
     <div class="oneliner">
       <div class="k">The one line</div>
-      <p>"Reliable, governed ingestion plus the curated layer the Applied AI group builds on — schema drift handled, records reconciled, restricted data blocked, and SLA windows enforced."</p>
+      <p>"Reliable, governed ingestion plus the curated layer the Applied AI group builds on: schema drift handled, records reconciled, restricted data blocked, and SLA windows enforced."</p>
     </div>
     <p class="body" style="margin-top:14px;">Then show the net-new live trials feed: files stream into a Volume while Auto Loader ingests them incrementally, a new criterion flows through untouched, and bad records land in quarantine instead of breaking the load. Adding a trial is now data, not a code change.</p>
     <div class="chips">
@@ -274,7 +274,7 @@
 
   <div class="foot">
     <span>Fred Hutch × Databricks · Data Engineering session brief</span>
-    <span>Build Days · July 7–8, 2026 · synthetic data only, Unity-Catalog-scoped · kit: <code>data-eng-session-starter-kit</code></span>
+    <span>Build Days · July 7 to 8, 2026 · synthetic data only, Unity-Catalog-scoped · kit: <code>data-eng-session-starter-kit</code></span>
   </div>
 
 </div>

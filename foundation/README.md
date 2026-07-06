@@ -44,6 +44,21 @@ The job has two tasks. `generate_omop_data` builds the six tables. `land_trial_f
 trials JSON into the Volume. Both are reproducible: a fixed random seed means every run produces
 the same 300 patients.
 
+**Where this deploys, and who can read it.** The `client` target deploys to a shared workspace
+folder, `/Workspace/fh-onsite/prescreen/client`, not the deployer's personal home. One person runs
+this setup once on Day 1, and all four groups need to reach the result, so a shared location keeps
+it findable and readable. Two requirements for whoever runs it (a governance-group member is the
+plan): they can write to `/Workspace/fh-onsite` (creating the folder is enough), and they grant the
+four groups `CAN_READ` on `/Workspace/fh-onsite` once. The deployed code and files sit under
+`/Workspace/fh-onsite/prescreen/client/files/`.
+
+**This deploy also stages the Admin session's SQL.** The Admin (Genie One) session reads billing
+system tables, not the clinical tables, so it needs no data from this job. It does need its two
+trusted SQL files in the workspace, so this bundle carries them along on deploy. That way the Admin
+group never clones a repo or runs a second bundle. After deploy the files are at
+`/Workspace/fh-onsite/prescreen/client/files/kits/admin-session-starter-kit/sql/`. See the Admin
+kit's README for how it uses them.
+
 **Let Genie Code fill in your workspace values.** The `fred-hutch-onsite-adaptation` skill (in
 `../.assistant/skills/`) reads your bundle and writes the `databricks.yml` variables for you. A
 workspace admin installs it once, for everyone — this is separate from deploying the bundle:

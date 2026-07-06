@@ -5,8 +5,12 @@ space is a saved, self-serve interface where someone types a question in plain E
 answers it with a query and a chart. Standing one up over the six OMOP tables early means a
 clinical researcher can interrogate the foundation without waiting on an analyst.
 
-This space is optional but recommended. Both groups can build it during discovery, and it makes
-a clean thing to show in the final presentation.
+The whole room builds this space together during discovery, and it makes a clean thing to show in
+the final presentation. It has a second job too: the questions the room asks here are exactly what
+the Governance group listens to when it decides what to protect. A question that pulls up patient
+identifiers is a signal for a mask; a question one group should not be able to answer is a signal
+for a row filter. So the space is both the front door for researchers and the evidence base for
+governance.
 
 ## What to put in the space
 
@@ -36,6 +40,8 @@ Good descriptions plus a few example questions make the space answer reliably fr
 - "How many patients have a pathology note but no structured HER2 result?"
 - "What AJCC stages are recorded, and how many patients are at each stage?"
 - "Show the most common conditions and drug exposures."
+- "Which columns here could identify a specific patient?" (a governance-lens question that helps the
+  Governance group see what to protect)
 
 ## A note on trust
 

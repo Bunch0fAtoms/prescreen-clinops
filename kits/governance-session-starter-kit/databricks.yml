@@ -1,8 +1,8 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# Databricks Asset Bundle — Fred Hutch Governance Session (UC governance on OMOP)
+# Databricks Asset Bundle: Fred Hutch Governance Session (UC governance on OMOP)
 #
 # This bundle is PRE-BUILT for you. It is Unity-Catalog-scoped (catalog/schema/group are
-# variables — no hive_metastore, no hardcoded workspace), per-team. To use it:
+# variables, no hive_metastore, no hardcoded workspace), per-team. To use it:
 #   1. Fill in the `client` target's client_catalog / client_schema / warehouse_id / ocdo_group.
 #   2. databricks bundle deploy --target client
 #   3. databricks bundle run setup_clone_job --target client   (lands the 6 OMOP tables)
@@ -25,7 +25,7 @@ variables:
     description: "Schema holding the existing 6 OMOP tables (e.g. the shared foundation schema)."
     default: "<your_source_schema>"
 
-  # ── Client (per-team) governance catalog / schema — where YOU apply policies ──
+  # ── Client (per-team) governance catalog / schema, where YOU apply policies ──
   client_catalog:
     description: "Your team's Unity Catalog catalog."
     default: "<your_catalog>"
@@ -44,12 +44,12 @@ variables:
     default: "ocdo_data_scientists"
 
 targets:
-  # ── Client target (default) — fill in your workspace values, then deploy. ────
+  # ── Client target (default). Fill in your workspace values, then deploy. ────
   client:
     default: true
-    # Omit `mode:` — DAB defaults to production behavior (no dev_<user>_ prefix), which keeps
+    # Omit `mode:`. DAB defaults to production behavior (no dev_<user>_ prefix), which keeps
     # table names stable so the masks/filters bind to predictable objects.
-    # No `workspace.host:` — the CLI uses your profile's host (deploy with -p <profile>),
+    # No `workspace.host:`. The CLI uses your profile's host (deploy with -p <profile>),
     # so there's no host to mismatch. Add one only if you deploy without a profile.
     variables:
       source_catalog: "<your_catalog>"

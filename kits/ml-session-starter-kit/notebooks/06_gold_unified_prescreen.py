@@ -2,7 +2,7 @@
 # MAGIC %md-sandbox
 # MAGIC <div style="background:linear-gradient(90deg,#C8102E 0%,#7A0019 100%); color:white; padding:22px 28px; border-radius:8px">
 # MAGIC   <div style="font-size:0.9em; letter-spacing:2px; opacity:0.85">NOTEBOOK 06 · GOLD + PRE-SCREEN · 🛠️ YOU BUILD THE FUSION</div>
-# MAGIC   <div style="font-size:2.0em; font-weight:700; margin-top:4px">🏅 Gold layer — one audited cohort the coordinator can screen</div>
+# MAGIC   <div style="font-size:2.0em; font-weight:700; margin-top:4px">🏅 Gold layer: one audited cohort the coordinator can screen</div>
 # MAGIC   <div style="font-size:1.1em; margin-top:8px; max-width:880px; opacity:0.95">
 # MAGIC     Fuse the structured biomarkers with the NLP-recovered ones into a single source of truth,
 # MAGIC     then compute Trial A &amp; Trial B eligibility with a plain-English reason for every patient.
@@ -24,12 +24,12 @@
 # MAGIC Two sources of biomarker truth: structured `silver_biomarker_profile` and the notes read by
 # MAGIC `ai_query` (`silver_nlp_biomarkers`). The rule is simple and defensible:
 # MAGIC
-# MAGIC 1. **Prefer the structured value** — it's the lab's recorded result.
+# MAGIC 1. **Prefer the structured value**, it's the lab's recorded result.
 # MAGIC 2. **Fall back to the NLP value** when no structured row exists (the notes-only patients).
 # MAGIC 3. **Record which source we used** in a `biomarker_source` column, so any eligibility decision
 # MAGIC    traces back to structured data or an AI reading of a note.
 # MAGIC
-# MAGIC That audit column is what makes this trustworthy in a clinical setting — the AI never silently
+# MAGIC That audit column is what makes this trustworthy in a clinical setting. The AI never silently
 # MAGIC overwrites a lab value, and every notes-derived decision is flagged for human review.
 
 # COMMAND ----------
@@ -39,15 +39,15 @@
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 1️⃣ `gold_unified_biomarker_profile` — fuse structured + NLP, keep the audit trail
+# MAGIC ## 1️⃣ `gold_unified_biomarker_profile`: fuse structured + NLP, keep the audit trail
 # MAGIC
 # MAGIC A **FULL OUTER JOIN** on `person_id` keeps every patient in *either* source. For each marker,
-# MAGIC `COALESCE(structured, nlp)` — structured wins, NLP fills the gap. `biomarker_source` is
+# MAGIC `COALESCE(structured, nlp)`, structured wins, NLP fills the gap. `biomarker_source` is
 # MAGIC `'structured'` whenever a structured row existed, else `'nlp'`.
 
 # COMMAND ----------
 
-# DBTITLE 1,TODO — gold_unified_biomarker_profile (COALESCE + source audit) — YOU BUILD THIS
+# DBTITLE 1,TODO: gold_unified_biomarker_profile (COALESCE + source audit), YOU BUILD THIS
 # MAGIC %sql
 # MAGIC -- TODO (you build this): CREATE OR REPLACE TABLE gold_unified_biomarker_profile.
 # MAGIC -- Inputs: silver_biomarker_profile (alias s, structured) FULL OUTER JOIN
@@ -59,7 +59,7 @@
 # MAGIC --   biomarker_source = CASE WHEN s.person_id IS NOT NULL THEN 'structured' ELSE 'nlp' END
 # MAGIC -- WHY FULL OUTER + COALESCE (not UNION): a union would make TWO rows for 'both' patients and force
 # MAGIC --   a de-dup; the outer join gives exactly one row and lets you express the precedence rule in SQL.
-# MAGIC --   The notes-only patients (181–240) arrive tagged biomarker_source='nlp'.
+# MAGIC --   The notes-only patients (181 to 240) arrive tagged biomarker_source='nlp'.
 
 # COMMAND ----------
 
@@ -71,7 +71,7 @@
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 2️⃣ `gold_trial_prescreen` — generic, catalog-driven eligibility + a reason
+# MAGIC ## 2️⃣ `gold_trial_prescreen`: generic, catalog-driven eligibility + a reason
 # MAGIC
 # MAGIC Do NOT hardcode Trial A and Trial B as literal rules. Trials are **data** now, in
 # MAGIC `silver_trial_criteria` (built by DE notebook 05). This pre-screen joins against whatever rows that
@@ -98,7 +98,7 @@
 
 # COMMAND ----------
 
-# DBTITLE 1,The patient + trial join is PRE-BUILT — you write the generic match + reason
+# DBTITLE 1,The patient + trial join is PRE-BUILT, you write the generic match + reason
 # MAGIC %sql
 # MAGIC -- The two CTEs below are given to you: `patient` (one row per patient with all comparable fields)
 # MAGIC -- and `evaluated` (CROSS JOIN patient × silver_trial_criteria, with one boolean per criterion
@@ -135,11 +135,11 @@
 # MAGIC --        her2_status, er_status, pr_status, menopausal_status, ajcc_stage,
 # MAGIC --        prior_anti_her2, biomarker_source, min_ecog, eligibility_text,
 # MAGIC --
-# MAGIC --   -- TODO (you build this): `eligible` — a BOOLEAN that is the AND of every ok_* flag:
+# MAGIC --   -- TODO (you build this): `eligible`, a BOOLEAN that is the AND of every ok_* flag:
 # MAGIC --   --   ok_sex AND ok_her2 AND ok_er AND ok_pr AND ok_menopausal AND ok_prior_anti_her2 AND ok_age.
 # MAGIC --   <expr> AS eligible,
 # MAGIC --
-# MAGIC --   -- TODO (you build this): `reason` — a CASE. When all ok_* pass, 'Eligible: ...' summarizing the
+# MAGIC --   -- TODO (you build this): `reason`, a CASE. When all ok_* pass, 'Eligible: ...' summarizing the
 # MAGIC --   --   biomarkers the trial constrained (only the req_* that are NON-NULL) with the biomarker_source
 # MAGIC --   --   in parens, e.g. 'Eligible: HER2 Positive (nlp), age 54, no prior anti-HER2 therapy'. Else name
 # MAGIC --   --   the FIRST failing criterion, e.g. 'Excluded: HER2 is Negative (need Positive)'. Precedence:
@@ -153,14 +153,14 @@
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ### Backward-compatible wide view (PRE-BUILT — runs once your table exists)
+# MAGIC ### Backward-compatible wide view (PRE-BUILT, runs once your table exists)
 # MAGIC
 # MAGIC The app today reads `trial_a_eligible` / `trial_b_eligible`. We pivot the long table back to a
 # MAGIC one-row-per-patient view for that path; new trials stay available in the long table.
 
 # COMMAND ----------
 
-# DBTITLE 1,gold_trial_prescreen_wide — pivot back to trial_a_/trial_b_ columns (PRE-BUILT)
+# DBTITLE 1,gold_trial_prescreen_wide, pivot back to trial_a_/trial_b_ columns (PRE-BUILT)
 # MAGIC %sql
 # MAGIC CREATE OR REPLACE VIEW gold_trial_prescreen_wide
 # MAGIC COMMENT 'Backward-compatible wide view: one row per patient with trial_a_/trial_b_ columns, from the long table.'
@@ -187,7 +187,7 @@
 
 # COMMAND ----------
 
-# DBTITLE 1,Peek at the screened cohort — long shape (PRE-BUILT — runs once your table exists)
+# DBTITLE 1,Peek at the screened cohort, long shape (PRE-BUILT, runs once your table exists)
 # MAGIC %sql
 # MAGIC SELECT person_id, trial_id, trial_name, her2_status, er_status, menopausal_status,
 # MAGIC        age_at_dx_years, biomarker_source, eligible, reason
@@ -196,7 +196,7 @@
 # COMMAND ----------
 
 # MAGIC %md-sandbox
-# MAGIC ## 3️⃣ The payoff — the unified cohort is *bigger* than structured-only 🎯 (PRE-BUILT)
+# MAGIC ## 3️⃣ The payoff: the unified cohort is *bigger* than structured-only 🎯 (PRE-BUILT)
 # MAGIC
 # MAGIC If the coordinator had only the structured pipeline, every eligible patient tagged
 # MAGIC `biomarker_source = 'nlp'` would be **invisible**. Count eligibility split by source.
@@ -240,14 +240,14 @@ Those <b>{nlp['a_nlp'] + nlp['b_nlp']} patients</b> are now in the unified cohor
 # MAGIC %md
 # MAGIC <div style="background:#E8F5E9; border-left:6px solid #2E7D32; padding:12px 16px; border-radius:4px">
 # MAGIC <b>What you built:</b> a single audited gold cohort, <code>gold_trial_prescreen</code>, the
-# MAGIC coordinator can query for "who is eligible, and why?" — every decision traceable via
+# MAGIC coordinator can query for "who is eligible, and why?", every decision traceable via
 # MAGIC <code>biomarker_source</code>, and computed by one generic join so adding a trial is a data change.
 # MAGIC Fusing the two biomarker sources <b>grew the eligible cohort</b>. <b>This is the end-to-end payoff.</b>
 # MAGIC </div>
 
 # COMMAND ----------
 
-# DBTITLE 1,Verify the validated numbers are preserved (PRE-BUILT — 140 / 56 / +31)
+# DBTITLE 1,Verify the validated numbers are preserved (PRE-BUILT: 140 / 56 / +31)
 # MAGIC %sql
 # MAGIC -- Trials A and B carry catalog criteria identical to the old hardcoded rules, so the generic join
 # MAGIC -- MUST reproduce Trial A = 140, Trial B = 56, +31 NLP-recovered. Trial C is net-new.
@@ -259,7 +259,7 @@ Those <b>{nlp['a_nlp'] + nlp['b_nlp']} patients</b> are now in the unified cohor
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 5️⃣ `gold_patient_measurements` — a per-patient test timeline for the app (PRE-BUILT)
+# MAGIC ## 5️⃣ `gold_patient_measurements`: a per-patient test timeline for the app (PRE-BUILT)
 # MAGIC
 # MAGIC Sita's app interrogates one patient: "what tests did this patient have, and when?" This longitudinal
 # MAGIC view is built straight from the raw OMOP `measurement` table, one row per result, ordered by date,
@@ -270,7 +270,7 @@ Those <b>{nlp['a_nlp'] + nlp['b_nlp']} patients</b> are now in the unified cohor
 
 # COMMAND ----------
 
-# DBTITLE 1,gold_patient_measurements — longitudinal per-patient test timeline (PRE-BUILT)
+# DBTITLE 1,gold_patient_measurements, longitudinal per-patient test timeline (PRE-BUILT)
 # MAGIC %sql
 # MAGIC CREATE OR REPLACE TABLE gold_patient_measurements
 # MAGIC COMMENT 'Longitudinal per-patient test timeline for the coordinator app drill-down. One row per measurement, from the raw OMOP measurement table.'
@@ -295,7 +295,7 @@ Those <b>{nlp['a_nlp'] + nlp['b_nlp']} patients</b> are now in the unified cohor
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 🚩 Checkpoint 6 — gold cohort is catalog-driven and app-ready
+# MAGIC ## 🚩 Checkpoint 6: gold cohort is catalog-driven and app-ready
 # MAGIC
 # MAGIC - `gold_trial_prescreen` is now **LONG** (one row per person per trial), computed by a single generic
 # MAGIC   join to `silver_trial_criteria`. Adding a trial is a data change in DE notebook 05.

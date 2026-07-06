@@ -1,4 +1,4 @@
-# 🧭 RUNBOOK — Admin Session (Genie One: cost, chargeback & budget alerts)
+# 🧭 RUNBOOK, Admin Session (Genie One: cost, chargeback & budget alerts)
 
 **Mentor- and Amy-facing.** This is the guided click-path for the Admin session: open Genie One →
 point it at the billing system tables → ask the chargeback cost questions → stand up the scheduled
@@ -6,25 +6,32 @@ report + budget alert. Three named **Checkpoints**, plus the common failure mode
 fallback if `system.billing` isn't available.
 
 **Customer:** Fred Hutch · Admin session of the 2-day onsite (this kit is the **Admin session only**).
-**Audience:** Amy Paguirigan (Deputy CDO) + admins — natural-language / click-driven, **not** notebook
+**Audience:** Amy Paguirigan (Deputy CDO) + admins, natural-language / click-driven, **not** notebook
 builders. So the path is: ask in plain English, trust-but-verify against the validated SQL, then schedule.
 **Outcome:** a monthly chargeback cost report (DE / DS / research) + an alert when a category is within
-10% of its budget — both running hands-off. **Security-first:** read-only system tables, no PHI.
+10% of its budget, both running hands-off. **Security-first:** read-only system tables, no PHI.
 
 > Reveal ladder: nudge → show the matching prompt in `GENIE_ONE_PROMPTS.md` → paste the trusted
-> SQL from `sql/`. Reveal the SQL **early** — it's plumbing, and seeing the exact join builds trust.
+> SQL from `sql/`. Reveal the SQL **early**. It's plumbing, and seeing the exact join builds trust.
 > Keep the *question-writing* open (that's Amy's learnable bit).
 
 ---
 
 ## Block 0 · Confirm system tables (pre-flight)
 
+- **Where the SQL is:** you do not clone anything. Both files were delivered into the workspace by
+  the one Day 1 foundation deploy, at
+  `/Workspace/fh-onsite/prescreen/client/files/kits/admin-session-starter-kit/sql/` (the shared
+  folder the foundation deploys to; the README's "Where the SQL lives" section explains it). Open
+  them from there in the SQL
+  editor. This session reads `system.billing`, not the foundation's clinical tables, so you can
+  start as soon as billing is readable.
 - **Pre-built:** both SQL files (`sql/cost_by_category.sql`, `sql/budget_threshold_alert.sql`),
   already validated on FEVM2.
 - **Amy/mentor does:** confirm `system.billing` is readable in this workspace.
-- Quick check (SQL editor or Genie One): `SELECT count(*) FROM system.billing.usage` — a non-zero
+- Quick check (SQL editor or Genie One): `SELECT count(*) FROM system.billing.usage`, a non-zero
   count means you're good.
-- **🚩 Checkpoint 1 — Billing tables reachable.** `system.billing.usage` returns a row count > 0 and
+- **🚩 Checkpoint 1: Billing tables reachable.** `system.billing.usage` returns a row count > 0 and
   `system.billing.list_prices` is readable. Genie One is pointed at both tables.
 - **Common failures:**
   - *`TABLE_OR_VIEW_NOT_FOUND` / permission denied on `system.billing`* → the schema isn't enabled or
@@ -54,16 +61,16 @@ FROM usage GROUP BY 1, 2 ORDER BY 1 DESC, 3 DESC;
 ```
 
 This mirrors `cost_by_category.sql` (the real one joins `list_prices` for the unit price and maps
-categories into DE/DS/research buckets — see the file).
+categories into DE/DS/research buckets, see the file).
 
 ---
 
-## Block 1 · The chargeback cost report (Amy #1) — GUIDED
+## Block 1 · The chargeback cost report (Amy #1), GUIDED
 
-- **Pre-built:** `sql/cost_by_category.sql` — the validated month × category dollar query.
+- **Pre-built:** `sql/cost_by_category.sql`, the validated month × category dollar query.
 - **Amy does:** in Genie One, run prompts **1 → 2 → 3** from `GENIE_ONE_PROMPTS.md` (total monthly
   cost → break down by `department` tag with product fallback into DE/DS/research → month-over-month).
-- **🚩 Checkpoint 2 — Chargeback breakdown renders.** Genie One returns a month × category grid of
+- **🚩 Checkpoint 2: Chargeback breakdown renders.** Genie One returns a month × category grid of
   dollars that matches (within rounding) `sql/cost_by_category.sql`. Amy can read off "DE vs DS vs
   research" for the latest month.
 - **Common failures:**
@@ -78,22 +85,22 @@ categories into DE/DS/research buckets — see the file).
 
 ---
 
-## Block 2 · Budget alert + scheduling (Amy #2) — GUIDED, the payoff
+## Block 2 · Budget alert + scheduling (Amy #2), GUIDED, the payoff
 
 - **Pre-built:** `sql/budget_threshold_alert.sql` (MTD spend vs per-category budget, flags ≥90%) and
   `resources/cost_report_job.yml` (monthly schedule + email).
 - **Amy does:** run prompt **4** (which categories are within 10% of budget), then prompt **5** to save
   it as a scheduled SQL alert. Set the budgets in the query's `budget_config` CTE (or point it at a UC
   budgets table).
-- **🚩 Checkpoint 3 — Alert is scheduled.** A SQL Alert (or the job's `budget_alert` task) is saved,
+- **🚩 Checkpoint 3: Alert is scheduled.** A SQL Alert (or the job's `budget_alert` task) is saved,
   emails Amy, and triggers when any category row has status `WITHIN_10PCT` or `OVER_BUDGET`. Bonus:
   the `cost_by_category` report is scheduled monthly.
 - **Emailing the CSV (the one gotcha):** Databricks **Job** `email_notifications` send *run status*,
   not query results. To email the **CSV itself**, use one of:
-  1. a **SQL Alert** on `budget_threshold_alert.sql` (best for the "tell me when" ask — only fires on
+  1. a **SQL Alert** on `budget_threshold_alert.sql` (best for the "tell me when" ask, only fires on
      a real breach), and/or
   2. a **scheduled Dashboard / query subscription** on `cost_by_category.sql` (best for the recurring
-     report — subscribers get the results table on a schedule).
+     report, subscribers get the results table on a schedule).
   Both are click-path setups in DBSQL; the job YAML runs the queries on schedule and is the deploy
   scaffold. This is documented in `resources/cost_report_job.yml`.
 - **Common failures:**
@@ -107,7 +114,7 @@ categories into DE/DS/research buckets — see the file).
 
 ---
 
-## Quick reference — checkpoint summary
+## Quick reference: checkpoint summary
 
 | # | Checkpoint | Signal it's met |
 |---|---|---|
@@ -129,7 +136,7 @@ Both SQL files were executed on **FEVM2** (`a reference workspace`, warehouse
   `pct_of_budget` and `status`.
 
 **One caveat:** FEVM2 is a large shared workspace, so MTD spend is enormous relative to the sample
-budgets in the CTE — all three categories read `OVER_BUDGET` there. The *logic, math, and status
+budgets in the CTE. All three categories read `OVER_BUDGET` there. The *logic, math, and status
 flags are correct*; on FH's own workspace with realistic per-category budgets, the OK / WITHIN_10PCT /
 OVER_BUDGET states will be meaningful. Set FH's real budgets before relying on the alert.
 

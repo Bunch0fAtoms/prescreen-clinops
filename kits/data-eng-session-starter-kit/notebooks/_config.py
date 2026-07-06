@@ -1,29 +1,29 @@
 # Databricks notebook source
 # MAGIC %md-sandbox
-# MAGIC # ⚙️ Configuration — Data Engineering Session (PRE-BUILT)
+# MAGIC # ⚙️ Configuration: Data Engineering Session (PRE-BUILT)
 # MAGIC
 # MAGIC <div style="background:#f4f6f9; border-left:6px solid #C8102E; padding:14px 18px; border-radius:4px; font-size:0.95em">
-# MAGIC This is the <b>companion config notebook</b> — it is <b>pre-built; you do not edit it</b>.
+# MAGIC This is the <b>companion config notebook</b>. It is <b>pre-built; you do not edit it</b>.
 # MAGIC Every other notebook starts with <code>%run ./_config</code> so they all share one
 # MAGIC catalog / schema / warehouse and the same source-of-truth tables.<br>
 # MAGIC Just set the widgets at the top of <code>00_START_HERE</code> (matching your bundle's
 # MAGIC <code>client_catalog</code> / <code>client_schema</code> / <code>warehouse_id</code>) and re-run.
 # MAGIC </div>
 # MAGIC
-# MAGIC Everything here is Unity-Catalog-scoped (no hive_metastore) and reads from widgets — no
+# MAGIC Everything here is Unity-Catalog-scoped (no hive_metastore) and reads from widgets, with no
 # MAGIC hardcoded secrets.
 
 # COMMAND ----------
 
-# DBTITLE 1,Widgets — set these to your bundle vars (catalog / schema you WRITE to / warehouse)
+# DBTITLE 1,Widgets: set these to your bundle vars (catalog / schema you WRITE to / warehouse)
 # `schema` is YOUR writable schema (bronze landing, evolved tables, reconciliation outputs,
 #   the ingest allow-list config). `source_catalog` / `source_schema` point at the read-only OMOP
 #   tables you ingest FROM. Synthetic (workshop): leave source_catalog blank (defaults to your own
 #   catalog) and source_schema = clinops_foundation. Real: set source_catalog = curated_omop,
-#   source_schema = omop. The 6 OMOP table names are identical either way — no query changes.
+#   source_schema = omop. The 6 OMOP table names are identical either way, no query changes.
 # `feed_schema` is where the shared LIVE trials feed lands (the foundation's land_trial_feed
 #   Volume). It is a workshop feed, so it stays on the foundation schema even when OMOP repoints
-#   to real — do NOT tie it to source_schema.
+#   to real. Do NOT tie it to source_schema.
 dbutils.widgets.text("catalog",        "<your_catalog>",     "1 · Catalog")
 dbutils.widgets.text("schema",         "clinops_de",         "2 · Schema (you write here)")
 dbutils.widgets.text("warehouse_id",   "<your_wh_id>",       "3 · SQL Warehouse ID")
@@ -44,7 +44,7 @@ FEED_SCHEMA    = dbutils.widgets.get("feed_schema")
 
 # DBTITLE 1,Point Spark at the (Unity Catalog) catalog & YOUR schema
 # Create the catalog if you have rights AND it's missing; otherwise just use the existing one.
-# (Many workspaces pre-provision the team catalog and don't grant CREATE CATALOG — that's fine.)
+# (Many workspaces pre-provision the team catalog and don't grant CREATE CATALOG, and that's fine.)
 try:
     spark.sql(f"CREATE CATALOG IF NOT EXISTS {CATALOG}")
 except Exception as e:

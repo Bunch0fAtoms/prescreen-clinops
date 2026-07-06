@@ -10,7 +10,7 @@
 --   resource was tagged (the chargeback-correct dimension), and falls back to
 --   `billing_origin_product` (JOBS / SQL / MODEL_SERVING / ...) when it wasn't.
 --
--- HOW TO MAKE IT YOURS  (the learnable bit — leave this open for Amy)
+-- HOW TO MAKE IT YOURS  (the learnable bit, leave this open for Amy)
 --   - Swap `department` for whatever tag FH standardizes on for chargeback
 --     (e.g. `cost_center`, `team`, `grant_id`). One line: see CATEGORY_TAG below.
 --   - Map raw tag/product values to the friendly DE / DS / research buckets in
