@@ -17,32 +17,45 @@ The six tables are the seed. Both the Data Engineering and the Applied AI groups
 same six tables and build independently. Neither group waits on the other to produce a data layer,
 so they run fully in parallel.
 
-## How the code is packaged: one foundation bundle, one bundle per group
+## How the code is packaged: one foundation bundle, plus a bundle only where a group needs one
 
-Expect to see **five** Databricks Asset Bundles (DABs), not one. This is intentional. The
-`foundation/` bundle is deployed and run **once** to stand up the shared six tables and the trials
-feed. Each of the four kits (`data-eng`, `ml`, `governance`, `admin`) is its **own** bundle that a
-group deploys into its **own** schema, reading the foundation tables read-only.
+Expect to see **three** Databricks Asset Bundles (DABs). This is intentional. The `foundation/` bundle
+is deployed and run **once** to stand up the shared six tables and the trials feed. Two groups then
+deploy their own bundle into their **own** schema, reading the foundation tables read-only:
+**Governance** (`governance-session-starter-kit`) and **ML** (`ml-session-starter-kit`). The other two
+groups build with **no bundle at all**: **Data Engineering** builds its trials-feed ingest live with
+Genie Code on top of the foundation (Track 1 Structured Streaming notebook to Job, or Track 2 a
+Lakeflow Declarative Pipeline), and **Admin / Genie One** works in SQL and Genie One over
+`system.billing`. Both create whatever they write in their own schema from the build itself.
 
 | Bundle | Who deploys it | When | Writes to |
 |---|---|---|---|
 | `foundation/` | Whoever stands up Day 1 (DE SSA shadows) | Once, before groups split | The shared foundation schema |
-| One per kit (×4) | Each group, for itself | During the build, as often as needed | That group's own schema |
+| `governance-session-starter-kit` | The Governance group | During the build | The Governance group's schema |
+| `ml-session-starter-kit` | The ML group | During the build | The ML group's schema |
+| (none) Data Engineering | Built live with Genie Code | During the build | The DE group's own schema |
+| (none) Admin / Genie One | SQL and Genie One | During the build | n/a |
 
-The split exists so the four groups stay independent. Each group deploys, redeploys, and iterates on
-its own bundle without touching the foundation or the other groups, so a mistake in one bundle has a
-**contained blast radius** and never disturbs the shared tables. Each `databricks.yml` also asks a
-group for only its own handful of values (for example, Governance needs a group name, Data
-Engineering and ML need a source schema), which keeps each team's setup short and relevant. The
-packaging mirrors the data model: one shared source everyone reads, one writable schema per team.
+The split exists so the groups stay independent. A group that has a bundle deploys, redeploys, and
+iterates on its own without touching the foundation or the other groups, so a mistake has a
+**contained blast radius** and never disturbs the shared tables. Each `databricks.yml` asks a group for
+only its own handful of values (for example, Governance needs a group name, ML needs a source schema),
+which keeps setup short and relevant. The packaging mirrors the data model: one shared source everyone
+reads, one writable schema per team.
 
 ## Discovery comes first
 
-Before either group builds, both run the discovery step in `foundation/DISCOVERY.md`. They
-interrogate the six tables with Genie Code and, optionally, stand up a Genie space over them. The
+Before anyone builds, the whole room runs the discovery step in `foundation/DISCOVERY.md`. All four
+groups interrogate the six tables with Genie Code and stand up a shared Genie space over them. The
 point is a shared understanding of the data before anyone extends it. One thing discovery surfaces
 matters for the whole day: about 60 of the 300 patients carry their biomarker status only in the
-free text of a pathology note, not in a structured field. That gap motivates both builds.
+free text of a pathology note, not in a structured field. That gap motivates the Data Engineering
+and Applied AI builds.
+
+This same session doubles as the Governance group's requirements-gathering. As the room asks real
+questions of the data, Governance sees which columns identify a patient and which questions imply
+that one group should see more than another. That becomes the control set it applies next, so the
+governance is grounded in how the room actually uses the data.
 
 ## What each group builds (not pre-built)
 
@@ -82,11 +95,14 @@ demonstrates, and the reason the notes-only gap matters.
 
 ## Governance is the spine
 
-The Governance group applies its controls to the foundation on Day 1, then rotates across the
-Data Engineering and Applied AI tracks, re-applying masks and row filters to the tables and models
-they compose. Every section's output ends up governed, so the solution respects who is allowed to
-see what. Because the data is synthetic, the full control set is exercised with no risk to real
-patient information.
+The Governance group sets its requirements in the Day 1 whole-room Genie session, then applies its
+controls to the foundation the same day. On Day 2 it rotates across the Data Engineering and Applied
+AI tracks, re-applying masks and row filters to the tables and models those groups compose. Every
+section's output ends up governed, so the solution respects who is allowed to see what. Because the
+data is synthetic, the full control set is exercised with no risk to real patient information.
+
+Admin runs alongside on Day 1, using Genie One to answer cost and usage questions and set budget
+alerts in plain language over the workspace billing system tables.
 
 ## If a group gets stuck
 

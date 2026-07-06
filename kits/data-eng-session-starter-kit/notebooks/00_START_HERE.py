@@ -1,5 +1,20 @@
 # Databricks notebook source
 # MAGIC %md-sandbox
+# MAGIC <div style="background:#FFF8E1; border-left:6px solid #F2A900; padding:14px 18px; border-radius:4px">
+# MAGIC <b>📌 These notebooks are optional facilitator backup reference.</b> The Data Engineering session
+# MAGIC is built <b>live with Genie Code</b> following <code>GENIE_CODE_PROMPTS.md</code> (Track 1 Spark
+# MAGIC Structured Streaming notebook scheduled as a Job, or Track 2 a Lakeflow Declarative Pipeline). The
+# MAGIC one pipeline the team builds there teaches all four Fred Hutch asks, so there is nothing special
+# MAGIC about running them separately on the OMOP tables. Pull these up only if a team stalls.<br><br>
+# MAGIC <b>There is no bundle to deploy for this kit</b> anymore: only the shared foundation deploys a DAB.
+# MAGIC Ignore any "deploy the bundle" or <code>resources/sla_ingest_job.yml</code> mentions below; they
+# MAGIC describe an earlier design. TODO (package author): fully reconcile or retire notebooks 01 to 04
+# MAGIC against the trials-feed build, and align notebook 05 with the validated Genie Code pipeline.
+# MAGIC </div>
+
+# COMMAND ----------
+
+# MAGIC %md-sandbox
 # MAGIC <div style="background:linear-gradient(90deg,#C8102E 0%,#7A0019 100%); color:white; padding:28px 32px; border-radius:8px">
 # MAGIC   <div style="font-size:0.95em; letter-spacing:2px; opacity:0.85">FRED HUTCHINSON CANCER CENTER · DATA ENGINEERING SESSION · STARTER KIT</div>
 # MAGIC   <div style="font-size:2.3em; font-weight:700; margin-top:6px">🛠️ Governed, Reconciled OMOP Ingestion</div>

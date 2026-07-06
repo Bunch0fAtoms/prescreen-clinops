@@ -1,7 +1,7 @@
 {
   "skill_version": "1.0.0",
   "demo_slug": "fred-hutch-omop-data-eng-session",
-  "demo_name": "Fred Hutch OMOP Ingestion — Data Engineering Session",
+  "demo_name": "Fred Hutch Data Engineering Session: Live Trials-Feed Ingestion",
 
   "name_vars": {
     "catalog_var": "client_catalog",
@@ -12,11 +12,11 @@
   },
 
   "deploy_target": {
-    "kind": "bundle",
+    "kind": "none",
     "resource_key": null,
-    "run_command": "databricks bundle deploy --target client",
-    "bundle_target_flag": "--target client",
-    "note": "No data-generation job. This kit READS the 6 OMOP source tables from source_schema (read-only) and WRITES bronze/recon/config tables into client_schema. The source tables must already exist. They are produced by the foundation setup job (the `foundation/` bundle, `foundation_setup_job`)."
+    "run_command": null,
+    "bundle_target_flag": null,
+    "note": "No bundle to deploy for this kit. Only the shared foundation deploys a DAB (foundation_setup_job), which creates the 6 read-only OMOP source tables and the live trials-feed Volume in the foundation schema (default clinops_foundation). The team builds the trials-feed ingest LIVE with Genie Code following GENIE_CODE_PROMPTS.md: Track 1 is a Spark Structured Streaming notebook scheduled as a Job, Track 2 is a Lakeflow Declarative Pipeline. The first prompt creates the team's own writable client_schema. Setup for this kit = confirm the foundation source and feed are up, then point Genie Code at the read-only source schema and a writable schema. There is no databricks.yml and no widget defaults to rewrite. The notebooks/ 00-05 are optional facilitator backup reference, not a deploy path."
   },
 
   "toggle": {
@@ -29,127 +29,101 @@
     "real_source_catalog": "curated_omop",
     "real_source_schema": "omop",
     "real_source_hint": "curated_omop.omop",
-    "note": "There is no run_with_synthetic_data boolean here. Synthetic vs real = where source_catalog/source_schema point. Synthetic = your own catalog + clinops_foundation (shared foundation). Real = the FH OMOP schema, a DIFFERENT catalog (curated_omop.omop) — so BOTH source_catalog and source_schema must be set. The 6 OMOP table names are identical either way, so no query changes are required. IMPORTANT: the trials FEED (nb 05) is a separate source — it is a workshop simulator that stays on the foundation. It uses feed_schema, NOT source_schema, so repointing OMOP to real does not break the feed."
+    "note": "The PRIMARY trials-feed build reads only the live feed Volume, which is a synthetic workshop simulator and is NEVER repointed. The synthetic-vs-real toggle applies to the 6 OMOP tables, which the team references for the join-ready proof and the optional backup notebooks: synthetic = your own catalog plus clinops_foundation; real = curated_omop.omop, a DIFFERENT catalog, so BOTH source_catalog and source_schema must be set. The 6 OMOP table names are identical either way. Because there is no databricks.yml, the switch is conveyed to Genie Code in the prompt (read FROM curated_omop.omop), not written to a bundle. IMPORTANT: the trials feed uses feed_schema (the foundation, default clinops_foundation), independent of source_schema, so repointing OMOP to real never breaks the feed."
   },
 
   "widget_config": {
-    "file": "notebooks/_config.py",
-    "widgets": {
-      "catalog": "catalog",
-      "schema": "schema",
-      "warehouse_id": "warehouse_id",
-      "source_schema": "source_schema",
-      "source_catalog": "source_catalog",
-      "feed_schema": "feed_schema"
-    },
-    "note": "The notebooks read from these dbutils.widgets, NOT from bundle vars, so a databricks.yml change alone does not reach an interactive run. At setup the skill rewrites each widget's DEFAULT (the 2nd argument of dbutils.widgets.text) to the chosen value: catalog<-client_catalog, schema<-client_schema, source_schema<-source_schema, source_catalog<-source_catalog (leave blank for synthetic; curated_omop for real). Leave feed_schema on the foundation schema (clinops_foundation, or wherever the foundation deployed) even in real mode — nb 05 reads the live trials feed from /Volumes/<catalog>/<feed_schema>/trial_landing. Rewriting a widget DEFAULT is a setup action, not a rename — allowed."
+    "file": null,
+    "widgets": {},
+    "note": "This kit is built live with Genie Code, so there are no widget defaults for the skill to rewrite during setup. The notebooks/_config.py widgets exist only for the optional facilitator backup notebooks and are set by hand if a facilitator opens them; adaptation does not touch them."
   },
 
   "real_mode": {
-    "how": "Set source_catalog=curated_omop and source_schema=omop in BOTH databricks.yml (targets.client.variables) AND the notebooks/_config.py widget defaults. Leave feed_schema pointed at the foundation — the trials feed is a workshop simulator, not real FH data.",
-    "rebuild_assets": "Real mode is more than a var flip. bronze_* and recon outputs read from src() = source_catalog.source_schema. Any already built from synthetic must be REBUILT: re-run nb 01-04 after repointing so bronze/recon reflect real OMOP. The trials segment (nb 05) is unaffected — it keeps reading the foundation feed via feed_schema."
+    "how": "There is no databricks.yml for this kit. To run against real OMOP, tell Genie Code to read the 6 OMOP tables FROM curated_omop.omop instead of the foundation schema (set both source_catalog=curated_omop and source_schema=omop in the prompt). The trials feed stays on the foundation; it is a workshop simulator, not real FH data.",
+    "rebuild_assets": "The trials-feed pipeline (bronze_trial_catalog, silver_trial_criteria, quarantine_trial_criteria) reads only the feed, so it is unaffected by the OMOP synthetic-to-real switch. Anything the team built that reads the 6 OMOP tables (the join-ready proof, or the backup OMOP notebooks) must be re-run after repointing so it reflects real OMOP."
   },
 
   "tables": [
-    {"name": "person", "role": "Read-only OMOP source, one row per patient.", "row_count_expected": 300, "access": "read-only (source_schema)"},
-    {"name": "condition_occurrence", "role": "Read-only OMOP source. In nb 01 a v2 append adds condition_source_name to demonstrate schema evolution.", "row_count_expected": 300, "access": "read-only (source_schema)"},
-    {"name": "measurement", "role": "Read-only OMOP source. In nb 02 a copy has a deliberate 7-row gap injected to exercise reconciliation.", "row_count_expected": 720, "access": "read-only (source_schema)"},
+    {"name": "person", "role": "Read-only OMOP source, one row per patient. Referenced for the join-ready proof; the primary trials-feed build does not ingest it.", "row_count_expected": 300, "access": "read-only (source_schema)"},
+    {"name": "condition_occurrence", "role": "Read-only OMOP source.", "row_count_expected": 300, "access": "read-only (source_schema)"},
+    {"name": "measurement", "role": "Read-only OMOP source.", "row_count_expected": 720, "access": "read-only (source_schema)"},
     {"name": "observation", "role": "Read-only OMOP source.", "row_count_expected": 720, "access": "read-only (source_schema)"},
     {"name": "drug_exposure", "role": "Read-only OMOP source.", "row_count_expected": 383, "access": "read-only (source_schema)"},
     {"name": "note", "role": "Read-only OMOP source (free-text pathology notes).", "row_count_expected": 265, "access": "read-only (source_schema)"},
-    {"name": "bronze_*", "role": "Bronze landing tables the TEAM creates in client_schema (e.g. bronze_person). nb 01 evolves bronze on append via mergeSchema.", "access": "written (client_schema)"},
-    {"name": "recon_summary", "role": "Timestamped reconciliation audit table the TEAM writes in nb 02 (one row per table per run).", "access": "written (client_schema)"},
-    {"name": "ingest_allowlist", "role": "UC config table (6 OMOP allowed, 2 restricted denied) the restricted-ingest gate reads in nb 03.", "access": "written (client_schema)"},
-    {"name": "bronze_trial_catalog", "role": "nb 05 — VARIANT bronze the TEAM lands via Auto Loader (cloudFiles) from the shared LIVE trials feed Volume. Schema-stable: (value, trial_raw VARIANT, _source_file, _ingested_at). Row count GROWS as the feed runs.", "access": "written (client_schema)"},
-    {"name": "silver_trial_criteria", "role": "nb 05 — flattened, join-ready trial eligibility criteria (latest-wins per trial_id by load_ts). Includes min_ecog (VARIANT path, NULL when a trial doesn't set it). The eligibility contract the Applied AI pre-screen joins against.", "access": "written (client_schema)"},
-    {"name": "bronze_trial_quarantine", "role": "nb 05 TODO — bad trial records routed aside with a quarantine_reason (unparseable / missing_trial_id / bad_type_age) so a malformed line never fails the load.", "access": "written (client_schema)"},
-    {"name": "_ingest_state (volume)", "role": "nb 05 — a Volume in client_schema holding Auto Loader's schemaLocation + checkpoint for the trials ingest (per-team ingest bookkeeping; never in the shared read-only Volume).", "access": "written (client_schema)"}
+    {"name": "bronze_trial_catalog", "role": "VARIANT bronze the TEAM lands via Auto Loader (cloudFiles) from the shared LIVE trials feed Volume. Schema-stable (raw line, trial_raw VARIANT, _source_file). Row count GROWS as the feed runs. Absorbs new criteria with no schema change.", "access": "written (client_schema)"},
+    {"name": "silver_trial_criteria", "role": "Flattened, join-ready trial eligibility criteria (latest-wins per trial_id by load_ts, every field read null-safe via try_variant_get, including min_ecog). The eligibility contract the Applied AI pre-screen joins against.", "access": "written (client_schema)"},
+    {"name": "quarantine_trial_criteria", "role": "Bad trial records routed aside with a quarantine_reason (malformed_json / missing_trial_id / invalid_type) so a malformed line never fails the load. Track 2 drops them via @dlt.expect_all_or_drop on the source view.", "access": "written (client_schema)"},
+    {"name": "recon_summary", "role": "Optional hardening (Chetan #17): a per-file reconciliation audit the team may add (did every record reach silver or quarantine?).", "access": "written (client_schema)"},
+    {"name": "_ingest_state (volume)", "role": "A Volume in client_schema holding Auto Loader's schemaLocation and checkpoint for the trials ingest (Track 1). Never in the shared read-only Volume.", "access": "written (client_schema)"}
   ],
 
   "source_files": {
-    "notebooks": "notebooks/ (00_START_HERE, 01_schema_evolution, 02_row_count_reconciliation, 03_restricted_table_ingest_gate, 04_sla_job_windows, 05_trials_catalog_ingest)",
-    "config": "notebooks/_config.py",
-    "job_resource": "resources/sla_ingest_job.yml",
-    "bundle": "databricks.yml"
+    "primary": "GENIE_CODE_PROMPTS.md (Track 1 Spark Structured Streaming notebook to Job, Track 2 Lakeflow Declarative Pipeline). This is the build path.",
+    "backup_notebooks": "notebooks/ (00_START_HERE, 01_schema_evolution, 02_row_count_reconciliation, 03_restricted_table_ingest_gate, 04_sla_job_windows, 05_trials_catalog_ingest): optional worked reference for the facilitator, not the path.",
+    "backup_config": "notebooks/_config.py (widgets for the backup notebooks only)",
+    "answer_key": "reference/ (SA-only)"
   },
 
   "table_contract": {
     "bronze": {
-      "tables": ["bronze_person", "bronze_condition_occurrence", "bronze_measurement", "bronze_observation", "bronze_drug_exposure", "bronze_note"],
-      "defined_in": ["notebooks/01_schema_evolution.py", "notebooks/02_row_count_reconciliation.py"],
-      "note": "Bronze landing written by the ingest notebooks into client_schema."
+      "tables": ["bronze_trial_catalog"],
+      "note": "VARIANT bronze landed by the Auto Loader ingest into client_schema from the live trials feed."
     },
     "silver": {
       "tables": ["silver_trial_criteria"],
-      "note": "This DE track owns ingest hardening plus the trials catalog. It ingests the shared LIVE trials feed (foundation land_trial_feed) incrementally with Auto Loader into bronze_trial_catalog, flattens the good records to silver_trial_criteria (the eligibility contract the Applied AI pre-screen joins against), and quarantines bad records to bronze_trial_quarantine. Both groups build in parallel off the 6 OMOP tables; neither waits on the other's data layer. See ../../SHARED_FOUNDATION.md."
+      "note": "This DE track ingests the shared LIVE trials feed (foundation land_trial_feed) incrementally into bronze_trial_catalog, flattens the good records to silver_trial_criteria (the eligibility contract the Applied AI pre-screen joins against), and quarantines bad records to quarantine_trial_criteria. Both groups build in parallel off the shared foundation; neither waits on the other's data layer. See ../../SHARED_FOUNDATION.md."
     },
     "gold": null
   },
 
   "dependency_map": [
-    {"from": "source_schema.*", "to": "bronze_*", "type": "ingested_into", "note": "Read-only OMOP source → bronze in client_schema"},
-    {"from": "source_schema.measurement", "to": "recon_summary", "type": "reconciled_by", "note": "nb 02 compares source vs target counts + anti-join for missing keys"},
-    {"from": "ingest_allowlist", "to": "safe_ingest()", "type": "gates", "note": "nb 03 reads the allow-list before any write"},
-    {"from": "foundation land_trial_feed (shared trial_landing Volume)", "to": "bronze_trial_catalog", "type": "ingested_into", "note": "nb 05 Auto Loader reads the shared LIVE feed Volume (source_schema) and appends to bronze in client_schema, checkpointed per-team"},
+    {"from": "foundation land_trial_feed (shared trial_landing Volume)", "to": "bronze_trial_catalog", "type": "ingested_into", "note": "Auto Loader reads the shared LIVE feed Volume (feed_schema on the foundation) and appends to bronze in client_schema, checkpointed per-team"},
     {"from": "bronze_trial_catalog", "to": "silver_trial_criteria", "type": "flattened_into", "note": "good records only, latest-wins per trial_id by load_ts"},
-    {"from": "bronze_trial_catalog", "to": "bronze_trial_quarantine", "type": "routed_into", "note": "nb 05 TODO — bad records with a quarantine_reason"},
+    {"from": "bronze_trial_catalog", "to": "quarantine_trial_criteria", "type": "routed_into", "note": "bad records with a quarantine_reason (Track 2 via expectations on the source view)"},
     {"from": "silver_trial_criteria", "to": "ml_group", "type": "contract", "note": "The trials catalog silver_trial_criteria is the eligibility contract the Applied AI pre-screen joins against (a hand-off, never a blocker)"}
   ],
 
   "grain_constraints": [
-    {"table": "person", "grain_key": "person_id", "min_partition_size": 1, "note": "One row per patient"},
-    {"table": "measurement", "grain_key": "person_id + measurement_source_value", "min_partition_size": 1, "note": "Reconciliation anti-join keys on person_id"}
+    {"table": "silver_trial_criteria", "grain_key": "trial_id", "min_partition_size": 1, "note": "One latest-wins row per trial_id, newest by load_ts"}
   ],
 
   "source_inputs": [
-    {"source_type": "uc_tables_readonly", "locator": "${var.source_schema}", "description": "The 6 read-only OMOP source tables. Synthetic default = clinops_foundation.", "active_when": "always (this kit does not generate data)"},
-    {"source_type": "real_omop", "locator": "curated_omop.omop", "description": "FH real OMOP CDM tables — point source_schema here to run against real data. Identical table names.", "active_when": "source_schema repointed to real"},
-    {"source_type": "live_files_volume", "locator": "/Volumes/${var.client_catalog}/${feed_schema}/trial_landing/trial_catalog/trials_*.json", "description": "The shared LIVE clinical-trials feed, streamed by the foundation land_trial_feed simulator. nb 05 ingests it incrementally with Auto Loader (cloudFiles). Read-only shared producer; each team checkpoints in its own schema. feed_schema is the foundation schema (default clinops_foundation) and is INDEPENDENT of source_schema — it stays on the foundation even when OMOP source_schema is repointed to real (curated_omop.omop).", "active_when": "always — presenter starts/stops the feed via the foundation job"}
+    {"source_type": "live_files_volume", "locator": "/Volumes/${var.client_catalog}/${feed_schema}/trial_landing/trial_catalog/trials_*.json", "description": "The PRIMARY source: the shared LIVE clinical-trials feed, streamed by the foundation land_trial_feed simulator. The team ingests it incrementally with Auto Loader (cloudFiles). Read-only shared producer; each team checkpoints in its own schema. feed_schema is the foundation schema (default clinops_foundation) and is INDEPENDENT of source_schema; it stays on the foundation even when OMOP is repointed to real.", "active_when": "always; the presenter starts, stages, and stops the feed via the foundation job"},
+    {"source_type": "uc_tables_readonly", "locator": "${var.source_schema}", "description": "The 6 read-only OMOP source tables (foundation). Referenced for the join-ready proof and the optional backup notebooks; the primary trials-feed build does not ingest them. Synthetic default = clinops_foundation.", "active_when": "join-ready proof and backup notebooks"},
+    {"source_type": "real_omop", "locator": "curated_omop.omop", "description": "FH real OMOP CDM tables. Point source_catalog and source_schema here to reference real data. Identical table names.", "active_when": "source repointed to real"}
   ],
 
   "verify_queries": [
     {
       "id": "foundation_source_counts",
-      "description": "Checkpoint 0 — all 6 read-only OMOP source tables present with expected counts",
+      "description": "Checkpoint 0: all 6 read-only OMOP source tables present with expected counts (the feed Volume presence is confirmed separately by listing it)",
       "sql": "SELECT 'person' AS tbl, COUNT(*) AS n FROM ${client_catalog}.${source_schema}.person UNION ALL SELECT 'condition_occurrence', COUNT(*) FROM ${client_catalog}.${source_schema}.condition_occurrence UNION ALL SELECT 'measurement', COUNT(*) FROM ${client_catalog}.${source_schema}.measurement UNION ALL SELECT 'observation', COUNT(*) FROM ${client_catalog}.${source_schema}.observation UNION ALL SELECT 'drug_exposure', COUNT(*) FROM ${client_catalog}.${source_schema}.drug_exposure UNION ALL SELECT 'note', COUNT(*) FROM ${client_catalog}.${source_schema}.note ORDER BY tbl",
       "expected": "person=300, condition_occurrence=300, measurement=720, observation=720, drug_exposure=383, note=265"
     },
     {
-      "id": "schema_evolved_row_count",
-      "description": "Checkpoint 1 — after the mergeSchema append, bronze has condition_source_name and 600 rows (300 NULL pre-evolution + 300 populated)",
-      "sql": "SELECT COUNT(*) AS n, COUNT(condition_source_name) AS populated FROM ${client_catalog}.${client_schema}.bronze_condition_occurrence",
-      "expected": "n=600, populated=300"
-    },
-    {
-      "id": "reconciliation_gap",
-      "description": "Checkpoint 2 — reconciliation flags the injected 7-row measurement gap",
-      "sql": "SELECT table_name, status, delta FROM ${client_catalog}.${client_schema}.recon_summary ORDER BY event_time DESC",
-      "expected": "measurement FAIL delta=7; all other tables PASS"
-    },
-    {
       "id": "trials_silver_good",
-      "description": "Checkpoint 5 — clean trials flowed to silver, latest-wins, with min_ecog present. Counts grow as the live feed runs; the point is clean trials are present and deduped.",
+      "description": "Checkpoint 1: clean trials flowed to silver, latest-wins, with min_ecog present. Counts grow as the live feed runs; the point is clean trials are present and deduped.",
       "sql": "SELECT trial_id, min_ecog, feed_version FROM ${client_catalog}.${client_schema}.silver_trial_criteria ORDER BY trial_id",
       "expected": "one row per trial_id (A/B/C at minimum, then D/E/F as they land); Trial A min_ecog=1, others NULL until they set it"
     },
     {
       "id": "trials_quarantine",
-      "description": "Checkpoint 5 — bad records were routed aside with a reason, not allowed to fail the load",
-      "sql": "SELECT quarantine_reason, COUNT(*) AS n FROM ${client_catalog}.${client_schema}.bronze_trial_quarantine GROUP BY quarantine_reason ORDER BY quarantine_reason",
-      "expected": "once the opening act passes ~50 min: unparseable=1, missing_trial_id=1, bad_type_age=1 (built by the nb 05 TODO)"
+      "description": "Checkpoint 2: bad records were routed aside with a reason, not allowed to fail the load. Appears after the dirty stage is released.",
+      "sql": "SELECT quarantine_reason, COUNT(*) AS n FROM ${client_catalog}.${client_schema}.quarantine_trial_criteria GROUP BY quarantine_reason ORDER BY quarantine_reason",
+      "expected": "after --stage dirty: malformed_json=1, missing_trial_id=1, invalid_type=1"
     }
   ],
 
   "lock_targets": [
     {
-      "task_class": "rename_table",
-      "paths": ["notebooks/_config.py", "notebooks/01_schema_evolution.py", "notebooks/02_row_count_reconciliation.py"],
-      "reason": "OMOP CDM source table names (person, condition_occurrence, measurement, observation, drug_exposure, note) are standard. Renaming breaks the read from source_schema and the synth→real repointing."
+      "task_class": "edit",
+      "paths": ["notebooks/05_trials_catalog_ingest.py", "notebooks/_config.py"],
+      "reason": "The backup notebooks read the trials LANDING Volume via feed_schema: /Volumes/<catalog>/<feed_schema>/trial_landing/trial_catalog. Keep it on feed_schema (the foundation); never repoint it at client_schema (the feed is a shared producer) and never tie it to source_schema (repointing OMOP to real must not break the feed). Auto Loader schemaLocation and checkpoint MUST stay in client_schema (_ingest_state Volume). These are backup-reference notebooks; the live build is via GENIE_CODE_PROMPTS.md."
     },
     {
-      "task_class": "edit",
-      "paths": ["notebooks/05_trials_catalog_ingest.py"],
-      "reason": "The trials LANDING Volume path reads the shared foundation feed via feed_schema: /Volumes/<catalog>/<feed_schema>/trial_landing/trial_catalog. Keep it on feed_schema (the foundation) — never repoint it at client_schema (the feed is a shared producer) and never tie it to source_schema (repointing OMOP to real must not break the feed). Auto Loader schemaLocation + checkpoint MUST stay in client_schema (_ingest_state Volume)."
+      "task_class": "rename_table",
+      "paths": ["notebooks/01_schema_evolution.py", "notebooks/02_row_count_reconciliation.py"],
+      "reason": "OMOP CDM source table names (person, condition_occurrence, measurement, observation, drug_exposure, note) are standard. Renaming breaks the read from source_schema and the synthetic-to-real repointing. Backup notebooks."
     },
     {
       "task_class": "setup",
@@ -158,7 +132,7 @@
     }
   ],
 
-  "checkpoints_note": "Notebook-driven checkpoints (Checkpoint 0-4) are documented in RUNBOOK.md. Some (restricted-ingest gate nb 03, SLA window nb 04) are Python assertions rather than SQL — verify by running the notebook cells, not a warehouse query.",
+  "checkpoints_note": "The DE build is validated as the trials-feed pipeline in either framework (Track 1 SSS notebook to Job, Track 2 LDP). Checkpoints 0 to 3 are documented in RUNBOOK.md. The optional backup notebooks (01-04) carry their own OMOP-table checkpoints if a facilitator opens them.",
 
   "unresolved": []
 }

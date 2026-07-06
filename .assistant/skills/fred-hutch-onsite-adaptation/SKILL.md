@@ -73,7 +73,7 @@ gates. Use judgment.
    |---|---|---|---|
    | Shared Foundation (`fred-hutch-prescreen-foundation`) | yes | `job` (`foundation_setup_job`) | deploy → run the job: `generate_omop_data` writes the 6 OMOP tables (one-time), `land_trial_feed` is a **long-running, presenter-controlled live trials feed** (streams files until the run is cancelled; the run stays RUNNING by design). Stand this up FIRST — the other kits read from it. |
    | Governance (`fred-hutch-governance-session`) | yes | `job` (`setup_clone_job`) | deploy → run the deep-clone job (lands 6 OMOP tables in the governance schema) |
-   | Data Engineering (`fred-hutch-omop-data-eng-session`) | yes | `bundle` | deploy only; reads the 6 OMOP source tables + the shared live trials feed Volume from `source_schema` (both stood up by the foundation) |
+   | Data Engineering (`fred-hutch-omop-data-eng-session`) | **no bundle** | `none` | **No bundle to deploy.** The team builds the trials-feed ingest LIVE with Genie Code (see the kit's `GENIE_CODE_PROMPTS.md`: Track 1 Structured Streaming notebook → Job, or Track 2 Lakeflow Declarative Pipeline). Setup = confirm the foundation source tables + live feed Volume are up, then point Genie Code at the read-only `source_schema` and a writable `client_schema` (the first prompt creates it). No `databricks.yml`, no widget defaults to write. `notebooks/` are optional facilitator backup. |
    | ML / Pre-Screening (`fred-hutch-clinical-trial-prescreening`) | yes | `job` (`data_generation_job`) | deploy → run the data-generation job |
    | Admin / Genie One | **no bundle** | n/a | **No adaptation needed** — SQL + Genie One over `system.billing`. If asked, point the user at the kit's `sql/` + `GENIE_ONE_PROMPTS.md`; there is nothing to deploy. |
 
@@ -168,8 +168,11 @@ gates. Use judgment.
    > # kind=job → also run the job that lands data:
    > #   databricks bundle run <resource_key> --target client
    > #   (Foundation = foundation_setup_job · Governance = setup_clone_job · ML = data_generation_job)
-   > # kind=bundle (Data Engineering) → no data job; the 6 OMOP source tables + the shared
-   > #   live trials feed Volume must already exist in source_schema (stood up by the foundation).
+   > # Data Engineering → NO bundle to deploy. The team builds the trials-feed ingest live with
+   > #   Genie Code (kit GENIE_CODE_PROMPTS.md: Track 1 Structured Streaming notebook to Job, or
+   > #   Track 2 Lakeflow Declarative Pipeline). Setup is just: confirm the foundation's 6 OMOP
+   > #   source tables + live trials feed Volume exist, then point Genie Code at source_schema +
+   > #   a writable client_schema. Nothing to deploy or run here.
    > ```
    > **Foundation note:** `foundation_setup_job` includes `land_trial_feed`, a long-running live
    > feed that runs until cancelled — so the job run stays RUNNING by design. Tell the presenter to
@@ -269,4 +272,33 @@ identifiers = consistent); (3) verify-query output; (4) redeploy-scope decision 
 
 Keep this skill lean and kit-agnostic. Every per-kit specific belongs in that kit's
 `ADAPTATION_FACTS.json`, not here. Do not append unbounded "gotchas"; read the matching facts field on
-demand rather than inlining it.
+demand rather than inlining it. **One sanctioned exception:** §10's build-patterns list. It is not
+per-kit facts, it is current-API knowledge (Lakeflow/DLT + VARIANT) that helps any builder write code
+Genie Code otherwise gets wrong on a first pass. Keep it short and prune an item the moment Genie
+Code's own defaults handle it.
+
+## 10. Build patterns, pre-load so Genie Code builds clean the first time [DE]
+
+> These are current Lakeflow/DLT + VARIANT API details Genie Code sometimes gets wrong on a first
+> pass. Pre-loading them is the "harden the skill" strategy in the project plan: an API-friction
+> failure teaches nothing about the customer's problem, so we fix it once here rather than in the
+> room. Apply these when a builder is assembling the **Data Engineering trials-feed ingest** (either
+> framework). Suggest them as you help; do not silently rewrite a builder's code.
+
+**Both frameworks:**
+- **VARIANT reads are null-safe, always.** Extract every field with
+  `try_variant_get(col, '$.path', 'TYPE')`, including the nested `eligibility.*` ones. Never a strict
+  `::` cast: it throws `INVALID_VARIANT_CAST` the moment a trial legitimately omits a field. This
+  applies in the flatten step AND inside any data-quality predicate.
+- **Latest-wins, one row per `trial_id`.** LDP: use an `apply_changes` (AUTO CDC) flow with
+  `keys=["trial_id"]`, `sequence_by="load_ts"`. Structured Streaming: dedup the source to one row per
+  key (`row_number()` newest by `load_ts`) BEFORE the `foreachBatch` MERGE, or the first batch inserts
+  every version of a re-landed trial.
+
+**LDP-specific (each cost a full pipeline run in dry-run testing):**
+- **`apply_changes` uses `column_list`, not `columns`.** The keyword is `column_list=[...]`.
+- **CDC quality expectations go on the SOURCE view, not `create_streaming_table`.** Decorate the
+  flow's source view with `@dlt.expect_all_or_drop({...})` and read it via `dlt.read_stream`.
+  Expectations placed on `create_streaming_table` are validated against the post-`column_list` target
+  columns, so they cannot see raw/helper columns you projected out, and you get `UNRESOLVED_COLUMN`.
+  Keep the raw flattened view separate so the quarantine table can still read the bad rows.

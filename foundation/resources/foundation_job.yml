@@ -9,16 +9,24 @@ resources:
         identical tables. Only needed when run_with_synthetic_data=yes; when =no,
         downstream tools read the 6 OMOP tables from ${var.source_catalog}.${var.source_schema}.
         (2) land_trial_feed — a LONG-RUNNING, presenter-controlled LIVE feed. It drops
-        clinical-trials JSON files into the trial_landing Volume over time (a ~50-min
-        scripted opening act, then an indefinite heartbeat) so the Data Engineering
-        group builds a genuinely incremental Auto Loader ingest and watches it react to
-        new files, schema drift, and bad records. One shared producer, many independent
-        consumers: each DE team points its own Auto Loader + checkpoint at this Volume.
+        clinical-trials JSON files into the trial_landing Volume over time so the Data
+        Engineering group builds a genuinely incremental Auto Loader ingest and watches it
+        react to new files, schema drift, and bad records. One shared producer, many
+        independent consumers: each DE team points its own Auto Loader + checkpoint at this
+        Volume.
+        STAGED so failures teach instead of block (--stage): stage=clean lands only valid
+        records (clean + net-new + additive schema evolution + latest-wins, ~35 min at
+        speed 1) then heartbeats — the Build 1 target; stage=dirty lands the bad records
+        (missing key, malformed, wrong type) ON THE PRESENTER'S CUE once teams have a
+        working pipeline; stage=all (default) lands clean then dirty in one run.
+        RECOMMENDED FLOW — Run now with --stage clean (add --speed 6 to compress to ~5 min);
+        when teams have Build 1 working, cancel and Run now with --stage dirty to release
+        the bad records so teams re-run and harden.
         PRESENTER CONTROL — start: run the job (or Repair-run just land_trial_feed);
         pause: cancel the run (generate_omop_data has already finished, so only the feed
         stops); restart: Run now again, or Repair-run selecting only land_trial_feed.
-        TUNING — add --speed / --heartbeat-seconds / --reset via "Run now with different
-        parameters" (e.g. --speed 6 for an ~8-min dry run).
+        TUNING — add --stage / --speed / --heartbeat-seconds / --reset via "Run now with
+        different parameters".
 
       tasks:
         - task_key: generate_omop_data
