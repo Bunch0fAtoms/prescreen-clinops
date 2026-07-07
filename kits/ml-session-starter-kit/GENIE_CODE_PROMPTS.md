@@ -231,9 +231,12 @@ SQL and confirm the table/column comments ran (comments are Genie's main signal)
 ### 🧩 Now design your own (the open part)
 You have an audited, self-serve pre-screen. Take it further:
 
-- ⭐ **Cross-team stretch, only if the DE group shipped their trials catalog in time.** Your pre-screen
-  already screens against your own `trial_criteria`; now consume the DE group's live one:
-  *"Repoint my `gold_trial_prescreen` join from my own `trial_criteria` to the DE group's live `<catalog>.clinops_de.silver_trial_criteria` (or UNION the two so I keep mine and add theirs). Because the join is generic, any net-new trial DE landed, like a triple-negative Trial C, now screens with zero code change."* This is the payoff of trials-as-data across teams: one group produces the catalog, another consumes it, and **neither waits on the other.** Your core build never depended on DE, this only enriches it.
+- ⭐ **Cross-team stretch, only if the DE group shipped their trials catalog in time (see `DE_INTEGRATION_STRETCH.md`).**
+  Your pre-screen already joins your **own** `trial_criteria` table; now consume the DE group's live one.
+  Repoint the join from your `trial_criteria` to `<catalog>.clinops_de.silver_trial_criteria` (or UNION
+  the two so you keep yours and add theirs). Because the join is generic, any net-new trial DE landed,
+  like a triple-negative Trial C, screens with **zero code change**. One group produces the catalog,
+  another consumes it, and **neither waits on the other.** Your core build never depended on DE, this only enriches it.
 - *"Add another trial by inserting a row into my `trial_criteria` (e.g. triple-negative: ER−/PR−/HER2−), then re-run the pre-screen and watch the cohort update with no SQL change."*
 - *"Seed ambiguous pathology notes and rerun the MLflow eval so the prompt/model contrast is real."*
 - *"Build a coordinator app (or an agent) over `gold_trial_prescreen` that shows the eligible list with a provenance badge per patient: structured / both / NLP-recovered."* (See `09_app_TODO.py` + `STRETCH.md`.)
