@@ -13,6 +13,12 @@ whole-room block at the start, before the groups split. It produces two things:
 The six tables match the column names and types of Fred Hutch's real `curated_omop.omop` schema,
 so moving from synthetic to real data later is a configuration change, not a rewrite.
 
+One column is an exception. The `person` table includes a synthetic-only `is_high_profile` (VIP)
+flag, added so the Governance track has a real row-filter target. Fred Hutch's real
+`curated_omop.omop.person` does not have this column. When you switch to real data, the adaptation
+skill removes references to it from the downstream code it adapts, so nothing breaks. If Fred Hutch
+has its own high-profile indicator, the skill can point the row filter at that instead.
+
 ## How to stand it up
 
 The foundation ships as a Databricks Asset Bundle (a bundle is a versioned, deployable unit of

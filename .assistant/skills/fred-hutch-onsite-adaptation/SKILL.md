@@ -100,6 +100,7 @@ gates. Use judgment.
 | Deploy / run command | `deploy_target.run_command` (+ `deploy_target.kind`) |
 | Editable DAB variable names | `name_vars` (`catalog_var`, `schema_var`, `warehouse_var`, and kit-specific extras like `group_var`, `source_catalog_var`, `source_schema_var`) |
 | Synthetic ↔ real switch | `toggle` (a boolean var AND/OR source-repointing via `source_catalog_var` + `source_schema_var`; read `real_source_catalog`/`real_source_schema`). Real OMOP is a DIFFERENT catalog, so set BOTH. |
+| Synthetic-only columns absent from real OMOP | `synthetic_only_columns` (in the shared FOUNDATION's facts). In real mode, strip or guard every downstream reference to these; they do not exist in real data |
 | Notebook widget defaults to rewrite | `widget_config` (`file` + `widgets` map). Notebooks read widgets, not DAB vars — rewrite these defaults so a run inherits the chosen values. |
 | How to finish a real-data switch | `real_mode` (`how` + `rebuild_assets`) — repoint, then rebuild anything already materialized from synthetic |
 | What each table is / expected counts | `tables[]` |
@@ -146,6 +147,14 @@ gates. Use judgment.
    - **Do NOT repoint the DE trials feed.** The trials feed (`feed_schema`) is a synthetic workshop
      simulator on the foundation. It is independent of `source_schema` — leave it on the foundation
      even in real mode, or nb 05's Volume path breaks.
+   - **Strip synthetic-only columns in real mode.** The shared foundation adds a few columns that
+     exist ONLY in synthetic data. They are listed in the FOUNDATION's `ADAPTATION_FACTS.json` under
+     `synthetic_only_columns` (for example `person.is_high_profile`, the VIP flag behind the
+     Governance row-filter demo). Real `curated_omop.omop` does NOT have them. When you switch a kit
+     to real data, find every downstream reference to a `synthetic_only_columns` column in the code
+     you are adapting (row filters, masks, `SELECT` lists, joins, `WHERE` clauses) and drop or guard
+     it, or the query fails with `UNRESOLVED_COLUMN`. If the customer has a real equivalent (for
+     example a real VIP indicator), offer to repoint the logic at that column instead of deleting it.
 4. **Write `databricks.yml` AND the notebook widget defaults.**
    - **`databricks.yml`** — update `targets.client.variables` (`name_vars` + kit extras, incl. both
      source vars for real mode).
