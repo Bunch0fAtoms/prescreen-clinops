@@ -21,7 +21,7 @@ import numpy as np
 from faker import Faker
 from pyspark.sql.types import (
     StructType, StructField,
-    LongType, IntegerType, FloatType, StringType, DateType, TimestampType,
+    LongType, IntegerType, FloatType, StringType, DateType, TimestampType, BooleanType,
 )
 
 # ── CLI args ───────────────────────────────────────────────────────────────────
@@ -616,6 +616,16 @@ def make_patient_profiles() -> pd.DataFrame:
 
         name = fake.name_female()
 
+        # ── High-profile / VIP flag ─────────────────────────────────────────
+        # A fixed, deterministic set of patients flagged as high-profile (VIP),
+        # mirroring Fred Hutch's real celebrity/VIP indicator. Deliberately
+        # overlaps BOTH trial-eligible cohorts (Trial A = ids 1–20, Trial B =
+        # ids 31–50) plus a couple of general patients, so a governance
+        # row-filter/ABAC policy visibly removes eligible patients from the
+        # pre-screen results. Fixed (not random) so counts stay reproducible.
+        VIP_PERSON_IDS = {3, 12, 37, 44, 88, 205}
+        is_high_profile = pid in VIP_PERSON_IDS
+
         rows.append({
             # ── OMOP person columns ──────────────────────────────────────
             "person_id":                  pid,
@@ -637,6 +647,7 @@ def make_patient_profiles() -> pd.DataFrame:
             "ethnicity_source_value":     eth_sv,
             "ethnicity_source_concept_id": eth_id,
             "birth_date":                 bd,
+            "is_high_profile":            is_high_profile,
             # ── Hidden profile (not written to person table) ─────────────
             "_name":             name,
             "_segment":          segment,
@@ -663,7 +674,7 @@ PERSON_COLS = [
     "location_id", "provider_id", "care_site_id", "person_source_value",
     "gender_source_value", "gender_source_concept_id", "race_source_value",
     "race_source_concept_id", "ethnicity_source_value", "ethnicity_source_concept_id",
-    "birth_date",
+    "birth_date", "is_high_profile",
 ]
 
 
@@ -1042,6 +1053,7 @@ TABLE_SCHEMAS: dict[str, StructType] = {
         StructField("ethnicity_source_value",       StringType(),    True),
         StructField("ethnicity_source_concept_id",  IntegerType(),   True),
         StructField("birth_date",                   DateType(),      True),
+        StructField("is_high_profile",               BooleanType(),   False),
     ]),
 
     "condition_occurrence": StructType([
