@@ -22,9 +22,9 @@ CREATE OR REPLACE TABLE silver_trial_criteria (
   req_her2                STRING,              -- "Positive" / "Negative" / NULL
   req_er                  STRING,              -- "Positive" / "Negative" / NULL
   req_pr                  STRING,              -- "Positive" / "Negative" / NULL
-  req_menopausal          STRING,              -- "Post" / "Pre" / NULL
+  req_menopausal          STRING,              -- "Postmenopausal" / "Premenopausal" / NULL (pass the feed value through unchanged)
   req_no_prior_anti_her2  BOOLEAN,             -- TRUE = excludes prior HER2 therapy / NULL
-  min_ecog                INT,                 -- Minimum ECOG score / NULL
+  min_ecog                INT,                 -- ECOG threshold from the feed / NULL (carried through; the pre-screen does not match on it yet)
 
   -- Metadata
   eligibility_text        STRING,              -- Free-text eligibility description
@@ -39,7 +39,7 @@ COMMENT = 'Flattened, join-ready trial eligibility criteria (latest wins per tri
 The trials feed has nested JSON. Here's how you must map it:
 
 | Source JSON Path | → | Target Column | Notes |
-|---|---|---|
+|---|---|---|---|
 | `trial_id` | → | `trial_id` | Direct map |
 | `title` | → | `trial_name` | **Rename to trial_name** |
 | `status` | → | `status` | Direct map |
@@ -89,7 +89,7 @@ age_max: 75
 req_her2: 'Negative'
 req_er: 'Positive'
 req_pr: NULL                    -- Doesn't care about PR
-req_menopausal: 'Post'         -- Requires postmenopausal
+req_menopausal: 'Postmenopausal'  -- Requires postmenopausal (exact feed value; ML joins on equality)
 req_no_prior_anti_her2: NULL   -- Doesn't care about prior therapy
 min_ecog: NULL
 
@@ -104,7 +104,7 @@ req_er: 'Negative'
 req_pr: 'Negative'
 req_menopausal: NULL
 req_no_prior_anti_her2: NULL
-min_ecog: 2                     -- Requires ECOG ≤ 2
+min_ecog: NULL                  -- Feed's triple-negative trial sets no ECOG; carried through, not matched
 ```
 
 ## How the ML team will use this
@@ -112,7 +112,7 @@ min_ecog: 2                     -- Requires ECOG ≤ 2
 The Applied AI team's pre-screen will:
 1. JOIN patient profiles against this table
 2. Check if each patient meets ALL non-null requirements for each trial
-3. Generate a `gold_trial_prescreen` table with eligible/not-eligible + reason
+3. Generate a `gold_trial_prescreen` table with eligible/not-eligible and a reason
 
 Example of their join logic:
 ```sql
