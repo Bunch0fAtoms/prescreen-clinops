@@ -151,7 +151,7 @@
     <a href="#s2"><span class="an">2</span> The gap</a>
     <a href="#s3"><span class="an">3</span> The payoff</a>
     <a href="#s4"><span class="an">4</span> The build arc</a>
-    <a href="#s5"><span class="an">5</span> Trials &amp; governance</a>
+    <a href="#s5"><span class="an">5</span> What you screen for</a>
     <a href="#s6"><span class="an">6</span> The coordinator app</a>
     <a href="#s7"><span class="an">7</span> Your Day-2 demo</a>
   </nav>
@@ -247,16 +247,25 @@
   <!-- 5 -->
   <section class="sec" id="s5">
     <div class="sec-head">
-      <div class="kicker"><span class="n">5</span> Two things that make it real</div>
-      <h2>Trials are data. Governance is visible.</h2>
+      <div class="kicker"><span class="n">5</span> What you screen for</div>
+      <h2>The trials you are <span class="accent">building to satisfy</span></h2>
+      <p class="lede">Your pre-screen has one job: decide correctly, for every patient and every trial, whether they qualify, and say why in plain English. A patient qualifies only when <b>every</b> condition is met. These are the criteria to solve for.</p>
     </div>
+    <table class="arc" style="margin-bottom:16px;">
+      <thead><tr><th>Trial</th><th>A patient qualifies when…</th></tr></thead>
+      <tbody>
+        <tr><td class="step">Trial A</td><td>Breast cancer diagnosis · <b>HER2 Positive</b> · Female · age 18 to 75 · <b>no</b> prior anti-HER2 therapy (no Trastuzumab or Pertuzumab)</td></tr>
+        <tr><td class="step">Trial B</td><td>Breast cancer diagnosis · <b>ER Positive</b> · <b>HER2 Negative</b> · <b>Postmenopausal</b> · Female · age 18 to 75</td></tr>
+        <tr><td class="step">Trial C</td><td>A net-new trial the Data Engineering group lands as a file during the build. It screens on your side with <b>no code change</b>.</td></tr>
+      </tbody>
+    </table>
     <div class="grid g2">
-      <div class="card"><h3>Trials are data, not hardcoded rules</h3><p>Eligibility criteria live in the DE group's <code>silver_trial_criteria</code> table. Your pre-screen joins it instead of hardcoding Trial A/B logic. A patient qualifies when each non-null requirement matches and age is in range. Because it is a join, a brand-new Trial C screens with no code change.</p></div>
+      <div class="card"><h3>Trials are data, not hardcoded rules</h3><p>Do not hardcode the conditions above. They live in the DE group's <code>silver_trial_criteria</code> table, one row per trial. Your pre-screen joins it and applies one generic rule: a patient qualifies when each non-null requirement matches and age is in range. Because it is a join, a brand-new Trial C screens with no code change.</p></div>
       <div class="card"><h3>Governance is visible, not hidden</h3><p>Models register to Unity Catalog, lineage is automatic, and the gold layer carries the <code>biomarker_source</code> audit column. Every eligibility decision traces back to structured data or an AI reading of a note. The Governance group's masks and filters apply to your tables and model as you build them.</p></div>
     </div>
     <div class="callout">
       <h3>The synthetic → real toggle</h3>
-      <p>The whole kit runs on synthetic data by default. When Fred Hutch is ready, flip one bundle variable to point at real <code>curated_omop.omop</code>. The table names are identical, so every query you wrote runs unchanged.</p>
+      <p>The whole kit runs on synthetic data by default. When Fred Hutch is ready, ask Genie Code to repoint the reads from the shared foundation to real <code>curated_omop.omop</code>. The table names are identical, so every query you wrote runs unchanged.</p>
     </div>
   </section>
 

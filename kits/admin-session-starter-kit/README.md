@@ -7,7 +7,7 @@
 
 This is a **lighter** starter kit than the ML session's. Genie One is natural-language and
 click-driven, so the deliverable is a **guided runbook + ready prompts + working SQL** Amy can
-run today and schedule tomorrow, *not* a heavy notebook bundle. The hard parts (the correct
+run today and schedule tomorrow, *not* a heavy notebook bundle. The mechanics (the correct
 `usage` ↔ `list_prices` join, the chargeback category logic, the 10%-of-budget math) are
 **pre-built and validated**. The learnable bit, writing her own Genie One questions and tuning
 the budget thresholds, is left open on purpose.

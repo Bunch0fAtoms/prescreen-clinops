@@ -2,7 +2,7 @@
 
 **Fred Hutch onsite · Governance session · notebooks (UC-scoped)**
 
-This is a **starter build kit**, not a finished solution. The hard plumbing is already wired for you:
+This is a **starter build kit**, not a finished solution. The foundation is already in place for you:
 the six shared synthetic OMOP foundation tables every group works from, the PHI column map, helper
 functions, and a verification harness that *proves* a policy actually changed what a user sees. **You**
 build the learnable core: the classification, the masking and row-filter logic, and the tag-based policy

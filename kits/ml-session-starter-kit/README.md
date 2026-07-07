@@ -19,9 +19,9 @@
 > coordinator can defend, not a score they cannot explain. Want a real trained model? That lands as a
 > patient-prioritization ranker in `STRETCH.md`, on top of the rules, never inside them.
 
-This is a **starter build kit**, not a finished solution. The hard plumbing is already
-wired for you: synthetic OMOP data, the pipeline skeleton, Unity Catalog governance,
-all the boilerplate. **You** build the learnable core: the eligibility SQL, the
+This is a **starter build kit**, not a finished solution. The foundation is already in
+place for you: synthetic OMOP data, the pipeline skeleton, Unity Catalog governance,
+and the boilerplate. That frees you to build the learnable core: the eligibility SQL, the
 biomarker pivot, the `ai_query` NLP extraction, and the MLflow evaluation. Look for
 `# TODO (you build this)` markers. That is your work.
 
@@ -53,20 +53,29 @@ biomarker pivot, the `ai_query` NLP extraction, and the MLflow evaluation. Look 
 | *"I want to know how to use, register, or call an external/non-Databricks model within Databricks, preserving governance, reproducibility, and traceability."* (Sita) | The model-registration and Mosaic AI Gateway steps |
 | *"I want to know how to set up evaluation runs for AI/LLM workflows, so we can compare prompts, models, outputs, and error patterns across versions."* (Sita) | The MLflow evaluation step (prompt × model) |
 
-A research coordinator needs to pre-screen breast-cancer patients for a set of trials:
+### 🎯 The trials you are screening for, build to satisfy these
 
-| Trial | Looking for |
+Your pre-screen has one job: decide correctly, for every patient and every trial, whether that
+patient qualifies, and say why in plain English. **These are the criteria to solve for.** A patient
+qualifies for a trial only when **all** of its conditions are met.
+
+| Trial | A patient qualifies when… |
 |---|---|
-| **Trial A**: HER2+ | Breast cancer · HER2 **Positive** · age 18-75 · **no** prior anti-HER2 therapy |
-| **Trial B**: ER+/HER2− | Breast cancer · ER **Positive** · HER2 **Negative** · **postmenopausal** · age 18-75 |
-| **Trial C**: net-new | Comes from the DE group's trials catalog. **No code change** on the ML side. It screens because the pre-screen is data-driven. |
+| **Trial A** (HER2-Positive Advanced Breast Cancer) | Breast cancer diagnosis · **HER2 Positive** · **Female** · age **18-75** · **no** prior anti-HER2 therapy (no Trastuzumab or Pertuzumab) |
+| **Trial B** (ER+ / HER2− Postmenopausal) | Breast cancer diagnosis · **ER Positive** · **HER2 Negative** · **Postmenopausal** · **Female** · age **18-75** |
+| **Trial C** (net-new, from the DE trials catalog) | A trial the Data Engineering group lands as a file during the build. It screens on your side with **no code change**, because your pre-screen is data-driven. |
 
-> 🔗 **Trials are data now, not hardcoded rules.** The eligibility criteria live in the DE group's
-> `silver_trial_criteria` table (a Volume-fed trials catalog, see `../../SHARED_FOUNDATION.md`). Your
-> pre-screen **joins that table** instead of hardcoding Trial A/B logic. The generic rule: a patient
-> qualifies for a trial when **each non-NULL `req_*` matches and age is in range** (a NULL requirement
-> means the trial does not constrain that field). Because it's a join, **Trial C screens with no code
-> change**. The DE group added it by dropping a file.
+The synthetic data is planted so you can check your work: persons **1 to 20** are eligible for Trial A
+(21 to 30 are HER2+ controls who fail on prior anti-HER2 therapy), and persons **31 to 50** are eligible
+for Trial B (51 to 60 are controls who fail on menopausal or ER status). Full spec in
+`../../foundation/PLANTED_COHORTS.md`.
+
+> 🔗 **Trials are data now, not hardcoded rules.** Do not hardcode the Trial A/B conditions above.
+> They live in the DE group's `silver_trial_criteria` table (a Volume-fed trials catalog, see
+> `../../SHARED_FOUNDATION.md`), one row per trial with a `req_*` column per condition. Your pre-screen
+> **joins that table** and applies one generic rule: a patient qualifies when **each non-NULL `req_*`
+> matches and age is in range** (a NULL requirement means the trial does not constrain that field).
+> Because it is a join, **Trial C screens with no code change**. The DE group added it by dropping a file.
 
 **The catch, and the whole point of the session:** biomarker status is not always in
 the structured tables. For ~60 of our 300 synthetic patients, HER2/ER/PR status was

@@ -3,7 +3,7 @@
 **Fred Hutch onsite · Data Engineering session · built live with Genie Code**
 
 This is a **starter build kit**, not a finished solution. The shared foundation already stood up the
-hard parts for you: the 6 synthetic OMOP tables, a live clinical-trials feed, and Unity Catalog
+groundwork for you: the 6 synthetic OMOP tables, a live clinical-trials feed, and Unity Catalog
 scoping. **Your team builds one real pipeline** that turns that messy, live feed into a clean,
 queryable `silver_trial_criteria` table the Applied AI group joins against, while routing bad records
 to a quarantine table instead of crashing. You build it with **Genie Code**, in whichever framework
