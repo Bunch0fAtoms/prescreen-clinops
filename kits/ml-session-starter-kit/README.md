@@ -42,6 +42,17 @@ biomarker pivot, the `ai_query` NLP extraction, and the MLflow evaluation. Look 
 
 ## 🎯 The outcome you are shipping
 
+**These are the questions your team submitted.** This session is built around them, in your own words.
+
+| The Fred Hutch ask (verbatim) | Where it lands |
+|---|---|
+| *"I want to know how to build apps using Mosaic AI with HuggingFace models (e.g. ClinicalBERT), so I can have a user-friendly tool to pre-screen patients for clinical trials."* (Emma) | The whole build: ClinicalBERT registered to UC, the pre-screen, and the coordinator app |
+| *"I want to know how to register a HuggingFace model to read-only schemas so I can test out ideas on our reference schemas."* (Emma) | The ClinicalBERT → MLflow → Unity Catalog step (the one pre-built notebook) |
+| *"I'd like to provide context to Genie (team docs, data background, example queries) so answers are more accurate and it does better EDA."* (Monica) | The Genie space step, with instructions and trusted SQL |
+| *"I want to know how to use Databricks Apps, so teams can review outputs, interact with dashboards, or provide feedback without working in notebooks."* (Sita) | The coordinator/researcher app, built as the inspiration demo |
+| *"I want to know how to use, register, or call an external/non-Databricks model within Databricks, preserving governance, reproducibility, and traceability."* (Sita) | The model-registration and Mosaic AI Gateway steps |
+| *"I want to know how to set up evaluation runs for AI/LLM workflows, so we can compare prompts, models, outputs, and error patterns across versions."* (Sita) | The MLflow evaluation step (prompt × model) |
+
 A research coordinator needs to pre-screen breast-cancer patients for a set of trials:
 
 | Trial | Looking for |
@@ -103,60 +114,43 @@ By the end you will have built:
 
 ---
 
-## 🚀 How to deploy
+## 🚀 How to start
 
-This kit ships as a **Databricks Asset Bundle (DAB)**, Unity-Catalog-scoped per team. The
-**recommended** way to stand it up is the shared **`fred-hutch-onsite-adaptation`** Genie Code skill,
-installed **once at the workspace level** (not per repo), it adapts whichever onsite kit you're working
-in by reading that kit's `ADAPTATION_FACTS.json` (shipped beside this README). Manual CLI deploy is
-the fallback.
+**There is no bundle to deploy and no data to generate for this kit.** The shared **foundation** already
+stood up the six OMOP tables (300 patients, planted cohorts) that this session reads. You build the
+pre-screen with **Genie Code**; the pre-built notebooks are the facilitator's backup. Exactly **one**
+notebook is meant to run as-is, the ClinicalBERT registration Genie Code can't author. Everything else,
+including the Python EDA, is Genie Code.
 
-### Recommended: drive it with the workspace-level onsite handoff skill ("run in my workspace")
-Genie Code does **not** auto-load skills, so install the shared skill once per workspace, then drive it
-from a fresh chat in this kit's folder:
+### The adaptation skill helps Genie Code build well
+The workspace-level **`fred-hutch-onsite-adaptation`** skill is not a value-filler. It gives Genie Code
+the context to build the pre-screen cleanly (the shared-foundation table names, the FM endpoints, the
+build order), and when your team is ready to point at real `curated_omop` data, it tells Genie Code
+exactly how to adapt. A workspace admin installs it once, for everyone:
 
-1. **Install the skill once per workspace** (shared across all four onsite kits, skip if already done).
-   Run it in a **workspace web terminal** (authenticates as you, nothing to edit); the wildcard finds
-   your imported repo copy, so it works from any directory:
-   ```bash
-   cd /Workspace/Users/*/prescreen-clinops && databricks workspace import-dir \
-     .assistant/skills/fred-hutch-onsite-adaptation \
-     /Workspace/.assistant/skills/fred-hutch-onsite-adaptation
-   ```
-2. **Open Genie Code in a fresh chat, in this kit's folder** (hard-refresh the tab first, skills cache
-   per tab) and say:
-   > run in my workspace
+```bash
+databricks workspace import-dir \
+  /Workspace/fh-onsite/prescreen/repo/.assistant/skills/fred-hutch-onsite-adaptation \
+  /Workspace/.assistant/skills/fred-hutch-onsite-adaptation
+```
 
-   The skill reads **this kit's `ADAPTATION_FACTS.json`**, auto-detects your workspace, current user, catalog/schema,
-   and a running warehouse; asks **synthetic-vs-real** (default synthetic, 300 patients, two trial
-   cohorts, runs end-to-end immediately); and writes **only** `databricks.yml`'s `client` target
-   variables (`client_catalog`, `client_schema`, `warehouse_id`). Review and **Accept** the diff.
-   Nothing is hardcoded into the notebooks/SQL.
-3. **Deploy and generate data from a Web Terminal** (Compute → Terminal, or ⌘+Shift+T), the skill
-   *outputs* the exact commands and stops (it never deploys from inside Genie Code, which is
-   sandboxed):
-   ```bash
-   cd ~/<repo-folder>
-   databricks bundle validate       --target client
-   databricks bundle deploy         --target client
-   databricks bundle run data_generation_job --target client   # lands 6 OMOP tables (300 patients)
-   ```
+Then open Genie Code in a fresh chat in this kit's folder (hard-refresh first, skills cache per tab)
+and start building. `GENIE_CODE_PROMPTS.md` has the proven starter prompts.
 
-### Fallback: manual bundle deploy
-Skip the skill and configure by hand: open `databricks.yml`, fill the `client` target's
-`client_catalog`, `client_schema`, and `warehouse_id` (all bundle variables), then
-`databricks bundle deploy --target client` and `databricks bundle run data_generation_job --target client`.
+### The one notebook you run: ClinicalBERT → Unity Catalog
+Genie Code drives the whole build except registering a Hugging Face model to UC. Run the pre-built
+`05_clinicalbert_mlflow_uc` notebook for that step (serverless: it pip-installs, downloads the weights,
+registers ClinicalBERT to UC, and embeds the notes for similarity). Everything up- and downstream of it
+is Genie Code.
 
-### Then (either path)
-**Drive the build from Genie Code.** The pre-built notebooks (the bundle syncs `notebooks/`) are the
-safety net if a team stalls, and the reference for the flow. Start at **`00_START_HERE`**, set the three
-widgets to match your bundle targets. The build order is **`01` (bronze) then `02` (structured silver,
-which you build off the 6 OMOP tables)**, then `03` (the gap and the Python EDA visuals) → `04`
-(`ai_query`), then `05` → `08`. Each notebook `%run ./_config` so they share one catalog/schema/warehouse.
-(See `../../SHARED_FOUNDATION.md` for what the shared foundation provides vs. what you build.)
-
-> **Self-serve data option:** notebook `01` can also `exec()` the generator in-notebook
-> if you'd rather not run the job. Either path lands the same tables.
+### Then
+1. Confirm the foundation is up: the six shared OMOP tables exist. For a reference scaffold, open
+   `00_START_HERE`.
+2. Set the widgets: the shared foundation `catalog`/`schema` for reads, a running `warehouse_id`, and
+   your own writable schema for what you build.
+3. Build with Genie Code: **`02` structured silver** off the 6 OMOP tables, then `03` (the gap and the
+   Python EDA), then `04` (`ai_query`), then the `05` HF notebook, then `06` → `08`.
+   (See `../../SHARED_FOUNDATION.md` for what the shared foundation provides vs. what you build.)
 
 ### Optional: build the Genie space with the `prompt-to-genie` skill (notebook 08)
 Notebook `08_genie_space_setup` stands up the self-serve Genie space. You can point-and-click it
@@ -180,20 +174,20 @@ API-created spaces, enable it in the UI after creation.
 
 ## 🔄 The synth to real toggle
 
-The whole kit runs on **synthetic data by default** (no PHI, this is a security-first
-customer). When Fred Hutch is ready to point it at real `curated_omop.omop` data, flip
-**one** bundle variable, no query changes:
+The whole session runs on **synthetic data by default** (no PHI, this is a security-first customer).
+When Fred Hutch is ready to point it at real `curated_omop.omop` data, you do not rewrite queries. The
+6 OMOP table names are **identical** in synthetic and real modes, so every silver / gold / NLP query you
+build runs unchanged against the real thing.
 
-```yaml
-# databricks.yml
-run_with_synthetic_data: "no"   # was "yes"
-source_catalog: "curated_omop"  # your real OMOP catalog
-source_schema:  "omop"          # your real OMOP schema
-```
+To switch, ask Genie Code (with the `fred-hutch-onsite-adaptation` skill installed) to repoint the reads
+from the shared foundation schema to your real OMOP catalog and schema:
 
-The 6 OMOP table names are **identical** in synthetic and real modes, so every silver /
-gold / NLP query you write here runs unchanged against the real thing. (Trying the
-toggle is a stretch exercise, see `STRETCH.md`.)
+- source catalog → `curated_omop`
+- source schema  → `omop`
+
+The skill walks Genie Code through the repoint and the re-runs it implies (anything already built on
+synthetic gets rebuilt so it reflects real data). Trying the toggle is a stretch exercise, see
+`STRETCH.md`.
 
 ---
 
@@ -224,11 +218,11 @@ The similarity table `gold_similar_patients`, built in the applied AI step with 
 
 ## 🔒 Ground rules (security-first customer)
 
-- **Everything is Unity-Catalog-scoped**: catalog/schema come from bundle variables.
+- **Everything is Unity-Catalog-scoped**: catalog/schema come from notebook widgets.
   No `hive_metastore`, ever.
 - **Synthetic data only.** No real PHI in this kit. The toggle exists so you never have
   to improvise on real data to land a demo.
-- **No hardcoded secrets.** No tokens, keys, or passwords in code, use bundle variables
+- **No hardcoded secrets.** No tokens, keys, or passwords in code, use widgets
   (and `dbutils.secrets` for any external call, though this kit needs none).
 - **Governance is visible, not hidden.** Models register to UC, lineage is automatic,
   the gold layer carries a `biomarker_source` audit column so every eligibility decision
@@ -241,15 +235,15 @@ The similarity table `gold_similar_patients`, built in the applied AI step with 
 ```
 ml-session-starter-kit/
   README.md            ← you are here
-  databricks.yml       ← DAB: UC-scoped per-team target and synth/real toggle
+  databricks.yml       ← optional bundle config (the foundation provides the data; not run per team)
   RUNBOOK.md           ← MENTOR build-level facilitation (checkpoints, failure modes)
   GENIE_CODE_PROMPTS.md ← ready-to-use Genie Code build prompts (free-form; the proven dry-run set)
   STRETCH.md           ← "make it your own" extension ideas
-  notebooks/           ← the team scaffold (00-09): pre-built plumbing and your TODOs
+  notebooks/           ← facilitator backup scaffold (00-09); the build is Genie Code, 05 is the one you run
   genie/               ← Genie space definition (instructions, prompts, trusted SQL)
   reference/           ← SA-ONLY answer key (mentor reveals only if a team is stuck)
-  src/data_generation/ ← the synthetic OMOP generator (pre-built, do not edit)
-  resources/           ← the DAB job that runs the generator
+  src/data_generation/ ← the synthetic OMOP generator (used by the foundation; do not edit)
+  resources/           ← optional bundle job (the foundation already lands the data)
 ```
 
 ## 📒 The notebook arc
@@ -258,7 +252,7 @@ ml-session-starter-kit/
 |---|---|---|---|
 | · | `_config` | shared catalog/schema/warehouse | ✅ pre-built |
 | 00 | `00_START_HERE` | overview, the value story | ✅ read it |
-| 01 | `01_data_foundation_omop` | generate and profile 6 OMOP tables | ✅ run, light TODO |
+| 01 | `01_data_foundation_omop` | profile the 6 shared OMOP tables the foundation provides | ✅ read, light TODO |
 | 02 | `02_silver_feature_pipeline` | silver feature views (SQL pipeline) | 🛠️ build the pivots |
 | 03 | `03_exploratory_data_analysis` | quantify the notes-only gap, Python EDA visuals | 🛠️ light TODO |
 | 04 | `04_nlp_biomarker_extraction` | `ai_query` over `note_text` | 🧠 the GenAI core |

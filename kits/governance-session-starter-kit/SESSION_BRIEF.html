@@ -101,13 +101,13 @@
   .callout h3 { margin:0 0 6px; font-size:14px; color:var(--amber); }
   .callout p { margin:0; font-size:13px; color:var(--ink-2); line-height:1.5; }
 
-  /* navy spine panel */
-  .spine { background:var(--db-navy); border-radius:14px; padding:22px 26px; }
-  .spine .k { font-family:"DM Mono",monospace; font-size:10.5px; letter-spacing:0.16em; text-transform:uppercase; color:#9AA7B0; }
-  .spine h3 { color:#fff; margin:8px 0 8px; font-size:19px; font-weight:700; letter-spacing:-0.01em; }
-  .spine h3 .ok { color:#4CD08A; }
-  .spine p { color:#C6CDD3; font-size:13.5px; max-width:860px; margin:0; line-height:1.55; }
-  .spine code { color:#FFB59F; background:rgba(255,255,255,0.08); }
+  /* navy keystone panel */
+  .keystone { background:var(--db-navy); border-radius:14px; padding:22px 26px; }
+  .keystone .k { font-family:"DM Mono",monospace; font-size:10.5px; letter-spacing:0.16em; text-transform:uppercase; color:#9AA7B0; }
+  .keystone h3 { color:#fff; margin:8px 0 8px; font-size:19px; font-weight:700; letter-spacing:-0.01em; }
+  .keystone h3 .ok { color:#4CD08A; }
+  .keystone p { color:#C6CDD3; font-size:13.5px; max-width:860px; margin:0; line-height:1.55; }
+  .keystone code { color:#FFB59F; background:rgba(255,255,255,0.08); }
 
   /* one-liner for the room */
   .oneliner { background:var(--paper); border:1px dashed var(--line-strong); border-radius:12px; padding:18px 22px; }
@@ -128,7 +128,7 @@
   .to-top .ar { font-size:13px; transform:translateY(-1px); }
 
   @media (max-width:900px){ .g2,.g3,.cols{ grid-template-columns:1fr; } }
-  @media print { .toolbar,.to-top,.agenda { display:none; } body { background:#fff; } .page { padding:12px; } .spine,.banner { -webkit-print-color-adjust:exact; print-color-adjust:exact; } }
+  @media print { .toolbar,.to-top,.agenda { display:none; } body { background:#fff; } .page { padding:12px; } .keystone,.banner { -webkit-print-color-adjust:exact; print-color-adjust:exact; } }
 </style>
 </head>
 <body>
@@ -152,7 +152,7 @@
 
   <div class="banner">
     <span class="lbl">The promise this session makes true</span>
-    <b>A researcher does science on the OMOP clinical warehouse and never sees a patient identifier they don't need.</b> The policy lives in the data layer, so it holds no matter who queries: notebook, SQL, Genie, or an app. Every control here is <b>provable</b>, showing its own before and after, which is exactly what a security review wants to see.
+    <b>A researcher does science on the shared OMOP clinical data and never sees a patient identifier they don't need.</b> The policy lives in the data layer, so it holds no matter who queries: notebook, SQL, Genie, or an app. Every control here is <b>provable</b>, showing its own before and after, which is what protecting real patient data calls for.
   </div>
 
   <nav class="agenda" aria-label="On this page">
@@ -176,7 +176,7 @@
       <div class="card tinted">
         <div class="n">the standard</div>
         <h3>Security is the lens</h3>
-        <p>An open SOC2 review and a real-world breach make provable controls the priority. Every policy here shows its own before and after.</p>
+        <p>Fred Hutch holds real patient data, so protecting it is where every project starts, not an afterthought. Every policy here is provable, showing its own before and after.</p>
       </div>
       <div class="card tinted">
         <div class="n">the pattern</div>
@@ -196,20 +196,29 @@
     <div class="sec-head">
       <div class="kicker"><span class="n">2</span> What you ship</div>
       <h2>Six controls that make one promise true</h2>
-      <p class="lede">The promise: a researcher does science on the OMOP warehouse and never sees a patient identifier they don't need. Here is how we make it hold, notebook by notebook.</p>
+      <p class="lede">The promise: a researcher does science on the shared OMOP data and never sees a patient identifier they don't need. Here is how we make it hold, control by control.</p>
     </div>
     <table class="arc">
       <thead><tr><th>Notebook</th><th>Control</th><th>What it does</th></tr></thead>
       <tbody>
-        <tr><td class="step">01</td><td>Tags &amp; classification</td><td>Label every PHI column, so policy and audit can find it. This is the Day-1 shared anchor.</td></tr>
-        <tr><td class="step">02</td><td>Column masks</td><td>A researcher sees <code>***MASKED***</code> where the owner sees <code>person_id</code> or <code>note_text</code>.</td></tr>
-        <tr><td class="step">03</td><td>Row filters + ABAC</td><td>A group sees only the patient rows it is entitled to.</td></tr>
+        <tr><td class="step">01</td><td>Tags and classification</td><td>Label every PHI column, so policy and audit can find it. This is the Day-1 shared anchor, and the foundation the tag-based policy below builds on.</td></tr>
+        <tr><td class="step">02</td><td>Column masks</td><td>A researcher sees <code>***MASKED***</code> where the owner sees <code>person_id</code> or <code>note_text</code>. Start here to see the mechanism, then scale it with tags.</td></tr>
+        <tr><td class="step">03</td><td>Row filters and tag-based policy (ABAC)</td><td>Gate rows by entitlement, then write one tag-based policy that masks every column carrying a PHI tag, catalog-wide. Set once, it covers every table that ever gets the tag.</td></tr>
         <tr><td class="step">04</td><td>Identifier search</td><td>Find everywhere a patient identifier appears across shared catalogs.</td></tr>
         <tr><td class="step">05</td><td>AI-feature governance</td><td>Know the limits before turning Genie and AI functions on over PHI.</td></tr>
         <tr><td class="step">06</td><td>Inactive-user audit</td><td>Surface accounts dormant over 90 days, for least-privilege hygiene.</td></tr>
       </tbody>
     </table>
-    <p class="body" style="margin-top:12px;">The headline ask this anchors: <b>mask patient data and filter access by OCDO user group</b> (notebooks 02 + 03), plus identifier search, AI-feature limits, and the inactive-user report.</p>
+    <p class="body" style="margin-top:16px;margin-bottom:8px;"><b>These are the questions your team submitted.</b> The session is built around them, in your own words.</p>
+    <table class="arc">
+      <thead><tr><th>The Fred Hutch ask</th><th>Where it lands</th></tr></thead>
+      <tbody>
+        <tr><td>"Mask a set of patients and expose them based on an internal user's group, and set a filter so specific OCDO users can access their data." <span style="color:var(--muted)">(Josh)</span></td><td>The column masks and row filters, the core of the session.</td></tr>
+        <tr><td>"See a report when users have been inactive for more than 90 days in any Databricks environment." <span style="color:var(--muted)">(Gina)</span></td><td>The inactive-user audit over system tables.</td></tr>
+        <tr><td>"Search for whether a patient identifier shows up in catalogs or schemas shared to researchers." <span style="color:var(--muted)">(Gina)</span></td><td>The identifier search, by value and by tag.</td></tr>
+        <tr><td>"Understand what restrictions or limitations apply when enabling AI features such as Genie." <span style="color:var(--muted)">(Gina)</span></td><td>The AI-feature governance walkthrough.</td></tr>
+      </tbody>
+    </table>
   </section>
 
   <!-- 3 -->
@@ -223,7 +232,7 @@
       <div class="colbox built">
         <div class="lbl">✅ Pre-built for you</div>
         <ul>
-          <li>Six synthetic OMOP tables, deep-cloned into your own schema so you can't affect anyone else's data.</li>
+          <li>The six shared synthetic OMOP foundation tables, the same tables every group works from. Governing them here is the point.</li>
           <li>The PHI column map and the governed-tag vocabulary.</li>
           <li>A verification harness that <i>proves</i> a policy changed what a user sees, owner view versus masked view.</li>
         </ul>
@@ -238,8 +247,8 @@
       </div>
     </div>
     <div class="callout">
-      <h3>Isolation is enforced for you</h3>
-      <p>You apply policy to your own cloned schema, never to a shared source. Masks and row filters change what everyone sees, so we never bind them to data another track depends on.</p>
+      <h3>Set policy high, once</h3>
+      <p>You classify and set policy at the catalog and schema level, on the shared foundation. That is the point of governance: your masks, row filters, and tag-based policy protect the data every group uses. Because the policy lives high in the hierarchy, it flows down to every new table the other groups build, with no per-table rework.</p>
     </div>
   </section>
 
@@ -250,10 +259,10 @@
       <h2>Built on the foundation first, applied as the others build</h2>
       <p class="lede">Governance is not a separate two-day track. It is the layer under all four sessions.</p>
     </div>
-    <div class="spine">
+    <div class="keystone">
       <div class="k">Governance runs through everything</div>
-      <h3>One pattern, <span class="ok">re-applied to every new table and model</span></h3>
-      <p>It starts in the Day 1 whole-room Genie discovery session. As the room asks real questions of the data, you see which columns identify a patient and who should see what. That is your requirements list, gathered live. Then, still on Day 1, you apply the tag → classify → mask → row-filter pattern to the shared bronze and the curated structured layer. That is the pattern every group inherits. On Day 2, as the Data Engineering and Applied AI groups compose new silver tables, gold tables, and a registered model, the same pattern re-applies to each.</p>
+      <h3>One policy, set high, <span class="ok">inherited everywhere</span></h3>
+      <p>It starts in the Day 1 whole-room Genie discovery session. As the room asks real questions of the data, you see which columns identify a patient and who should see what. That is your requirements list, gathered live. Then, still on Day 1, you classify the shared foundation and set a tag-based policy at the catalog and schema level. You set it once, high in the hierarchy. On Day 2, as the Data Engineering and Applied AI groups compose new silver tables, gold tables, and a registered model in that same catalog, the policy already covers them. Any new column that carries a PHI tag is masked the moment it appears, with nothing to re-apply.</p>
     </div>
     <div class="chips">
       <span class="chip"><b>tag</b> → classify sensitive columns</span>
@@ -271,7 +280,7 @@
       <p class="lede">A security-first customer. These rules are the same across all four sessions.</p>
     </div>
     <div class="grid g2">
-      <div class="card"><h3>Everything is provable</h3><p>Every mask, filter, tag, and audit shows its own before and after. That is exactly what a SOC2 reviewer wants to see.</p></div>
+      <div class="card"><h3>Everything is provable</h3><p>Every mask, filter, tag, and audit shows its own before and after. When you are responsible for real patient data, being able to prove a control works is what the work demands.</p></div>
       <div class="card"><h3>Governed tag vocabulary</h3><p>This metastore enforces governed tag policies. <code>phi</code> and <code>data_sensitivity</code> only accept values from an allowed list. A typo is rejected by Unity Catalog, which is the point.</p></div>
       <div class="card"><h3>Unity-Catalog-scoped</h3><p>Catalog, schema, and group come from widgets. No <code>hive_metastore</code>, ever. No hardcoded secrets.</p></div>
       <div class="card"><h3>Synthetic data only</h3><p>No real PHI in this kit. The controls are identical when Fred Hutch points them at real <code>curated_omop</code> later.</p></div>
@@ -288,7 +297,7 @@
       <div class="k">The one line</div>
       <p>"Here is our governed foundation, classified, masked, and access-controlled, and here is how it applies automatically to everything the other teams built."</p>
     </div>
-    <p class="body" style="margin-top:14px;">Your core section lands on Day 1. On Day 2, as the Data Engineering and Applied AI groups build, you rotate across both and re-apply the same controls to the new tables and models they produce, a live proof that the pattern holds. Then everyone presents together.</p>
+    <p class="body" style="margin-top:14px;">Your core section lands on Day 1: classification and a tag-based policy set at the catalog and schema level. On Day 2, as the Data Engineering and Applied AI groups build new tables and models in that same catalog, your policy already covers them. You show that inheritance live, no new masks written, the controls are simply there. That is the proof the pattern holds. Then everyone presents together.</p>
   </section>
 
   <div class="foot">

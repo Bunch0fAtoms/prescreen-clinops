@@ -34,9 +34,9 @@ tables were stood up by the shared foundation and are **read-only** in `<catalog
 Everything **you** build goes in **your own** schema, `<catalog>.clinops_ml`.
 > **"For this whole session: the 6 read-only OMOP source tables (`person`, `condition_occurrence`, `measurement`, `observation`, `drug_exposure`, `note`) live in `<catalog>.clinops_foundation`. Never write there. Create and write everything I build into my own schema `<catalog>.clinops_ml`. Start by running `USE CATALOG <catalog>; USE SCHEMA clinops_ml;`, and always reference the source tables fully-qualified as `<catalog>.clinops_foundation.<table>`."**
 
-*Replace `<catalog>` with your team's catalog (the same one the "run in my workspace" setup wrote into
-`databricks.yml`).* Everything below reads the foundation tables and writes to your own schema. The
-whole track is self-contained on those 6 tables; you never depend on another group's output.
+*Replace `<catalog>` with your team's catalog (the one the shared foundation landed the OMOP tables in).*
+Everything below reads the foundation tables and writes to your own schema. The whole track is
+self-contained on those 6 tables; you never depend on another group's output.
 
 ---
 

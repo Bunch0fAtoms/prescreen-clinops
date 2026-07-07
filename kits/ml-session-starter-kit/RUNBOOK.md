@@ -34,21 +34,24 @@ them as *starters the team can adapt*, not a script.
 
 ---
 
-## Block 0 · Setup & deploy (pre-build)
+## Block 0 · Setup (pre-build)
 
-- **Pre-built:** the DAB (`databricks.yml`), the data-gen job, the synthetic OMOP generator, `_config`.
-- **Team does:** fill `client_catalog` / `client_schema` / `warehouse_id` in `databricks.yml`;
-  `databricks bundle deploy --target client`; `databricks bundle run data_generation_job --target client`;
-  open `00_START_HERE`, set the three widgets, run `01`.
+- **Pre-built by the foundation:** the six shared OMOP tables (300 patients, planted cohorts) this
+  session reads. This kit adds `_config`, the notebook scaffold, and the one pre-built HF notebook.
+  **No bundle to deploy, no data to generate here.**
+- **Team does:** confirm the foundation is up, then open `00_START_HERE`, set the widgets (the shared
+  foundation `catalog`/`schema` for reads, a `warehouse_id`, and a writable schema for what they build),
+  and run `01` to profile the tables. From here the build is Genie Code, with the `05` HF notebook the
+  one they run.
 - **🚩 Checkpoint 1, Data foundation up.** `01` row-counts show person=300, note=300, all 6 tables
   > 0; the three biomarker groups read ≈ 180 / 60 / 60.
 - **Common failures:**
   - *Stuck on auth/grants/catalog creation* → **plumbing, reveal early.** Pull the Governance SSA;
     confirm the catalog/schema names match the bundle. This is not their learnable core.
-  - *`hive_metastore` muscle memory* → redirect to the UC catalog/schema from the bundle. No
+  - *`hive_metastore` muscle memory* → redirect to the UC catalog/schema from the widgets. No
     hive_metastore anywhere.
-  - *Generator path not found in `01` Option B* → use Option A (the job) instead, or fix the
-    `generator_path` widget. Safety net: the job always works.
+  - *Six OMOP tables not found* → the foundation lands them in the shared foundation schema. Point the
+    read widgets there (e.g. `clinops_foundation`), not at the team's empty write schema.
 
 ## Block 1 · Structured silver (nb 02), the ML group's own build off the 6 OMOP tables
 

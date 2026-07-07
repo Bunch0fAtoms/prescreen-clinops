@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="warm">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Build Days, Fred Hutch × Databricks · Kickoff</title>
+<meta name="description" content="Day 1 kickoff: the scenario, how we build together, and what each team walks away with.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#F6F2EC; --paper:#FFFFFF; --ink:#0F1419; --ink-2:#38434B; --muted:#6B7780;
+    --line:#E2DCD2; --line-strong:#C9C0B2;
+    --db-red:#FF3621; --db-navy:#1B3139;
+    --db-coral:#FCE7DC; --db-mint:#DCEFE6; --db-sky:#DCE6F2; --db-sand:#F1EADC;
+    --amber:#C8870B; --amber-bg:#FBF1DC; --amber-line:#E8CF94;
+    --green:#1F8A5B;
+    --tint:var(--db-mint);
+  }
+  html[data-theme="dark"] {
+    --bg:#14181B; --paper:#1C2227; --ink:#ECECEA; --ink-2:#B7BFC4; --muted:#8993A0;
+    --line:#2A323A; --line-strong:#404B55;
+    --db-coral:#3A1E15; --db-sand:#2A2620; --db-sky:#1E2A3A; --db-mint:#1E2E26;
+    --amber:#E0A22B; --amber-bg:#2C2517; --amber-line:#5A4A24; --green:#4CD08A;
+  }
+  * { box-sizing:border-box; }
+  html,body { margin:0; background:var(--bg); color:var(--ink);
+    font-family:"DM Sans","Helvetica Neue",Helvetica,Arial,sans-serif; font-size:14px; line-height:1.45;
+    -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility; }
+  .mono, code { font-family:"DM Mono","SF Mono",Menlo,monospace; }
+  code { font-size:0.9em; color:var(--db-red); background:color-mix(in oklab, var(--db-red) 8%, transparent); padding:1px 5px; border-radius:4px; }
+  html[data-theme="dark"] code { color:#FF6A52; }
+  a { color:var(--green); }
+  .page { max-width:1180px; margin:0 auto; padding:40px 44px 72px; }
+
+  .hdr { text-align:center; padding-bottom:18px; border-bottom:1px solid var(--line); margin-bottom:26px; }
+  .hdr .eyebrow { font-family:"DM Mono",monospace; font-size:11px; letter-spacing:0.14em; text-transform:uppercase; color:var(--muted); }
+  .hdr h1 { margin:8px 0 0; font-size:31px; font-weight:700; letter-spacing:-0.015em; }
+  .hdr h1 .accent { color:var(--green); }
+  .hdr .sub { margin:9px auto 0; color:var(--ink-2); font-size:14px; max-width:880px; }
+  .hdr .facts { display:flex; flex-wrap:wrap; justify-content:center; gap:8px; margin-top:16px; }
+  .hdr .fact { font-family:"DM Mono",monospace; font-size:10.5px; letter-spacing:0.04em; color:var(--ink-2); background:var(--paper); border:1px solid var(--line); border-radius:999px; padding:6px 12px; }
+  .hdr .fact b { color:var(--ink); }
+  .toolbar { display:flex; gap:8px; justify-content:center; margin-top:16px; }
+  .toolbar button { font-family:"DM Mono",monospace; font-size:10.5px; letter-spacing:0.04em; color:var(--ink-2); background:var(--paper); border:1px solid var(--line); border-radius:999px; padding:6px 13px; cursor:pointer; transition:all 140ms ease; }
+  .toolbar button:hover { border-color:var(--db-red); color:var(--db-red); }
+
+  .banner { background:color-mix(in oklab, var(--db-mint) 40%, var(--paper)); border:1px solid color-mix(in oklab, var(--green) 22%, var(--line)); border-radius:11px; padding:14px 17px; font-size:13px; color:var(--ink-2); line-height:1.55; }
+  .banner b { color:var(--ink); }
+  .banner .lbl { font-family:"DM Mono",monospace; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--green); display:block; margin-bottom:5px; }
+
+  .agenda { display:flex; flex-wrap:wrap; align-items:center; gap:10px 8px; margin:22px 0 34px; padding:14px 16px; background:var(--paper); border:1px solid var(--line); border-radius:12px; }
+  .agenda .lbl { font-family:"DM Mono",monospace; font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--muted); margin-right:4px; }
+  .agenda a { display:inline-flex; align-items:center; gap:8px; text-decoration:none; color:var(--ink-2); font-size:12.5px; border:1px solid var(--line); border-radius:999px; padding:6px 12px; transition:all 140ms ease; }
+  .agenda a:hover { border-color:var(--db-red); color:var(--db-red); }
+  .agenda a .an { font-family:"DM Mono",monospace; font-size:10px; font-weight:700; width:17px; height:17px; border-radius:5px; background:var(--db-mint); color:var(--green); display:inline-flex; align-items:center; justify-content:center; }
+
+  .sec { margin-bottom:34px; scroll-margin-top:20px; }
+  .sec-head .kicker { font-family:"DM Mono",monospace; font-size:10.5px; letter-spacing:0.16em; text-transform:uppercase; color:var(--db-red); display:flex; align-items:center; gap:9px; }
+  .sec-head .kicker .n { width:20px; height:20px; border-radius:6px; background:var(--db-red); color:#fff; display:inline-flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; }
+  .sec-head h2 { margin:9px 0 3px; font-size:20px; font-weight:700; letter-spacing:-0.01em; }
+  .sec-head h2 .accent { color:var(--green); }
+  .sec-head .lede { margin:0 0 16px; color:var(--ink-2); font-size:13.5px; max-width:920px; }
+  p.body { font-size:13.5px; color:var(--ink-2); max-width:920px; }
+  p.body b { color:var(--ink); }
+
+  .grid { display:grid; gap:14px; }
+  .g3 { grid-template-columns:repeat(3,1fr); }
+  .card { background:var(--paper); border:1px solid var(--line); border-radius:12px; padding:15px 16px; }
+  .card.tinted { background:color-mix(in oklab, var(--tint) 45%, var(--paper)); }
+  .card .n { font-family:"DM Mono",monospace; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--db-red); }
+  .card h3 { margin:6px 0 6px; font-size:14px; font-weight:700; }
+  .card p { margin:0; font-size:12.5px; color:var(--ink-2); line-height:1.5; }
+
+  .tracks { display:grid; grid-template-columns:repeat(2,1fr); gap:14px; }
+  .track { border:1px solid var(--line); border-radius:14px; padding:18px 19px; background:color-mix(in oklab, var(--tint) 42%, var(--paper)); position:relative; display:flex; flex-direction:column; }
+  .track .top { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .track .tag { font-family:"DM Mono",monospace; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--ink-2); background:var(--paper); border:1px solid var(--line); border-radius:999px; padding:4px 10px; }
+  .track .win { font-family:"DM Mono",monospace; font-size:10px; letter-spacing:0.04em; color:var(--muted); }
+  .track h3 { margin:12px 0 6px; font-size:17px; font-weight:700; letter-spacing:-0.01em; }
+  .track h3 a { color:inherit; text-decoration:none; border-bottom:1.5px dotted var(--line-strong); padding-bottom:1px; transition:all 140ms ease; }
+  .track h3 a:hover { color:var(--db-red); border-color:var(--db-red); }
+  .track h3 a .ext { font-size:0.72em; color:var(--muted); margin-left:3px; vertical-align:2px; }
+  .track h3 a:hover .ext { color:var(--db-red); }
+  .track .what { font-size:12.5px; color:var(--ink-2); line-height:1.5; margin:0 0 12px; }
+  .track .what b { color:var(--ink); }
+  .track .meta { margin-top:auto; padding-top:11px; border-top:1px solid color-mix(in oklab, var(--line-strong) 55%, transparent); display:flex; flex-wrap:wrap; gap:5px 16px; }
+  .track .meta div { font-size:11.5px; color:var(--ink-2); }
+  .track .meta .k { font-family:"DM Mono",monospace; font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); display:block; margin-bottom:1px; }
+  .track .demo { margin-top:11px; font-size:12px; color:var(--ink-2); font-style:italic; line-height:1.5; }
+  .track .demo b { font-style:normal; color:var(--ink); }
+
+  .keystone { background:var(--db-navy); border-radius:14px; padding:22px 26px; }
+  .keystone .k { font-family:"DM Mono",monospace; font-size:10.5px; letter-spacing:0.16em; text-transform:uppercase; color:#9AA7B0; }
+  .keystone h3 { color:#fff; margin:8px 0 8px; font-size:19px; font-weight:700; letter-spacing:-0.01em; }
+  .keystone h3 .ok { color:#4CD08A; }
+  .keystone p { color:#C6CDD3; font-size:13.5px; max-width:880px; margin:0; line-height:1.55; }
+  .keystone code { color:#FFB59F; background:rgba(255,255,255,0.08); }
+  .chips { display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; }
+  .chip { font-family:"DM Mono",monospace; font-size:11.5px; background:var(--paper); border:1px solid var(--line); border-radius:999px; padding:6px 12px; color:var(--ink-2); }
+  .chip b { color:var(--ink); }
+
+  /* architecture flow diagram */
+  .arch-flow { margin-top:6px; }
+  .lane { display:flex; align-items:stretch; gap:0; margin-bottom:2px; }
+  .lane.parallel { gap:14px; }
+  .lane .node { flex:1 1 0; }
+  .node { background:color-mix(in oklab, var(--ncbg) 42%, var(--paper)); border:1px solid color-mix(in oklab, var(--nc) 32%, var(--line)); border-radius:12px; padding:12px 13px; display:flex; gap:10px; align-items:flex-start; min-width:0; }
+  .node .ic { color:var(--nc); flex:0 0 auto; }
+  .node .ic svg { width:22px; height:22px; display:block; }
+  .node .tx { min-width:0; }
+  .node .tx .t { font-weight:700; font-size:13px; letter-spacing:-0.005em; }
+  .node .tx .s { font-size:11px; color:var(--ink-2); line-height:1.4; margin-top:2px; }
+  .node .llm { display:inline-flex; align-items:center; gap:4px; margin-top:7px; font-family:"DM Mono",monospace; font-size:8.5px; letter-spacing:0.07em; text-transform:uppercase; color:var(--db-red); background:color-mix(in oklab, var(--db-red) 12%, var(--paper)); border:1px solid color-mix(in oklab, var(--db-red) 30%, var(--line)); border-radius:999px; padding:2px 7px; }
+  html[data-theme="dark"] .node .llm { color:#FF6A52; }
+  .node .llm svg { width:11px; height:11px; }
+  .fa { flex:0 0 34px; display:flex; align-items:center; justify-content:center; color:var(--line-strong); }
+  .fa svg { width:22px; height:16px; }
+  .lane-down { text-align:center; font-size:11px; color:var(--muted); padding:8px 0; font-family:"DM Mono",monospace; letter-spacing:0.03em; }
+  .lane-down b { color:var(--ink-2); font-weight:500; }
+  .uc-underlay { margin-top:12px; text-align:center; font-family:"DM Mono",monospace; font-size:10px; letter-spacing:0.08em; text-transform:uppercase; color:var(--green); background:color-mix(in oklab, var(--db-mint) 28%, var(--paper)); border:1px dashed color-mix(in oklab, var(--green) 32%, var(--line)); border-radius:10px; padding:9px 12px; }
+  .node.vol  { --nc:var(--amber); --ncbg:var(--db-sand); }
+  .node.data { --nc:var(--amber); --ncbg:var(--db-sand); }
+  .node.gov  { --nc:var(--green); --ncbg:var(--db-mint); }
+  .node.ai   { --nc:var(--db-red); --ncbg:var(--db-coral); }
+  .node.cmp  { --nc:#3E6FB0; --ncbg:var(--db-sky); }
+  .node.user { --nc:var(--green); --ncbg:var(--db-mint); }
+  html[data-theme="dark"] .node.cmp { --nc:#8FB8E8; }
+  @media (max-width:900px){ .lane{ flex-direction:column; } .lane.parallel{ gap:8px; } .fa{ flex-basis:auto; padding:5px 0; } .fa svg{ transform:rotate(90deg); } }
+
+  .oneliner { background:var(--paper); border:1px dashed var(--line-strong); border-radius:12px; padding:18px 22px; margin-top:6px; }
+  .oneliner .k { font-family:"DM Mono",monospace; font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--muted); }
+  .oneliner p { margin:8px 0 0; font-size:15px; color:var(--ink); line-height:1.55; font-weight:500; }
+
+  .foot { margin-top:30px; padding-top:16px; border-top:1px solid var(--line); display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; font-family:"DM Mono",monospace; font-size:10.5px; color:var(--muted); letter-spacing:0.04em; }
+  .foot a { color:var(--muted); }
+
+  .to-top { position:fixed; bottom:20px; left:20px; z-index:9999; display:inline-flex; align-items:center; gap:7px; padding:9px 14px; border-radius:999px; border:1px solid var(--line-strong); background:var(--paper); color:var(--ink); box-shadow:0 6px 18px -6px rgba(0,0,0,0.18); cursor:pointer; font-family:"DM Mono",monospace; font-size:11px; letter-spacing:0.06em; text-transform:uppercase; opacity:0; transform:translateY(8px); pointer-events:none; transition:opacity 160ms ease, transform 160ms ease, border-color 140ms ease, color 140ms ease; }
+  .to-top.show { opacity:1; transform:translateY(0); pointer-events:auto; }
+  .to-top:hover { border-color:var(--db-red); color:var(--db-red); }
+  .to-top .ar { font-size:13px; transform:translateY(-1px); }
+
+  @media (max-width:900px){ .g3,.tracks{ grid-template-columns:1fr; } }
+  @media print { .toolbar,.to-top,.agenda { display:none; } body { background:#fff; } .page { padding:12px; } .keystone,.banner,.track { -webkit-print-color-adjust:exact; print-color-adjust:exact; } }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="hdr">
+    <div class="eyebrow">Fred Hutch × Databricks · Build Days · Day 1 kickoff</div>
+    <h1>The solutions you asked for, built <span class="accent">together</span></h1>
+    <div class="sub">Over two days, your teams turn the priorities you raised into working solutions, built on a governed foundation shaped like your own OMOP data. You keep every one. This is not a demo you watch. It is a solution you build, with a Databricks engineer alongside, so your time goes straight to the ideas that matter to Fred Hutch. All data is synthetic for the event. No PHI.</div>
+    <div class="facts">
+      <span class="fact"><b>When:</b> July 7 to 8, 2026 · 11:00 AM to 5:00 PM</span>
+      <span class="fact"><b>You keep:</b> working solutions you own</span>
+      <span class="fact"><b>Foundation:</b> governance</span>
+      <span class="fact"><b>Data:</b> synthetic OMOP · no PHI</span>
+    </div>
+    <div class="toolbar">
+      <button onclick="document.documentElement.dataset.theme = document.documentElement.dataset.theme==='dark'?'warm':'dark'">◐ theme</button>
+      <button onclick="window.print()">⎙ print</button>
+    </div>
+  </div>
+
+  <div class="banner">
+    <span class="lbl">What today is</span>
+    <b>A working session, not a presentation.</b> We start as one room to align on the outcome and stand up the shared governed foundation. Then four teams build in parallel, each with its own engineer, and on Day 2 each team shows the room what it made. You leave with real solutions running on your governed data.
+  </div>
+
+  <nav class="agenda" aria-label="On this page">
+    <span class="lbl">On this page</span>
+    <a href="#s1"><span class="an">1</span> The goal</a>
+    <a href="#s2"><span class="an">2</span> What you'll build</a>
+    <a href="#s3"><span class="an">3</span> How we build together</a>
+    <a href="#s4"><span class="an">4</span> The governed foundation</a>
+    <a href="#arch"><span class="an">◈</span> How it fits together</a>
+  </nav>
+
+  <!-- 1 -->
+  <section class="sec" id="s1">
+    <div class="sec-head">
+      <div class="kicker"><span class="n">1</span> The goal</div>
+      <h2>Match more patients to trials, <span class="accent">without ever exposing PHI</span></h2>
+      <p class="lede" style="color:var(--ink); font-size:15px;"><b>The goal:</b> get more eligible patients in front of the trials they qualify for, and prove their data stayed protected at every step. One real Fred Hutch problem, sized to build in two days.</p>
+    </div>
+    <p class="body" style="font-family:'DM Mono',monospace; font-size:10.5px; letter-spacing:0.14em; text-transform:uppercase; color:var(--muted); margin:0 0 8px;">The scenario</p>
+    <p class="body">A coordinator is screening breast-cancer patients for a set of trials. The rules are clear enough: a biomarker status, an age range, a prior therapy. But the evidence is not all in the structured tables. For many patients, HER2 or ER status was only ever typed into a free-text pathology note, so a query over the structured data <b>silently skips them</b>. Each one is a patient who might have qualified, and never got the call.</p>
+    <p class="body" style="margin-top:10px;">That gap is what you close. <b>Recover the patients hidden in the notes</b>, so more people reach the trials they qualify for, and because this is real patient data, <b>keep it governed the whole way</b> so a researcher only ever sees what they are entitled to.</p>
+    <p class="body" style="font-family:'DM Mono',monospace; font-size:10.5px; letter-spacing:0.14em; text-transform:uppercase; color:var(--muted); margin:16px 0 8px;">What you build on</p>
+    <p class="body">You start from <b>six synthetic OMOP tables</b>, <code>person</code>, <code>condition_occurrence</code>, <code>measurement</code>, <code>observation</code>, <code>drug_exposure</code>, and <code>note</code>, holding 300 breast-cancer patients. They carry the same column names and types as Fred Hutch's real <code>curated_omop.omop</code> schema, so moving from synthetic to real data is a change in configuration, not a rewrite. Some patients are clearly eligible for a trial, some clearly are not, and some surface only when you read the notes. That is the build scenario, and it is what makes the two days worth it.</p>
+  </section>
+
+  <!-- 2 -->
+  <section class="sec" id="s2">
+    <div class="sec-head">
+      <div class="kicker"><span class="n">2</span> What you'll build</div>
+      <h2>Four teams, four solutions you take home</h2>
+      <p class="lede">Each team owns one part of the scenario and has its own brief with a goal and ground rules. Click a title to open it.</p>
+    </div>
+    <div class="tracks">
+
+      <div class="track" style="--tint:var(--db-mint)">
+        <div class="top"><span class="tag">🔐 Governance · the foundation</span><span class="win">~3 hrs · Day 1</span></div>
+        <h3><a href="kits/governance-session-starter-kit/SESSION_BRIEF.html">Governing PHI on OMOP with Unity Catalog<span class="ext">↗</span></a></h3>
+        <p class="what"><b>Goal:</b> govern the shared data once, at the catalog and schema level, so every other team inherits the controls automatically. Classification, column masks, row-filter access by OCDO group, a tag-based policy that follows the tag catalog-wide, identifier search, and an inactive-user audit.</p>
+        <div class="meta">
+          <div><span class="k">Group</span>Josh · Gina · Ty</div>
+          <div><span class="k">Surface</span>Unity Catalog · Genie Code</div>
+        </div>
+        <p class="demo"><b>Shows:</b> "Our governed foundation, classified, masked, and access-controlled, and how it applies automatically to everything the other teams built."</p>
+      </div>
+
+      <div class="track" style="--tint:var(--db-sky)">
+        <div class="top"><span class="tag">🛠️ Data Engineering</span><span class="win">full two days</span></div>
+        <h3><a href="kits/data-eng-session-starter-kit/SESSION_BRIEF.html">Reliable clinical data you can verify<span class="ext">↗</span></a></h3>
+        <p class="what"><b>Goal:</b> tame bad data and broken schedules. Build one live trials feed into a clean, deduplicated table the Applied AI team joins against, with bad rows quarantined, schema drift absorbed, restricted data gated, and SLA windows honored. Nothing lost, every row accounted for.</p>
+        <div class="meta">
+          <div><span class="k">Group</span>Chetan · Jenn · Jennifer</div>
+          <div><span class="k">Surface</span>Genie Code</div>
+        </div>
+        <p class="demo"><b>Shows:</b> "A live trials feed turned into governed, verifiable data, drift handled, bad rows quarantined, and a trials catalog the Applied AI team joins."</p>
+      </div>
+
+      <div class="track" style="--tint:var(--db-coral)">
+        <div class="top"><span class="tag">🤖 Applied AI</span><span class="win">full two days</span></div>
+        <h3><a href="kits/ml-session-starter-kit/SESSION_BRIEF.html">Feature extraction &amp; trial pre-screening<span class="ext">↗</span></a></h3>
+        <p class="what"><b>Goal:</b> qualify as many eligible patients as possible. A language model reads the free-text notes to recover the patients structured queries miss, then feeds a transparent, rules-based eligibility screen with a plain-English reason per patient. The payoff: 109 to 140 eligible, governed and measured.</p>
+        <div class="meta">
+          <div><span class="k">Group</span>Emma · Sita · Monica · Taylor</div>
+          <div><span class="k">Surface</span>Genie Code · Genie space · app</div>
+        </div>
+        <p class="demo"><b>Shows:</b> "We recovered the notes-only patients with AI and grew the trial cohort, governed and measured, end to end."</p>
+      </div>
+
+      <div class="track" style="--tint:var(--db-sand)">
+        <div class="top"><span class="tag">📊 Admin · Genie One</span><span class="win">~3 hrs · Day 1</span></div>
+        <h3><a href="kits/admin-session-starter-kit/SESSION_BRIEF.html">Cost, chargeback &amp; budget alerts<span class="ext">↗</span></a></h3>
+        <p class="what"><b>Goal:</b> get clear visibility into cost and usage, all by asking in plain language. Monthly cost broken down for chargebacks across Data Engineering, Data Science, and Research, plus a proactive alert as a category nears its budget. Asked and answered through Genie One, over the account's own billing data.</p>
+        <div class="meta">
+          <div><span class="k">Lead</span>Amy Paguirigan</div>
+          <div><span class="k">Surface</span>Genie One · system tables</div>
+        </div>
+        <p class="demo"><b>Shows:</b> "Clear visibility into spend by group, and a proactive alert as any category approaches its budget."</p>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- 3 -->
+  <section class="sec" id="s3">
+    <div class="sec-head">
+      <div class="kicker"><span class="n">3</span> How we build together</div>
+      <h2>You drive the build, and <span class="accent">you keep what you make</span></h2>
+      <p class="lede">Your data is ready on day one, governed and shaped like your own OMOP tables, so your two days go straight to building. A Databricks engineer works alongside each team, and you drive it yourself, in plain language, with Genie.</p>
+    </div>
+    <div class="grid g3">
+      <div class="card tinted"><div class="n">start together</div><h3>One room, one foundation</h3><p>We align on the outcome, then stand up the shared governed OMOP data everyone works from. The whole room asks real questions of the data, and that becomes the governance team's requirements, gathered live.</p></div>
+      <div class="card tinted"><div class="n">build in parallel</div><h3>Four teams, an engineer each</h3><p>Each team builds on the shared foundation, with a Databricks engineer right alongside. You drive with Genie Code, Genie spaces, and Genie One, all in plain language. A different but working solution is a win, so explore freely.</p></div>
+      <div class="card tinted"><div class="n">share &amp; keep</div><h3>Show it on Day 2</h3><p>Each team walks the room through what it built on its governed data, then a short debrief on where the working outputs live and who owns them next. You leave with solutions, not slides.</p></div>
+    </div>
+  </section>
+
+  <!-- 4 -->
+  <section class="sec" id="s4">
+    <div class="sec-head">
+      <div class="kicker"><span class="n">4</span> The governed foundation</div>
+      <h2>Governance is the foundation <span class="accent">everyone inherits</span></h2>
+      <p class="lede">It is not a separate track. It is the layer under all four, set once and inherited by everything built on top.</p>
+    </div>
+    <div class="keystone">
+      <div class="k">One policy, set high, inherited everywhere</div>
+      <h3>Classified and access-controlled, <span class="ok">before anything is built on top</span></h3>
+      <p>Together we stand up the shared synthetic OMOP data, then the governance team classifies it and sets a tag-based policy at the catalog and schema level. They set it once, high in the hierarchy. Everything the Data Engineering and Applied AI teams compose on top, new tables, a registered model, inherits that governance automatically, and any new column that carries a PHI tag is masked the moment it appears, with nothing to re-apply. The six synthetic OMOP tables carry the same names as your real <code>curated_omop.omop</code>, so the same work repoints at real data with one switch, whenever you are ready and approved.</p>
+    </div>
+    <div class="chips">
+      <span class="chip"><b>classify</b> → tag the sensitive columns</span>
+      <span class="chip"><b>mask</b> → hide values by group</span>
+      <span class="chip"><b>tag-based policy</b> → follows the tag catalog-wide</span>
+      <span class="chip"><b>synthetic → real</b> → one switch</span>
+    </div>
+
+    <h3 id="arch" style="margin:26px 0 4px; font-size:16px; font-weight:700; letter-spacing:-0.01em; scroll-margin-top:20px;">How it fits together</h3>
+    <p class="body" style="margin:0 0 14px;">The shape of the two days in one picture. Two sources feed the platform: the synthetic OMOP tables sit in Unity Catalog as Delta, and the trials feed lands as files in a <code>/Volumes</code> path. Both are governed, joined into a curated layer, then the Applied AI team reads that layer and <b>transforms it with a language model</b> before serving. Every step is governed by Unity Catalog.</p>
+    <div class="arch-flow">
+      <div class="lane parallel">
+        <div class="node data"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg></span><div class="tx"><div class="t">OMOP source · Delta</div><div class="s">6 shared synthetic tables in Unity Catalog · read-only</div></div></div>
+        <div class="node vol"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 12l9 5 9-5"/><path d="M3 17l9 5 9-5"/></svg></span><div class="tx"><div class="t">/Volumes → trials feed</div><div class="s">Trials JSON lands as files in waves → bronze</div></div></div>
+      </div>
+      <div class="lane-down">Both governed in Unity Catalog, joined into a curated layer ↓</div>
+      <div class="lane">
+        <div class="node gov"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg></span><div class="tx"><div class="t">Delta · Governed silver</div><div class="s">Structured biomarkers and trial criteria · masked, row-filtered</div></div></div>
+      </div>
+      <div class="lane-down">Applied AI reads the governed silver, then <b>transforms</b> it ↓</div>
+      <div class="lane">
+        <div class="node ai"><span class="ic"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.7 4.5L18 8l-4.3 1.5L12 14l-1.7-4.5L6 8l4.3-1.5L12 2z"/><path d="M18.5 13l1 2.4 2.4 1-2.4 1-1 2.4-1-2.4-2.4-1 2.4-1 1-2.4z"/></svg></span><div class="tx"><div class="t">ai_query · read the notes</div><div class="s">Recover the notes-only patients</div><div class="llm"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.7 4.5L18 8l-4.3 1.5L12 14l-1.7-4.5L6 8l4.3-1.5L12 2z"/></svg> LLM · Foundation Model</div></div></div>
+        <div class="fa"><svg viewBox="0 0 26 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 8h20M17 3l5 5-5 5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div class="node gov"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg></span><div class="tx"><div class="t">Delta · Gold</div><div class="s">Unified cohort and trial pre-screen · biomarker_source audit</div></div></div>
+      </div>
+      <div class="lane-down">Served three ways ↓</div>
+      <div class="lane parallel">
+        <div class="node cmp"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 11.5a7.5 7.5 0 0 1-10.9 6.7L4 20l1.8-5.3A7.5 7.5 0 1 1 21 11.5z"/></svg></span><div class="tx"><div class="t">AI/BI Genie</div><div class="s">Self-serve cohort queries</div><div class="llm"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.7 4.5L18 8l-4.3 1.5L12 14l-1.7-4.5L6 8l4.3-1.5L12 2z"/></svg> LLM · Genie</div></div></div>
+        <div class="node cmp"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/></svg></span><div class="tx"><div class="t">Coordinator app</div><div class="s">Timeline · override · in-app agent</div><div class="llm"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.7 4.5L18 8l-4.3 1.5L12 14l-1.7-4.5L6 8l4.3-1.5L12 2z"/></svg> LLM · agent</div></div></div>
+        <div class="node ai"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="5" cy="6" r="1.8"/><circle cx="5" cy="18" r="1.8"/><circle cx="19" cy="12" r="1.8"/><path d="M6.6 6.7 17.4 11.4M6.6 17.3 17.4 12.6"/></svg></span><div class="tx"><div class="t">MLflow evaluation</div><div class="s">Extraction accuracy vs ground truth</div><div class="llm"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.7 4.5L18 8l-4.3 1.5L12 14l-1.7-4.5L6 8l4.3-1.5L12 2z"/></svg> LLM · judge</div></div></div>
+      </div>
+      <div class="uc-underlay">Unity Catalog, governance and lineage across every step · synthetic → real: one switch</div>
+    </div>
+
+    <div class="oneliner" style="margin-top:22px;">
+      <div class="k">The one line for the room</div>
+      <p>"We govern the shared data once, then build on top of it, together. By Day 2 you have working solutions that find more patients for trials and prove, at every step, that the data stayed protected."</p>
+    </div>
+  </section>
+
+  <div class="foot">
+    <span>Fred Hutch × Databricks · Build Days kickoff</span>
+    <span>July 7 to 8, 2026 · synthetic data only, Unity-Catalog-scoped · per-team briefs: <code>kits/*/SESSION_BRIEF.html</code></span>
+  </div>
+
+</div>
+<button class="to-top" id="to-top" title="Back to top" aria-label="Back to top"><span class="ar">↑</span>Top</button>
+<script>
+  const toTop = document.getElementById("to-top");
+  const onScroll = () => { toTop.classList.toggle("show", window.scrollY > 360); };
+  window.addEventListener("scroll", onScroll, { passive:true });
+  toTop.addEventListener("click", () => { window.scrollTo({ top:0, behavior:"smooth" }); });
+  onScroll();
+</script>
+</body>
+</html>
