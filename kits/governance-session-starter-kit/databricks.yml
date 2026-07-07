@@ -1,11 +1,15 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # Databricks Asset Bundle: Fred Hutch Governance Session (UC governance on OMOP)
 #
-# This bundle is PRE-BUILT for you. It is Unity-Catalog-scoped (catalog/schema/group are
-# variables, no hive_metastore, no hardcoded workspace), per-team. To use it:
+# OPTIONAL FACILITATOR-BACKUP PATH ONLY. The PRIMARY governance session governs the
+# SHARED FOUNDATION's 6 OMOP tables IN PLACE (Genie-Code-driven, no bundle, no clone),
+# so the policy affects the shared data every track reads. See README.md / SESSION_BRIEF.html.
+# This bundle exists as a backup that clones the 6 tables into a separate schema so a
+# facilitator can demonstrate the same masks/filters in isolation if needed. Do NOT run it
+# for the primary in-place path. To use the backup:
 #   1. Fill in the `client` target's client_catalog / client_schema / warehouse_id / ocdo_group.
 #   2. databricks bundle deploy --target client
-#   3. databricks bundle run setup_clone_job --target client   (lands the 6 OMOP tables)
+#   3. databricks bundle run setup_clone_job --target client   (clones the 6 OMOP tables)
 # Then open notebooks/00_START_HERE and set the matching widgets.
 # ─────────────────────────────────────────────────────────────────────────────
 bundle:

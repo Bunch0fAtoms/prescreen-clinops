@@ -7,30 +7,25 @@
     "catalog_var": "client_catalog",
     "schema_var": "client_schema",
     "warehouse_var": "warehouse_id",
-    "group_var": "ocdo_group",
-    "source_catalog_var": "source_catalog",
-    "source_schema_var": "source_schema"
+    "group_var": "ocdo_group"
   },
 
   "deploy_target": {
-    "kind": "job",
-    "resource_key": "setup_clone_job",
-    "run_command": "databricks bundle run setup_clone_job --target client",
-    "bundle_target_flag": "--target client",
-    "note": "Two-step stand-up: (1) databricks bundle deploy --target client, then (2) databricks bundle run setup_clone_job --target client. The setup job DEEP CLONEs the 6 OMOP tables from source_catalog.source_schema into client_catalog.client_schema so policies are applied in ISOLATION, never on a schema another track reads. clone_omop_tables.sql does all 6."
+    "kind": "none",
+    "run_command": null,
+    "note": "No bundle to deploy and no clone to run. Governance is Genie-Code-driven policy applied to the SHARED FOUNDATION's 6 OMOP tables, governed IN PLACE. The whole point is to affect the shared data every track reads, so nothing is cloned into isolation, all groups use the same 6 OMOP tables. Set classification and a tag-based policy at the catalog/schema level so it inherits to every child asset the other tracks build. Setup = confirm the foundation's 6 OMOP tables exist, then point Genie Code at the shared foundation schema. The notebooks/, resources/clone_omop_tables.sql, and resources/setup_clone_job.yml are an OPTIONAL facilitator-backup path that clones into a separate schema; the primary path does not clone."
   },
 
   "toggle": {
     "variable": null,
     "mechanism": "source_repointing",
-    "source_catalog_var": "source_catalog",
-    "source_schema_var": "source_schema",
-    "synthetic_source_catalog": "<same as client_catalog>",
-    "synthetic_source_schema": "clinops_foundation",
-    "real_source_catalog": "curated_omop",
-    "real_source_schema": "omop",
+    "governed_catalog_var": "client_catalog",
+    "governed_schema_var": "client_schema",
+    "synthetic_governed_schema": "clinops_foundation",
+    "real_governed_catalog": "curated_omop",
+    "real_governed_schema": "omop",
     "real_source_hint": "curated_omop.omop",
-    "note": "No boolean toggle. The clone source is set by source_catalog/source_schema (job params to clone_omop_tables.sql). Synthetic = your own catalog + clinops_foundation (the shared foundation). Real = the FH OMOP schema, a DIFFERENT catalog (curated_omop.omop). Set BOTH source_catalog and source_schema. Table names are identical, so the same masks/filters bind either way. The notebooks apply policies to the CLONES in client_schema, so no source widget is needed in the notebooks, only the clone job reads source."
+    "note": "No boolean toggle. Governance operates on ONE schema, the one it governs in place. Synthetic = the shared foundation (client_schema = clinops_foundation, in your own catalog). Real = the FH OMOP schema, a DIFFERENT catalog (curated_omop.omop): point client_catalog/client_schema there and apply the same classification and policy. Table names are identical, so the same masks/filters/tag policy bind either way."
   },
 
   "widget_config": {
@@ -41,21 +36,21 @@
       "warehouse_id": "warehouse_id",
       "ocdo_group": "ocdo_group"
     },
-    "note": "The notebooks read from these dbutils.widgets, NOT from bundle vars. At setup the skill rewrites each widget's DEFAULT (2nd arg of dbutils.widgets.text) to match the bundle: catalog<-client_catalog, schema<-client_schema, warehouse_id<-warehouse_id, ocdo_group<-ocdo_group. There is NO source widget here. The notebooks operate on the clones in client_schema; the synth/real source is set only in databricks.yml and consumed by the clone job. Rewriting a widget DEFAULT is a setup action, not a rename, allowed."
+    "note": "For the primary govern-in-place path, catalog/schema point at the SHARED FOUNDATION schema being governed (synthetic default clinops_foundation; real curated_omop.omop). At setup the skill rewrites each widget's DEFAULT (2nd arg of dbutils.widgets.text): catalog<-client_catalog, schema<-client_schema, warehouse_id<-warehouse_id, ocdo_group<-ocdo_group. ocdo_group is the account group the masks/row filters gate on via is_account_group_member; the owner/builders see full data, a group member sees the masked/filtered view. Rewriting a widget DEFAULT is a setup action, not a rename, allowed. NOTE: the backup notebooks default schema to clinops_gov (the optional clone path); for the primary path set schema to the foundation."
   },
 
   "real_mode": {
-    "how": "Set source_catalog=curated_omop and source_schema=omop in databricks.yml (targets.client.variables), then re-run setup_clone_job so the 6 tables are re-cloned from real OMOP into client_schema.",
-    "rebuild_assets": "After re-cloning from real, RE-RUN the governance notebooks (nb 01-03) so the tags, masks, and row filters are re-applied to the real clones. Policies bind to the clones in client_schema, so nothing is ever applied to the shared source, but the clones themselves must be refreshed from real and re-governed."
+    "how": "Point client_catalog=curated_omop and client_schema=omop, then apply the same classification and tag-based policy to the real OMOP schema in place. The 6 OMOP table names are identical, so the masks, row filters, and tag policy bind unchanged.",
+    "rebuild_assets": "Re-run the classification and policy steps (nb 01-03, or the equivalent Genie Code prompts) against the real schema so tags, masks, and row filters are applied there. Because the policy is set at the catalog/schema level, child assets the other tracks build on the real data inherit it automatically."
   },
 
   "tables": [
-    {"name": "person", "role": "Cloned into the governance schema. PHI columns: person_id (identifier), year_of_birth, gender_source_value, birth_date.", "row_count_expected": 300, "access": "cloned into client_schema; policies applied here"},
-    {"name": "condition_occurrence", "role": "Cloned. person_id is the row-filter key.", "row_count_expected": 300, "access": "cloned into client_schema"},
-    {"name": "measurement", "role": "Cloned. Clinical facts (biomarkers): data_sensitivity, not phi.", "row_count_expected": 720, "access": "cloned into client_schema"},
-    {"name": "observation", "role": "Cloned. Clinical facts.", "row_count_expected": 720, "access": "cloned into client_schema"},
-    {"name": "drug_exposure", "role": "Cloned. Clinical facts.", "row_count_expected": 383, "access": "cloned into client_schema"},
-    {"name": "note", "role": "Cloned. note_text is free-text PHI, masked in nb 02; person_id is an identifier.", "row_count_expected": 265, "access": "cloned into client_schema; note_text masked"}
+    {"name": "person", "role": "Governed in place in the shared foundation. PHI columns: person_id (identifier), year_of_birth, gender_source_value, birth_date. Also carries is_high_profile, a SYNTHETIC-ONLY VIP flag (see the foundation's synthetic_only_columns); it is absent from real curated_omop.omop, so strip references to it in real mode.", "row_count_expected": 300, "access": "governed in place (shared foundation schema); masks/filters applied here"},
+    {"name": "condition_occurrence", "role": "Governed in place. person_id is the row-filter key.", "row_count_expected": 300, "access": "governed in place (shared foundation schema)"},
+    {"name": "measurement", "role": "Governed in place. Clinical facts (biomarkers): data_sensitivity, not phi.", "row_count_expected": 720, "access": "governed in place (shared foundation schema)"},
+    {"name": "observation", "role": "Governed in place. Clinical facts.", "row_count_expected": 720, "access": "governed in place (shared foundation schema)"},
+    {"name": "drug_exposure", "role": "Governed in place. Clinical facts.", "row_count_expected": 383, "access": "governed in place (shared foundation schema)"},
+    {"name": "note", "role": "Governed in place. note_text is free-text PHI, masked in nb 02; person_id is an identifier.", "row_count_expected": 265, "access": "governed in place (shared foundation schema); note_text masked"}
   ],
 
   "governed_tag_policy": {
@@ -71,11 +66,9 @@
   },
 
   "source_files": {
-    "notebooks": "notebooks/ (00_START_HERE, 01_discover_and_classify, 02_column_masks, 03_row_filters_abac, 04_phi_identifier_search, 05_ai_feature_governance, 06_inactive_users_report)",
+    "notebooks": "notebooks/ (00_START_HERE, 01_discover_and_classify, 02_column_masks, 03_row_filters_abac, 04_phi_identifier_search, 05_ai_feature_governance, 06_inactive_users_report), OPTIONAL facilitator backup",
     "config": "notebooks/_config.py",
-    "clone_sql": "resources/clone_omop_tables.sql",
-    "job_resource": "resources/setup_clone_job.yml",
-    "bundle": "databricks.yml"
+    "backup_clone_path": "resources/clone_omop_tables.sql + resources/setup_clone_job.yml + databricks.yml, an OPTIONAL facilitator-backup path that clones the 6 OMOP tables into a separate schema. The primary path governs the shared foundation in place and does not use these."
   },
 
   "table_contract": {
@@ -83,18 +76,18 @@
     "silver": null,
     "gold": {
       "tables": ["person", "condition_occurrence", "measurement", "observation", "drug_exposure", "note"],
-      "defined_in": ["resources/clone_omop_tables.sql"],
-      "note": "The 6 OMOP tables are deep-cloned as-is; the team applies tags/masks/row filters on top. Governance is the common thread every section inherits. The same pattern is then applied (by Josh rotating) to the DE/ML silver/gold/models."
+      "defined_in": ["(shared foundation) foundation/src/data_generation/generate_omop_data.py"],
+      "note": "The 6 OMOP tables are created by the shared foundation and governed here IN PLACE; the team applies tags/masks/row filters on top. Governance is the foundation every section inherits, the same tag policy set at the catalog/schema level flows down to the DE/ML silver/gold/models built on the shared data."
     }
   },
 
   "dependency_map": [
-    {"from": "setup_clone_job", "to": "person", "type": "creates"},
-    {"from": "setup_clone_job", "to": "condition_occurrence", "type": "creates"},
-    {"from": "setup_clone_job", "to": "measurement", "type": "creates"},
-    {"from": "setup_clone_job", "to": "observation", "type": "creates"},
-    {"from": "setup_clone_job", "to": "drug_exposure", "type": "creates"},
-    {"from": "setup_clone_job", "to": "note", "type": "creates"},
+    {"from": "shared foundation (foundation_setup_job)", "to": "person", "type": "creates", "note": "governance does not create the OMOP tables; it governs them in place"},
+    {"from": "shared foundation (foundation_setup_job)", "to": "condition_occurrence", "type": "creates"},
+    {"from": "shared foundation (foundation_setup_job)", "to": "measurement", "type": "creates"},
+    {"from": "shared foundation (foundation_setup_job)", "to": "observation", "type": "creates"},
+    {"from": "shared foundation (foundation_setup_job)", "to": "drug_exposure", "type": "creates"},
+    {"from": "shared foundation (foundation_setup_job)", "to": "note", "type": "creates"},
     {"from": "person.person_id", "to": "mask_person_id", "type": "masked_by", "note": "nb 02 column mask, gates on is_account_group_member(ocdo_group)"},
     {"from": "note.note_text", "to": "mask_note_text", "type": "masked_by", "note": "nb 02 column mask"},
     {"from": "all 6 tables", "to": "consent_row_filter", "type": "filtered_by", "note": "nb 03 row filter ON (person_id)"},
@@ -106,16 +99,16 @@
   ],
 
   "source_inputs": [
-    {"source_type": "uc_tables_clone", "locator": "${var.source_catalog}.${var.source_schema}", "description": "6 OMOP tables deep-cloned into the governance schema. Synthetic default = clinops_foundation.", "active_when": "always (setup_clone_job)"},
-    {"source_type": "real_omop", "locator": "curated_omop.omop", "description": "FH real OMOP. Point source_catalog/source_schema here to govern real data. Identical table names.", "active_when": "source repointed to real"}
+    {"source_type": "uc_tables_readonly", "locator": "${var.client_catalog}.${var.client_schema}", "description": "The 6 OMOP tables stood up by the shared foundation, governed here in place. Synthetic default schema = clinops_foundation.", "active_when": "always (govern in place)"},
+    {"source_type": "real_omop", "locator": "curated_omop.omop", "description": "FH real OMOP. Point client_catalog/client_schema here to govern real data in place. Identical table names.", "active_when": "governed schema repointed to real"}
   ],
 
   "verify_queries": [
     {
-      "id": "foundation_clone_counts",
-      "description": "Checkpoint 1: all 6 OMOP tables present in the GOVERNANCE schema (not the source) after the clone job",
+      "id": "foundation_table_counts",
+      "description": "Checkpoint 1: all 6 OMOP tables present in the governed (shared foundation) schema before applying policy",
       "sql": "SELECT 'person' AS tbl, COUNT(*) AS n FROM ${client_catalog}.${client_schema}.person UNION ALL SELECT 'condition_occurrence', COUNT(*) FROM ${client_catalog}.${client_schema}.condition_occurrence UNION ALL SELECT 'measurement', COUNT(*) FROM ${client_catalog}.${client_schema}.measurement UNION ALL SELECT 'observation', COUNT(*) FROM ${client_catalog}.${client_schema}.observation UNION ALL SELECT 'drug_exposure', COUNT(*) FROM ${client_catalog}.${client_schema}.drug_exposure UNION ALL SELECT 'note', COUNT(*) FROM ${client_catalog}.${client_schema}.note ORDER BY tbl",
-      "expected": "person=300, condition_occurrence=300, measurement=720, observation=720, drug_exposure=383, note=265 (in client_schema)"
+      "expected": "person=300, condition_occurrence=300, measurement=720, observation=720, drug_exposure=383, note=265"
     },
     {
       "id": "classification_coverage",
@@ -140,22 +133,19 @@
   "lock_targets": [
     {
       "task_class": "rename_table",
-      "paths": ["notebooks/_config.py", "resources/clone_omop_tables.sql", "resources/setup_clone_job.yml"],
-      "reason": "OMOP CDM table names are standard and the clone + synth→real repointing depend on them."
+      "paths": ["notebooks/_config.py"],
+      "reason": "OMOP CDM table names are standard and the synth->real repointing depends on them staying identical. The 6 tables are owned by the shared foundation and governed here in place; do not rename them."
     },
     {
       "task_class": "setup",
       "paths": [".assistant/**"],
       "reason": "Adaptation skill must not modify itself"
-    },
-    {
-      "task_class": "bind_policy",
-      "paths": ["${var.source_catalog}.${var.source_schema}"],
-      "reason": "CARDINAL RULE: never bind masks/row filters to the shared source schema. It changes what every other track sees. Policies bind ONLY to client_schema (the governance clone)."
     }
   ],
 
-  "abac_note": "Tag-based ABAC via CREATE POLICY (define once by tag, applies everywhere) is preview-gated on this metastore, kept as a STRETCH (see STRETCH.md). The GA column-mask + row-filter path already satisfies the full masking/access ask; do not block on ABAC.",
+  "abac_note": "Tag-based ABAC via CREATE POLICY (define a policy ONCE by tag and it applies to every column carrying that tag, catalog-wide, including new tables the other tracks build) is the scalable model this session builds toward. Where it is preview-gated on a metastore, the GA column-mask + row-filter path satisfies the full masking/access ask; do not block on ABAC.",
+
+  "govern_in_place_note": "CARDINAL PRINCIPLE (inverted from the old clone model on purpose): governance applies classification and policy DIRECTLY to the shared foundation schema, at the catalog/schema level, so every track inherits it and every child asset is covered. This is the whole point, governance must affect the shared data. Masks and row filters gate on is_account_group_member(ocdo_group), so builders/owners keep full access while researchers see the governed view.",
 
   "checkpoints_note": "Checkpoints 1-7 are documented in RUNBOOK.md; nb 05 (AI-feature governance) and nb 06 (inactive users) depend on system tables (serving usage / system.access.audit) that an account admin may need to enable.",
 

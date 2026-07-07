@@ -210,7 +210,7 @@ display(spark.sql(f"""
 # MAGIC
 # MAGIC A real feed carries bad rows, and a good pipeline **routes them aside instead of crashing**. Bronze
 # MAGIC already captured every line (that is why we kept the raw `value`). Build
-# MAGIC `bronze_trial_quarantine` holding every row that is **not** fit for silver, each tagged with a
+# MAGIC `quarantine_trial_criteria` holding every row that is **not** fit for silver, each tagged with a
 # MAGIC `quarantine_reason`. The three reasons the live feed will send you:
 # MAGIC
 # MAGIC | reason | how to detect it |
@@ -224,14 +224,14 @@ display(spark.sql(f"""
 
 # COMMAND ----------
 
-# DBTITLE 1,TODO: build bronze_trial_quarantine with a reason per bad row (YOU BUILD THIS)
-# TODO (you build this): CREATE OR REPLACE TABLE bronze_trial_quarantine AS a SELECT over
+# DBTITLE 1,TODO: build quarantine_trial_criteria with a reason per bad row (YOU BUILD THIS)
+# TODO (you build this): CREATE OR REPLACE TABLE quarantine_trial_criteria AS a SELECT over
 #   bronze_trial_catalog that keeps ONLY bad rows and adds a `quarantine_reason` column.
 # WHY: a malformed or unkeyed record must never fail the load or silently corrupt silver. Routing it
 #   aside with a reason is how ops sees "3 rows quarantined last night, here's why" instead of a 3am page.
 # PATTERN (fill in the WHEN conditions to match the table above):
 #   spark.sql(f'''
-#     CREATE OR REPLACE TABLE {fqn("bronze_trial_quarantine")} AS
+#     CREATE OR REPLACE TABLE {fqn("quarantine_trial_criteria")} AS
 #     SELECT value AS raw_line, trial_raw, _source_file, _ingested_at,
 #            CASE
 #              WHEN trial_raw IS NULL                          THEN 'unparseable'
@@ -256,7 +256,7 @@ display(spark.sql(f"""
 # MAGIC ## 5️⃣ Verify: good rows in silver, bad rows quarantined (PRE-BUILT, runs once your TODO writes)
 # MAGIC
 # MAGIC Silver should hold the clean trials (Trial A carrying `min_ecog=1`, others `NULL`), and
-# MAGIC `bronze_trial_quarantine` should hold the bad rows with a reason each. Exact counts depend on how far
+# MAGIC `quarantine_trial_criteria` should hold the bad rows with a reason each. Exact counts depend on how far
 # MAGIC the live feed has progressed. The point is **good and bad are separated**, and nothing crashed.
 
 # COMMAND ----------
@@ -266,14 +266,14 @@ from pyspark.sql.utils import AnalysisException
 
 assert "min_ecog" in spark.table(fqn("silver_trial_criteria")).columns, "silver missing min_ecog"
 try:
-    q = spark.table(fqn("bronze_trial_quarantine"))
+    q = spark.table(fqn("quarantine_trial_criteria"))
 except AnalysisException:
-    raise Exception("bronze_trial_quarantine not built yet: complete the TODO in cell 4.")
+    raise Exception("quarantine_trial_criteria not built yet: complete the TODO in cell 4.")
 
 print("Quarantine breakdown by reason:")
 display(spark.sql(f"""
   SELECT quarantine_reason, COUNT(*) AS n
-  FROM {fqn('bronze_trial_quarantine')}
+  FROM {fqn('quarantine_trial_criteria')}
   GROUP BY quarantine_reason ORDER BY quarantine_reason
 """))
 print("Clean, join-ready trials in silver:")

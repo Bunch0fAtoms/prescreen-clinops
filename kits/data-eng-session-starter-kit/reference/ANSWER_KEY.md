@@ -114,11 +114,11 @@ change, then the bad records, then an indefinite clean heartbeat. Each team read
 into its own schema. If a team sees "no files yet," the presenter hasn't started (or needs to Repair-run)
 the feed.
 
-**Intended TODO:** build `bronze_trial_quarantine` with a reason per bad row (good rows already flow to
+**Intended TODO:** build `quarantine_trial_criteria` with a reason per bad row (good rows already flow to
 silver in cell 3):
 ```python
 spark.sql(f"""
-  CREATE OR REPLACE TABLE {fqn('bronze_trial_quarantine')} AS
+  CREATE OR REPLACE TABLE {fqn('quarantine_trial_criteria')} AS
   SELECT value AS raw_line, trial_raw, _source_file, _ingested_at, quarantine_reason
   FROM (
     SELECT value, trial_raw, _source_file, _ingested_at,

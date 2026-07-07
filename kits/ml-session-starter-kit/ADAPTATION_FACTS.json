@@ -10,23 +10,19 @@
   },
 
   "deploy_target": {
-    "kind": "job",
-    "resource_key": "data_generation_job",
-    "run_command": "databricks bundle run data_generation_job --target client",
-    "bundle_target_flag": "--target client"
+    "kind": "none",
+    "run_command": null,
+    "note": "No bundle to run for this kit, and no data to generate. The shared FOUNDATION (foundation_setup_job) already stood up the 6 read-only OMOP tables that this kit reads. The build is Genie-Code-driven; the ONE pre-built notebook that must run is 05 (ClinicalBERT -> UC), which Genie Code cannot author. An optional databricks.yml can sync the backup notebooks, but it defines no job. Setup = confirm the foundation's 6 OMOP tables exist, then point Genie Code at the foundation schema (reads) and a writable client_schema (writes)."
   },
 
   "toggle": {
-    "variable": "run_with_synthetic_data",
-    "synthetic_value": "yes",
-    "real_value": "no",
     "source_catalog_var": "source_catalog",
     "source_schema_var": "source_schema",
     "synthetic_source_catalog": "<same as client_catalog>",
     "synthetic_source_schema": "clinops_foundation",
     "real_source_catalog": "curated_omop",
     "real_source_schema": "omop",
-    "note": "All 6 OMOP table names are identical in synthetic and real modes. No query changes required to switch between them. Real OMOP lives in a DIFFERENT catalog (curated_omop), so both source_catalog AND source_schema must be set. Setting source_schema alone is not enough."
+    "note": "There is no data-generation toggle in this kit; the foundation owns generating the synthetic tables. The synthetic-to-real switch is purely a source repoint: change source_catalog/source_schema from the foundation to real OMOP. All 6 OMOP table names are identical in both modes, so no query changes are required. Real OMOP lives in a DIFFERENT catalog (curated_omop), so both source_catalog AND source_schema must be set. Setting source_schema alone is not enough."
   },
 
   "widget_config": {
@@ -38,11 +34,11 @@
       "source_schema": "source_schema",
       "source_catalog": "source_catalog"
     },
-    "note": "The notebooks read from these dbutils.widgets, NOT from bundle vars, so a databricks.yml change alone does not reach an interactive run. At setup the skill rewrites each widget's DEFAULT (the 2nd argument of dbutils.widgets.text) to the chosen value, matching the bundle: catalog<-client_catalog, schema<-client_schema, source_schema<-source_schema, source_catalog<-source_catalog (leave source_catalog default blank for synthetic, blank falls back to catalog; set it to curated_omop for real). Rewriting a widget DEFAULT is a setup action, not a rename. It is allowed and is required for the synth/real toggle to reach the notebooks."
+    "note": "The backup notebooks read from these dbutils.widgets. At setup the skill rewrites each widget's DEFAULT (the 2nd argument of dbutils.widgets.text) to the chosen value: catalog<-client_catalog, schema<-client_schema, source_schema<-source_schema, source_catalog<-source_catalog (leave source_catalog default blank for synthetic, blank falls back to catalog; set it to curated_omop for real). Rewriting a widget DEFAULT is a setup action, not a rename. It is allowed and is how the synth/real source repoint reaches the backup notebooks. The primary build is Genie-Code-driven, where the source is conveyed in the prompt."
   },
 
   "real_mode": {
-    "how": "Set run_with_synthetic_data=no; set source_catalog=curated_omop and source_schema=omop in THREE places: (1) databricks.yml targets.client.variables, (2) the notebooks/_config.py widget defaults (widget_config), and (3) the silver Lakeflow pipeline's Configuration keys source_catalog/source_schema (the pipeline reads config, not widgets). The data-generation job is not needed in real mode (real OMOP already exists).",
+    "how": "Repoint the reads at real OMOP: set source_catalog=curated_omop and source_schema=omop. The foundation already provides the tables, so there is nothing to generate. With Genie Code (the primary path), tell it to read the 6 OMOP tables FROM curated_omop.omop. For the backup notebooks, set the source_catalog/source_schema widget defaults (widget_config); if the silver pipeline is used, set its Configuration keys source_catalog/source_schema (the pipeline reads config, not widgets).",
     "read_paths_note": "The kit reads OMOP source three ways, all of which honor source_catalog+source_schema when set correctly: (a) nb 01 profiling and Python via src()=source_catalog.source_schema; (b) the silver PIPELINE (nb 02 Option A) via ${source_catalog}.${source_schema}.<table>. But nb 02 Option B (the interactive 'no pipeline' %sql cells) reads BARE table names that resolve to the current USE'd schema. That assumes the source lives in the same schema you write to (true only in the synthetic single-schema case). For REAL OMOP (a different catalog), use the PIPELINE path (Option A) rather than the interactive Option B bare-name cells.",
     "rebuild_assets": "Real mode is more than a var flip. Every workshop-built asset (silver features, NLP output, gold pre-screen, the UC model, the Genie space, the app) reads from source. Any already materialized from synthetic must be REBUILT: after repointing, re-run the silver pipeline + the NLP/gold notebooks, re-register the model, refresh the Genie space, and restart the app so they read real data. Nothing that reads source may be left materialized from synthetic."
   },
@@ -167,9 +163,8 @@
   },
 
   "source_files": {
-    "data_generator": "src/data_generation/generate_omop_data.py",
-    "job_resource": "resources/data_gen_job.yml",
-    "bundle": "databricks.yml"
+    "data_generator": "(owned by the shared foundation, not this kit) foundation/src/data_generation/generate_omop_data.py",
+    "bundle": "databricks.yml (optional notebook-sync bundle; defines no job)"
   },
 
   "table_contract": {
@@ -177,18 +172,18 @@
     "silver": null,
     "gold": {
       "tables": ["person", "condition_occurrence", "measurement", "observation", "drug_exposure", "note"],
-      "defined_in": ["src/data_generation/generate_omop_data.py"],
-      "note": "This demo has no SDP pipeline. All 6 tables are written directly by the data generator. They behave as 'gold' (analytics-ready, OMOP CDM compliant)."
+      "defined_in": ["(shared foundation) foundation/src/data_generation/generate_omop_data.py"],
+      "note": "This kit has no SDP pipeline and does not generate data. The 6 OMOP tables are written by the shared foundation and read here read-only. They behave as 'gold' (analytics-ready, OMOP CDM compliant)."
     }
   },
 
   "dependency_map": [
-    {"from": "data_generation_job", "to": "person",               "type": "creates"},
-    {"from": "data_generation_job", "to": "condition_occurrence", "type": "creates"},
-    {"from": "data_generation_job", "to": "measurement",          "type": "creates"},
-    {"from": "data_generation_job", "to": "observation",          "type": "creates"},
-    {"from": "data_generation_job", "to": "drug_exposure",        "type": "creates"},
-    {"from": "data_generation_job", "to": "note",                 "type": "creates"},
+    {"from": "shared foundation (foundation_setup_job)", "to": "person",               "type": "creates", "note": "read-only source; this kit does not create the OMOP tables"},
+    {"from": "shared foundation (foundation_setup_job)", "to": "condition_occurrence", "type": "creates"},
+    {"from": "shared foundation (foundation_setup_job)", "to": "measurement",          "type": "creates"},
+    {"from": "shared foundation (foundation_setup_job)", "to": "observation",          "type": "creates"},
+    {"from": "shared foundation (foundation_setup_job)", "to": "drug_exposure",        "type": "creates"},
+    {"from": "shared foundation (foundation_setup_job)", "to": "note",                 "type": "creates"},
     {"from": "measurement",         "to": "genie",                "type": "queried_by",   "note": "Structured biomarker cohort queries"},
     {"from": "note",                "to": "genie_code",           "type": "queried_by",   "note": "NLP biomarker extraction from note_text"},
     {"from": "measurement",         "to": "mlflow_eval",          "type": "ground_truth", "note": "both-agree patients as NLP evaluation ground truth"}
@@ -217,42 +212,42 @@
 
   "source_inputs": [
     {
-      "source_type": "synthetic_generator",
-      "locator": "src/data_generation/generate_omop_data.py",
-      "description": "Faker-based Python script writes all 6 OMOP tables. Parameters: argv[1]=catalog, argv[2]=schema. Seed=42 for determinism.",
-      "active_when": "run_with_synthetic_data = yes"
+      "source_type": "uc_tables_readonly",
+      "locator": "${source_catalog}.${source_schema}",
+      "description": "The 6 read-only OMOP tables stood up by the shared foundation. Synthetic default = clinops_foundation in your own catalog. This kit reads them; it does not generate them.",
+      "active_when": "synthetic (source points at the foundation schema)"
     },
     {
       "source_type": "real_omop",
-      "locator": "${source_catalog}.${source_schema}",
-      "description": "Customer's real OMOP CDM tables. Must have identical schema to the synthetic tables (exact FH curated_omop.omop column names and types).",
-      "active_when": "run_with_synthetic_data = no"
+      "locator": "curated_omop.omop",
+      "description": "Customer's real OMOP CDM tables. Identical schema to the synthetic tables (exact FH curated_omop.omop column names and types). Point source_catalog+source_schema here to read real data.",
+      "active_when": "source repointed to real"
     }
   ],
 
   "verify_queries": [
     {
       "id": "table_row_counts",
-      "description": "Row counts for all 6 OMOP tables, all must be > 0 after data generation",
-      "sql": "SELECT 'person' AS tbl, COUNT(*) AS n FROM ${client_catalog}.${client_schema}.person UNION ALL SELECT 'condition_occurrence', COUNT(*) FROM ${client_catalog}.${client_schema}.condition_occurrence UNION ALL SELECT 'measurement', COUNT(*) FROM ${client_catalog}.${client_schema}.measurement UNION ALL SELECT 'observation', COUNT(*) FROM ${client_catalog}.${client_schema}.observation UNION ALL SELECT 'drug_exposure', COUNT(*) FROM ${client_catalog}.${client_schema}.drug_exposure UNION ALL SELECT 'note', COUNT(*) FROM ${client_catalog}.${client_schema}.note ORDER BY tbl",
+      "description": "Row counts for all 6 OMOP tables in the shared foundation source schema, all must be > 0 (confirms the foundation is up before the build reads it)",
+      "sql": "SELECT 'person' AS tbl, COUNT(*) AS n FROM ${source_catalog}.${source_schema}.person UNION ALL SELECT 'condition_occurrence', COUNT(*) FROM ${source_catalog}.${source_schema}.condition_occurrence UNION ALL SELECT 'measurement', COUNT(*) FROM ${source_catalog}.${source_schema}.measurement UNION ALL SELECT 'observation', COUNT(*) FROM ${source_catalog}.${source_schema}.observation UNION ALL SELECT 'drug_exposure', COUNT(*) FROM ${source_catalog}.${source_schema}.drug_exposure UNION ALL SELECT 'note', COUNT(*) FROM ${source_catalog}.${source_schema}.note ORDER BY tbl",
       "expected_synthetic": "person=300, condition_occurrence>=300, note=300, all others > 0"
     },
     {
       "id": "trial_a_eligible_count",
       "description": "Trial A eligible patients (HER2+, breast cancer dx, no anti-HER2 prior therapy)",
-      "sql": "SELECT COUNT(DISTINCT m.person_id) AS n FROM ${client_catalog}.${client_schema}.measurement m JOIN ${client_catalog}.${client_schema}.condition_occurrence co ON m.person_id = co.person_id AND co.condition_source_value = 'Malignant neoplasm of breast' WHERE m.measurement_source_value = 'HER2/neu' AND m.value_source_value = 'Positive' AND m.person_id NOT IN (SELECT person_id FROM ${client_catalog}.${client_schema}.drug_exposure WHERE drug_source_value IN ('Trastuzumab','Pertuzumab'))",
+      "sql": "SELECT COUNT(DISTINCT m.person_id) AS n FROM ${source_catalog}.${source_schema}.measurement m JOIN ${source_catalog}.${source_schema}.condition_occurrence co ON m.person_id = co.person_id AND co.condition_source_value = 'Malignant neoplasm of breast' WHERE m.measurement_source_value = 'HER2/neu' AND m.value_source_value = 'Positive' AND m.person_id NOT IN (SELECT person_id FROM ${source_catalog}.${source_schema}.drug_exposure WHERE drug_source_value IN ('Trastuzumab','Pertuzumab'))",
       "expected_synthetic": ">= 20 (person_ids 1-20 guaranteed)"
     },
     {
       "id": "trial_b_eligible_count",
       "description": "Trial B eligible patients (ER+/HER2-, postmenopausal, breast cancer dx)",
-      "sql": "SELECT COUNT(DISTINCT m_er.person_id) AS n FROM ${client_catalog}.${client_schema}.measurement m_er JOIN ${client_catalog}.${client_schema}.measurement m_her2 ON m_er.person_id = m_her2.person_id AND m_her2.measurement_source_value = 'HER2/neu' AND m_her2.value_source_value = 'Negative' JOIN ${client_catalog}.${client_schema}.observation obs ON m_er.person_id = obs.person_id AND obs.observation_source_value = 'Menopausal status' AND obs.value_source_value = 'Postmenopausal' WHERE m_er.measurement_source_value = 'Estrogen receptor' AND m_er.value_source_value = 'Positive'",
+      "sql": "SELECT COUNT(DISTINCT m_er.person_id) AS n FROM ${source_catalog}.${source_schema}.measurement m_er JOIN ${source_catalog}.${source_schema}.measurement m_her2 ON m_er.person_id = m_her2.person_id AND m_her2.measurement_source_value = 'HER2/neu' AND m_her2.value_source_value = 'Negative' JOIN ${source_catalog}.${source_schema}.observation obs ON m_er.person_id = obs.person_id AND obs.observation_source_value = 'Menopausal status' AND obs.value_source_value = 'Postmenopausal' WHERE m_er.measurement_source_value = 'Estrogen receptor' AND m_er.value_source_value = 'Positive'",
       "expected_synthetic": ">= 20 (person_ids 31-50 guaranteed)"
     },
     {
       "id": "notes_only_count",
       "description": "Patients with pathology notes but no structured biomarker measurements (the NLP value story)",
-      "sql": "SELECT COUNT(DISTINCT n.person_id) AS n FROM ${client_catalog}.${client_schema}.note n WHERE n.person_id NOT IN (SELECT DISTINCT person_id FROM ${client_catalog}.${client_schema}.measurement WHERE measurement_source_value IN ('HER2/neu','Estrogen receptor','Progesterone receptor'))",
+      "sql": "SELECT COUNT(DISTINCT n.person_id) AS n FROM ${source_catalog}.${source_schema}.note n WHERE n.person_id NOT IN (SELECT DISTINCT person_id FROM ${source_catalog}.${source_schema}.measurement WHERE measurement_source_value IN ('HER2/neu','Estrogen receptor','Progesterone receptor'))",
       "expected_synthetic": ">= 60 (person_ids 181-240)"
     }
   ],
@@ -260,8 +255,8 @@
   "lock_targets": [
     {
       "task_class": "rename_table",
-      "paths": ["resources/data_gen_job.yml", "src/data_generation/generate_omop_data.py"],
-      "reason": "OMOP CDM table names (person, condition_occurrence, measurement, observation, drug_exposure, note) are standard. The synth/real toggle works because synthetic and real OMOP tables share identical names. Renaming breaks the toggle."
+      "paths": [],
+      "reason": "The 6 OMOP CDM tables (person, condition_occurrence, measurement, observation, drug_exposure, note) are owned by the shared foundation and read read-only here; this kit does not define or rename them. Their names are standard and identical in synthetic and real OMOP, which is what makes the synth/real source repoint work. Do not rename them."
     },
     {
       "task_class": "setup",
