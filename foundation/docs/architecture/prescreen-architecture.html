@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en" data-theme="warm">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Clinical Trial Pre-Screening · Reference Architecture</title>
+<meta name="description" content="Source-to-gold-to-Genie reference architecture for the Fred Hutch clinical trial pre-screening onsite.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F6F2EC; --paper:#FFFFFF; --ink:#0F1419; --ink-2:#38434B; --muted:#6B7780;
+    --line:#E2DCD2; --line-strong:#C9C0B2;
+    --db-red:#FF3621; --green:#1F8A5B; --amber:#C8870B;
+    --src:#B08A46; --de:#5E86BE; --ml:#3E9E76; --out:#DB7C50; --gov:#C8870B;
+    --src-bg:#F1EADC; --de-bg:#DCE6F2; --ml-bg:#DCEFE6; --out-bg:#FCE7DC; --gov-bg:#FBF1DC;
+  }
+  html[data-theme="dark"]{
+    --bg:#14181B; --paper:#1C2227; --ink:#ECECEA; --ink-2:#B7BFC4; --muted:#8993A0;
+    --line:#2A323A; --line-strong:#404B55;
+    --green:#4CD08A; --amber:#E0A22B;
+    --src:#C7A768; --de:#7EA6DC; --ml:#5EC496; --out:#E89870; --gov:#E0A22B;
+    --src-bg:#2A2620; --de-bg:#1E2A3A; --ml-bg:#1E2E26; --out-bg:#3A1E15; --gov-bg:#2C2517;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:"DM Sans",system-ui,sans-serif;font-size:14px;line-height:1.5;
+    -webkit-font-smoothing:antialiased;transition:background .2s,color .2s}
+  .wrap{max-width:1180px;margin:0 auto;padding:36px 44px 64px}
+  header{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap}
+  .eyebrow{font-family:"DM Mono",monospace;font-size:10.5px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+  h1{font-size:26px;font-weight:600;margin:0;letter-spacing:-.01em}
+  h1 em{font-style:normal;color:var(--green)}
+  .sub{color:var(--ink-2);margin:8px 0 0;max-width:74ch}
+  .toolbar button{font-family:"DM Mono",monospace;font-size:11px;letter-spacing:.04em;
+    background:var(--paper);color:var(--ink-2);border:1px solid var(--line-strong);
+    border-radius:999px;padding:7px 14px;cursor:pointer;transition:all .15s}
+  .toolbar button:hover{border-color:var(--db-red);color:var(--db-red)}
+  .legend{display:flex;flex-wrap:wrap;gap:8px 18px;margin:22px 0 14px;
+    font-family:"DM Mono",monospace;font-size:10.5px;letter-spacing:.03em;color:var(--muted)}
+  .legend .k{display:inline-flex;align-items:center;gap:7px}
+  .legend .sw{width:14px;height:14px;border-radius:4px;border:1.5px solid}
+  .legend .dash{width:22px;border-top:1.5px dashed var(--muted)}
+  .legend .thick{width:22px;border-top:3px solid var(--ink-2)}
+  .diagram{background:var(--paper);border:1px solid var(--line);border-radius:14px;
+    padding:22px 18px;margin-top:4px;overflow-x:auto;
+    width:min(1800px,96vw);position:relative;left:50%;transform:translateX(-50%)}
+  .diagram svg{max-width:none !important;width:auto;height:auto;display:block;margin:0 auto}
+  .govband{display:flex;align-items:center;gap:14px;margin-top:12px;padding:13px 18px;
+    border-radius:12px;background:var(--gov-bg);border:1px solid var(--amber)}
+  .govband .tag{font-family:"DM Mono",monospace;font-size:9.5px;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--amber);white-space:nowrap;font-weight:500}
+  .govband .txt{font-size:12.5px;color:var(--ink-2)}
+  .govband .txt b{color:var(--ink)}
+  .note{margin-top:16px;padding:13px 16px;border-radius:10px;
+    background:var(--ml-bg);border:1px solid var(--line);
+    color:var(--ink-2);font-size:12.5px;max-width:80ch}
+  .note b{color:var(--green)}
+  .note code{font-family:"DM Mono",monospace;font-size:11.5px}
+  .foot{margin-top:24px;font-family:"DM Mono",monospace;font-size:10px;
+    letter-spacing:.05em;color:var(--muted);text-transform:uppercase;line-height:1.7}
+  @media (max-width:640px){.wrap{padding:24px 18px 48px} .govband{flex-direction:column;align-items:flex-start;gap:6px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <p class="eyebrow">Fred Hutch · Clinical Trial Pre-Screening</p>
+      <h1>Reference architecture · <em>source to Genie</em></h1>
+      <p class="sub">The likely build shape the Data Engineering and ML teams grow toward, from dry runs on the data. One shared source feeds both tracks. They meet at <code style="font-family:'DM Mono',monospace">gold_trial_prescreen</code>, which powers the Genie space and the coordinator app. Exact tables are each team's call, so treat this as the target, not a script.</p>
+    </div>
+    <div class="toolbar"><button id="themeBtn" type="button">◐ Theme</button></div>
+  </header>
+
+  <div class="legend">
+    <span class="k"><span class="sw" style="border-color:var(--src);background:var(--src-bg)"></span>Foundation source</span>
+    <span class="k"><span class="sw" style="border-color:var(--de);background:var(--de-bg)"></span>Data Engineering</span>
+    <span class="k"><span class="sw" style="border-color:var(--ml);background:var(--ml-bg)"></span>ML / clinical</span>
+    <span class="k"><span class="sw" style="border-color:var(--out);background:var(--out-bg)"></span>Consumption</span>
+    <span class="k"><span class="thick"></span>DE-to-ML hand-off</span>
+    <span class="k"><span class="dash"></span>quarantine / error path</span>
+  </div>
+
+  <div class="diagram"><div id="diagram">Rendering…</div></div>
+
+  <div class="govband">
+    <span class="tag">Unity Catalog<br>governance</span>
+    <span class="txt"><b>One policy carries through every layer.</b> Column masks, row filters, and sensitivity tags set on the source inherit down through <code style="font-family:'DM Mono',monospace">clinops_de</code>, <code style="font-family:'DM Mono',monospace">clinops_ml</code>, and into the Genie space and app. Nothing downstream re-implements access control.</span>
+  </div>
+
+  <p class="note">The <b>magic moment</b>: structured biomarker tests alone qualify 109 patients for Trial A. Reading the free-text pathology notes with <b>ai_query</b> recovers 31 more, a <b>+28% lift</b>, and <code>gold_trial_prescreen.biomarker_source</code> records whether each match came from structured data, notes, or both.</p>
+
+  <p class="foot">
+    foundation/docs/architecture/prescreen-architecture.html · shapes reflect dry-run builds, not a fixed script<br>
+    likely extensions not drawn: ClinicalBERT note embeddings and a gold_similar_patients table · DE ingest may be built as Structured Streaming or Lakeflow
+  </p>
+</div>
+
+<script type="module">
+import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+
+function palette(){
+  const c = getComputedStyle(document.documentElement);
+  const v = n => c.getPropertyValue(n).trim();
+  return {
+    paper:v('--paper'), ink:v('--ink'), muted:v('--muted'),
+    src:v('--src'), de:v('--de'), ml:v('--ml'), out:v('--out'),
+    srcBg:v('--src-bg'), deBg:v('--de-bg'), mlBg:v('--ml-bg'), outBg:v('--out-bg')
+  };
+}
+
+function def(p){ return `
+flowchart LR
+  classDef src fill:${p.paper},stroke:${p.src},color:${p.ink},stroke-width:1.2px;
+  classDef de fill:${p.paper},stroke:${p.de},color:${p.ink},stroke-width:1.2px;
+  classDef ml fill:${p.paper},stroke:${p.ml},color:${p.ink},stroke-width:1.2px;
+  classDef out fill:${p.paper},stroke:${p.out},color:${p.ink},stroke-width:1.2px;
+  classDef opt stroke-dasharray:5 4,color:${p.muted};
+
+  subgraph SRC["① Foundation source"]
+    direction TB
+    OMOP[("<b>OMOP CDM</b><br/><small>6 clinical tables · notes</small>")]
+    FEED[/"<b>trial_landing</b><br/><small>live JSON feed</small>"/]
+  end
+
+  subgraph DE["② Data Engineering · clinops_de"]
+    direction TB
+    BRONZE("<b>bronze_trial_catalog</b><br/><small>VARIANT · Auto Loader</small>")
+    SILVERT("<b>silver_trial_criteria</b><br/><small>typed · latest-wins</small>")
+    QUAR("<b>quarantine</b><br/><small>bad records</small>")
+  end
+
+  subgraph ML["③ ML / clinical · clinops_ml"]
+    direction TB
+    SILSTR("<b>silver patient profiles</b><br/><small>biomarker · demographics · therapy · measurements</small>")
+    SILNLP("<b>silver_nlp_biomarkers</b><br/><small>ai_query over notes</small>")
+    GBIO("<b>gold_unified_biomarker_profile</b><br/><small>structured &amp; NLP merged</small>")
+    GPS("<b>gold_trial_prescreen</b><br/><small>eligibility · reasons</small>")
+    GMEAS("<b>gold_patient_measurements</b><br/><small>per-patient test timeline</small>")
+  end
+
+  subgraph OUT["④ Consumption"]
+    direction TB
+    GENIE(["<b>Genie space</b><br/><small>trial pre-screening Q&amp;A</small>"])
+    APP(["<b>Coordinator app</b><br/><small>review &amp; write-back</small>"])
+  end
+
+  FEED --> BRONZE --> SILVERT
+  BRONZE -.->|bad| QUAR
+  OMOP --> SILSTR
+  OMOP --> SILNLP
+  SILNLP --> GBIO
+  SILSTR --> GBIO
+  GBIO --> GPS
+  SILSTR --> GPS
+  SILSTR --> GMEAS
+  SILVERT ==>|hand-off| GPS
+  GPS --> GENIE
+  GPS --> APP
+  GMEAS --> APP
+
+  class OMOP,FEED src
+  class BRONZE,SILVERT,QUAR de
+  class SILSTR,SILNLP,GBIO,GPS,GMEAS ml
+  class GENIE,APP out
+  class QUAR opt
+
+  style SRC fill:${p.srcBg},stroke:${p.src},color:${p.muted}
+  style DE fill:${p.deBg},stroke:${p.de},color:${p.muted}
+  style ML fill:${p.mlBg},stroke:${p.ml},color:${p.muted}
+  style OUT fill:${p.outBg},stroke:${p.out},color:${p.muted}
+`; }
+
+async function render(){
+  mermaid.initialize({
+    startOnLoad:false, securityLevel:'loose', theme:'base',
+    fontFamily:'"DM Sans", sans-serif', themeVariables:{ fontSize:'30px' },
+    flowchart:{ curve:'basis', htmlLabels:true, nodeSpacing:60, rankSpacing:64, padding:20 }
+  });
+  const { svg } = await mermaid.render('g'+Date.now(), def(palette()));
+  document.getElementById('diagram').innerHTML = svg;
+}
+
+document.getElementById('themeBtn').addEventListener('click', () => {
+  const cur = document.documentElement.getAttribute('data-theme');
+  document.documentElement.setAttribute('data-theme', cur === 'dark' ? 'warm' : 'dark');
+  render();
+});
+
+render();
+</script>
+</body>
+</html>
