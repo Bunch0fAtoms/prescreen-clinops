@@ -63,19 +63,21 @@ qualifies for a trial only when **all** of its conditions are met.
 |---|---|
 | **Trial A** (HER2-Positive Advanced Breast Cancer) | Breast cancer diagnosis · **HER2 Positive** · **Female** · age **18-75** · **no** prior anti-HER2 therapy (no Trastuzumab or Pertuzumab) |
 | **Trial B** (ER+ / HER2− Postmenopausal) | Breast cancer diagnosis · **ER Positive** · **HER2 Negative** · **Postmenopausal** · **Female** · age **18-75** |
-| **Trial C** (net-new, from the DE trials catalog) | A trial the Data Engineering group lands as a file during the build. It screens on your side with **no code change**, because your pre-screen is data-driven. |
+| **Trial C** (STRETCH, from the DE trials catalog) | A trial the Data Engineering group lands as a file. If you consume their live catalog, it screens on your side with **no code change**, because your pre-screen is data-driven. |
 
 The synthetic data is planted so you can check your work: persons **1 to 20** are eligible for Trial A
 (21 to 30 are HER2+ controls who fail on prior anti-HER2 therapy), and persons **31 to 50** are eligible
 for Trial B (51 to 60 are controls who fail on menopausal or ER status). Full spec in
 `../../foundation/PLANTED_COHORTS.md`.
 
-> 🔗 **Trials are data now, not hardcoded rules.** Do not hardcode the Trial A/B conditions above.
-> They live in the DE group's `silver_trial_criteria` table (a Volume-fed trials catalog, see
-> `../../SHARED_FOUNDATION.md`), one row per trial with a `req_*` column per condition. Your pre-screen
-> **joins that table** and applies one generic rule: a patient qualifies when **each non-NULL `req_*`
+> 🔗 **Trials are data, not hardcoded rules.** Do not hardcode the Trial A/B conditions above.
+> Build a small `trial_criteria` table (one row per trial, a `req_*` column per condition) and have
+> your pre-screen **join it** with one generic rule: a patient qualifies when **each non-NULL `req_*`
 > matches and age is in range** (a NULL requirement means the trial does not constrain that field).
-> Because it is a join, **Trial C screens with no code change**. The DE group added it by dropping a file.
+> This keeps your build **independent of any other team** and gets you to the 109→140 hero number on
+> your own. **Stretch, only if the DE group finishes:** repoint (or union) that join to their live
+> `silver_trial_criteria` catalog, and Trial C flows in with **no code change**. See
+> `DE_INTEGRATION_STRETCH.md`.
 
 **The catch, and the whole point of the session:** biomarker status is not always in
 the structured tables. For ~60 of our 300 synthetic patients, HER2/ER/PR status was
@@ -91,8 +93,9 @@ By the end you will have built:
 - the **gap analysis** surfacing the ~60 notes-only patients structured SQL silently misses,
 - ⭐ an **`ai_query`** NLP step that reads biomarkers out of the unstructured pathology notes (the hero),
 - a **gold** unified cohort with a `biomarker_source` audit column,
-- a **data-driven pre-screen** that joins the DE group's `silver_trial_criteria`, one LONG
-  `gold_trial_prescreen` (row per person × trial) plus a backward-compat `gold_trial_prescreen_wide` view,
+- a **data-driven pre-screen** that joins a `trial_criteria` table (your own; **stretch**: repoint to the
+  DE group's live `silver_trial_criteria`), one LONG `gold_trial_prescreen` (row per person × trial)
+  plus a backward-compat `gold_trial_prescreen_wide` view,
 - an **MLflow evaluation** comparing prompts × models against ground truth,
 - a **Hugging Face model (ClinicalBERT) registered to Unity Catalog** (a direct FH ask), whose note
   embeddings drive **similarity matching** for cohort discovery (`gold_similar_patients`),
