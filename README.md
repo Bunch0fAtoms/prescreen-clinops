@@ -13,16 +13,27 @@ coordinator a trustworthy, governed shortlist.
 
 ## How the two days flow
 
-**One shared foundation, then four groups building in parallel on top of it.**
+**One shared foundation on Day 1, real building both days, and the whole room together on Day 2.**
+By the end you have a working, governed pre-screening solution that your team built and owns.
 
 1. **Day 1, whole room: stand up the foundation.** Run the `foundation/` bundle once. It creates
    six shared OMOP tables and lands a clinical-trials feed. See `foundation/README.md`.
-2. **Day 1, whole room: discovery.** Every group interrogates the same six tables with Genie Code,
-   and optionally stands up a Genie space over them, so the build is grounded in the data. See
+2. **Day 1, whole room: discovery, and Governance sets its requirements.** Everyone interrogates the
+   same six tables with Genie Code, and the whole room stands up a shared Genie space over them, so
+   the build is grounded in the data. This same session doubles as the Governance group's
+   requirements-gathering. As the room asks real questions of the data, Governance sees which fields
+   are sensitive and who needs to see what, and captures that as the controls it will apply. See
    `foundation/DISCOVERY.md`.
-3. **Day 1–2: four sections build in parallel.** Each group takes a starter kit in `kits/` and
-   designs its own solution. Governance runs as the spine across all of them.
-4. **Day 2: each group presents its section.**
+3. **Day 1: Governance and Admin start building.** Governance turns the requirements it just captured
+   into real column masks and row filters on the shared tables. Admin uses Genie One to answer cost
+   and usage questions and set budget alerts, all in plain language. Both groups walk away from Day 1
+   with a working result in hand.
+4. **Day 2: Data Engineering and Applied AI build, with the whole room together.** These two groups
+   design and build their sections on Day 2, grounded in what Day 1 discovery taught them. Governance
+   rotates across both, re-applying its controls to the new tables and models as they appear. Everyone
+   is in the room, so groups compare notes and hand work across.
+5. **Day 2: everyone presents.** Each group shows what it built. Four sections, one governed
+   solution, built and owned by your team.
 
 ## The four sections
 
@@ -38,8 +49,10 @@ open build steps, and an answer key for the facilitator.
 
 ## Governance is the spine
 
-The Governance group applies the tag, classify, mask, and row-filter pattern to the shared tables
-on Day 1, then re-applies it to the tables and models the other groups produce as they build. The
+The Governance group sets its requirements in the Day 1 whole-room Genie session. Watching what the
+room asks of the data shows what is sensitive and who should see it, and that becomes the control
+set. The group then applies the tag, classify, mask, and row-filter pattern to the shared tables on
+Day 1, then re-applies it to the tables and models the other groups produce as they build. The
 result is that every section's work respects who is allowed to see what. Because the data is
 synthetic, you exercise the full control set with no risk to real patient information.
 
@@ -59,12 +72,27 @@ under `/Workspace/.assistant/skills/`, so an admin imports them there one time a
 has them. This is a **separate action from deploying a kit** — `bundle deploy` syncs a kit's code, it
 does not install skills.
 
+Run both of these once in a **workspace web terminal** (it authenticates as you automatically, so
+there is no profile to fill in and nothing to edit):
+
 ```bash
-# Run once, from the repo root, by someone with write access to /Workspace/.assistant/skills/
-databricks workspace import-dir \
+# 1. The adaptation skill (ships in this repo). The wildcard finds your imported
+#    copy under /Workspace/Users/<you>/prescreen-clinops, so run it from anywhere.
+cd /Workspace/Users/*/prescreen-clinops && databricks workspace import-dir \
   .assistant/skills/fred-hutch-onsite-adaptation \
-  /Workspace/.assistant/skills/fred-hutch-onsite-adaptation --profile <profile>
+  /Workspace/.assistant/skills/fred-hutch-onsite-adaptation
 ```
+
+```bash
+# 2. The Genie-space skill (community). Create a Git folder for it directly at the
+#    workspace skill path, so it stays updatable from the source repo.
+databricks repos create https://github.com/sean-zhang-dbx/prompt-to-genie.git gitHub \
+  --path /Workspace/.assistant/skills/prompt-to-genie
+```
+
+You can also create the `prompt-to-genie` Git folder from the UI: **Workspace → Create → Git folder**,
+URL `https://github.com/sean-zhang-dbx/prompt-to-genie.git`, and set the destination to
+`/Workspace/.assistant/skills/prompt-to-genie`.
 
 If you cannot write to the workspace-level path, install per-user instead at
 `/Workspace/Users/<you>/.assistant/skills/…`. The two skills:

@@ -1,9 +1,9 @@
 # Databricks notebook source
 # MAGIC %md-sandbox
-# MAGIC # ⚙️ Configuration — UC Governance on OMOP (PRE-BUILT)
+# MAGIC # ⚙️ Configuration: UC Governance on OMOP (PRE-BUILT)
 # MAGIC
 # MAGIC <div style="background:#f4f6f9; border-left:6px solid #C8102E; padding:14px 18px; border-radius:4px; font-size:0.95em">
-# MAGIC This is the <b>companion config notebook</b> — it is <b>pre-built; you do not edit it</b>.
+# MAGIC This is the <b>companion config notebook</b>. It is <b>pre-built; you do not edit it</b>.
 # MAGIC Every other notebook starts with <code>%run ./_config</code> so they all share one
 # MAGIC catalog / schema / warehouse and the same governance vocabulary.<br>
 # MAGIC Just set the widgets at the top of <code>00_START_HERE</code> (matching your
@@ -11,14 +11,14 @@
 # MAGIC and re-run.
 # MAGIC </div>
 # MAGIC
-# MAGIC Everything here is Unity-Catalog-scoped (no hive_metastore) and reads from widgets — no
+# MAGIC Everything here is Unity-Catalog-scoped (no hive_metastore) and reads from widgets: no
 # MAGIC hardcoded secrets.
 
 # COMMAND ----------
 
-# DBTITLE 1,Widgets — the four things you set (match your bundle vars)
+# DBTITLE 1,Widgets: the four things you set (match your bundle vars)
 # catalog / schema / warehouse_id should match your databricks.yml client target.
-# ocdo_group is the analyst group masks & row filters gate on — see note below.
+# ocdo_group is the analyst group masks & row filters gate on. See note below.
 dbutils.widgets.text("catalog",      "<your_catalog>",       "1 · Catalog")
 dbutils.widgets.text("schema",       "clinops_gov",    "2 · Schema")
 dbutils.widgets.text("warehouse_id", "<your_wh_id>",         "3 · SQL Warehouse ID")
@@ -32,14 +32,14 @@ OCDO_GROUP   = dbutils.widgets.get("ocdo_group")
 # COMMAND ----------
 
 # DBTITLE 1,Point Spark at the (Unity Catalog) catalog & schema
-# Create the catalog/schema only if absent AND you have the privilege — in most workshop
+# Create the catalog/schema only if absent AND you have the privilege. In most workshop
 # workspaces the catalog already exists, so we don't force CREATE CATALOG (which needs a
 # metastore-level grant). The schema is created if you can; otherwise we assume it's there.
 if not spark.catalog.databaseExists(f"{CATALOG}.{SCHEMA}"):
     try:
         spark.sql(f"CREATE CATALOG IF NOT EXISTS {CATALOG}")
     except Exception as _e:
-        print(f"(catalog {CATALOG} not created — assuming it already exists: {str(_e)[:120]})")
+        print(f"(catalog {CATALOG} not created, assuming it already exists: {str(_e)[:120]})")
     spark.sql(f"CREATE SCHEMA IF NOT EXISTS {CATALOG}.{SCHEMA}")
 spark.sql(f"USE CATALOG {CATALOG}")
 spark.sql(f"USE SCHEMA {SCHEMA}")
@@ -68,23 +68,23 @@ OMOP_TABLES = ["person", "condition_occurrence", "measurement",
 
 # COMMAND ----------
 
-# DBTITLE 1,The governance vocabulary (GOVERNED tag policies — values are constrained!)
-# ⚠️ FH FINDING: this metastore enforces GOVERNED TAG POLICIES on these two tag keys — you may
+# DBTITLE 1,The governance vocabulary (GOVERNED tag policies: values are constrained!)
+# ⚠️ FH FINDING: this metastore enforces GOVERNED TAG POLICIES on these two tag keys. You may
 # only use values from the allowed list, or ALTER TABLE ... SET TAGS is REJECTED. This is a *good*
 # governance feature: it forces a consistent, HIPAA-aligned vocabulary instead of free-text tags.
-#   • 'phi'              — HIPAA Safe Harbor identifier types. Allowed values include:
+#   • 'phi'              : HIPAA Safe Harbor identifier types. Allowed values include:
 #                          name, mrn, ssn, birth_date, death_date, telephone, fax, email, url,
 #                          ipaddr, account_number, license_number, device_identifier, finger_print,
 #                          photo, address_part, other_identifier, true, false.
-#   • 'data_sensitivity' — allowed values: official | official_sensitive.
+#   • 'data_sensitivity' : allowed values: official | official_sensitive.
 # If your workspace does NOT have these policies, any string works; the kit still runs. To inspect
 # the policy: SELECT * FROM system.information_schema.tag_policies (if exposed) or just try a value.
 TAG_PHI         = "phi"
 TAG_SENSITIVITY = "data_sensitivity"
 
 # The PHI map: for each column, (phi_identifier_type, sensitivity). phi=None means "sensitive but
-# not a HIPAA identifier" (we tag it with data_sensitivity only — e.g. clinical facts, gender).
-# This is the *answer to "what is sensitive"* — nb 01 applies it as UC tags; nb 02/03 mask & filter.
+# not a HIPAA identifier" (we tag it with data_sensitivity only, e.g. clinical facts, gender).
+# This is the *answer to "what is sensitive"*. nb 01 applies it as UC tags; nb 02/03 mask & filter.
 #   classification recap: person_id + note_text = identifiers (mask these); year/birth_date = quasi-
 #   identifiers; clinical *_source_value = sensitive health facts.
 PHI_COLUMNS = {
@@ -106,7 +106,7 @@ PHI_COLUMNS = {
                              "note_source_value": (None, "official")},
 }
 
-# The columns to MASK (HIPAA direct identifiers) — used by nb 02.
+# The columns to MASK (HIPAA direct identifiers), used by nb 02.
 DIRECT_IDENTIFIERS = [(t, c) for t, cols in PHI_COLUMNS.items()
                       for c, (phi, sens) in cols.items() if phi == "other_identifier"]
 

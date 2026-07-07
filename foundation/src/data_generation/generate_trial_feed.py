@@ -15,17 +15,28 @@ in the shared foundation schema. Each DE team points their own Auto Loader (`clo
 at that Volume, keeps its OWN checkpoint, and writes bronze/silver into its OWN schema.
 Nobody blocks anybody.
 
-The feed has two phases
------------------------
-1. SCRIPTED opening act (~50 min at speed=1.0): 11 drops that walk the team through the
-   whole story in order — clean trials first, then a benign schema-evolution (a new
-   `min_ecog` criterion), THEN the bad records (missing key, malformed JSON, wrong type,
-   a conflicting re-land). Failures arrive only AFTER the happy path works, so they teach
-   instead of block.
-2. HEARTBEAT (indefinite, until the run is cancelled): every few minutes it re-lands an
-   existing trial with a bumped `feed_version` and a fresh `load_ts`. All clean "latest
-   version" data — it never breaks the pipeline, it just keeps the stream alive so the
-   incremental story stays live for as long as Fred Hutch wants to demo it.
+The feed is staged so failures teach instead of block (--stage)
+---------------------------------------------------------------
+The story lands in two presenter-controlled stages so a team always builds against a
+clean, working feed first, then hardens once the presenter releases the bad data:
+
+1. STAGE 1 "clean" (~35 min at speed=1.0): every VALID record — clean trials, net-new
+   trials ("add a trial = drop a file"), a benign additive schema-evolution (a new
+   `min_ecog` criterion), and a latest-wins conflict. This is the Build 1 target: teams
+   build Auto Loader → VARIANT bronze → flatten → silver and confirm it WORKS. Then a
+   HEARTBEAT keeps re-landing clean latest-version records indefinitely.
+2. STAGE 2 "dirty": the bad records (missing key, malformed JSON, wrong type). The
+   presenter releases these ON CUE (Run now with --stage dirty) once teams have a working
+   pipeline. Each team's incremental Auto Loader picks up only the new files on the next
+   run; teams watch silver stay clean and the bad rows route to quarantine, and harden
+   their pipeline where it doesn't.
+
+--stage all (the default) lands clean then dirty in one run — the original behavior, for
+an unattended demo or a solo dry run.
+
+Recommended workshop flow: START with `--stage clean` (optionally `--speed 6` to compress
+the clean act to ~5 min). When teams have Build 1 working, cancel that run and Run now
+with `--stage dirty` to release the bad records; teams re-run their pipeline and adjust.
 
 Presenter control (this is why the feed is its own job task)
 ------------------------------------------------------------
@@ -74,7 +85,12 @@ def parse_args(argv):
     p.add_argument("catalog", nargs="?", default="your_catalog_here")
     p.add_argument("schema", nargs="?", default="clinops_foundation")
     p.add_argument("--speed", type=float, default=1.0,
-                   help="Divides every delay. >1 = faster. Default 1.0 (~50-min opening act).")
+                   help="Divides every delay. >1 = faster. Default 1.0 (~35-min clean stage).")
+    p.add_argument("--stage", choices=["clean", "dirty", "all"], default="all",
+                   help="Which records to land. clean = only valid records (Build 1 target), "
+                        "then heartbeat. dirty = only the bad records (presenter releases these "
+                        "on cue, after teams have a working pipeline). all = clean then dirty "
+                        "(default; the original single-run behavior).")
     p.add_argument("--heartbeat-seconds", type=int, default=300,
                    help="Seconds between heartbeat drops after the opening act. Default 300.")
     p.add_argument("--max-runtime-min", type=int, default=0,
@@ -87,7 +103,21 @@ def parse_args(argv):
 args = parse_args(sys.argv[1:])
 CATALOG = args.catalog
 SCHEMA = args.schema
+
+# ── Guard: refuse to run with an unfilled template placeholder ───────────────────
+# Ships as "<your_catalog>"; if left unreplaced the Volume path is invalid and the
+# failure is cryptic. Catch it up front with a clear, actionable message.
+for _name, _val in (("client_catalog", CATALOG), ("client_schema", SCHEMA)):
+    if "<" in _val or ">" in _val:
+        raise SystemExit(
+            f"\n❌  {_name} is still the template placeholder: {_val!r}\n"
+            "    Open foundation/databricks.yml (target: client), set your real value,\n"
+            "    SAVE the file, then Deploy the bundle again before running this job.\n"
+            "    client_catalog = your Unity Catalog catalog (e.g. main).\n"
+            "    Nothing was created.\n"
+        )
 SPEED = max(args.speed, 0.01)
+STAGE = args.stage
 HEARTBEAT = max(args.heartbeat_seconds, 5)
 MAX_RUNTIME_S = args.max_runtime_min * 60 if args.max_runtime_min > 0 else None
 
@@ -195,7 +225,11 @@ CLEAN_ROTATION = [TRIAL_A_V2, TRIAL_B_V2, TRIAL_C, TRIAL_D, TRIAL_E, TRIAL_F]
 
 
 # ── File landing (atomic: write temp, then rename into the glob) ──────────────────
-_seq = 0
+# Continue numbering after any files already in the Volume, so a later `--stage dirty`
+# run keeps landing trials_NNN in sequence after the clean files (no name collisions,
+# no confusing restart to 001). --reset clears the Volume first, so this is 0 then.
+_seq = len([f for f in os.listdir(VOLUME_PATH)
+            if f.startswith("trials_") and f.endswith(".json")])
 
 
 def _stamp(records):
@@ -239,9 +273,12 @@ def out_of_time():
     return MAX_RUNTIME_S is not None and (time.time() - START) >= MAX_RUNTIME_S
 
 
-# ── Phase 1 — scripted opening act (delays are BEFORE each drop, at speed=1.0) ────
-# (delay_seconds, human_note, drop_callable)
-SCRIPT = [
+# ── Stage 1 (clean) — every VALID record: clean, net-new, additive schema evolution,
+#    and a latest-wins conflict. This is the Build 1 target: a team builds its Auto
+#    Loader → VARIANT bronze → flatten → silver here and validates it WORKS end to end.
+#    No bad records land in this stage, so failures never block the initial build.
+#    (delay_seconds BEFORE each drop, at speed=1.0)
+CLEAN_SCRIPT = [
     (0,   "Trial A (clean) — build Auto Loader → VARIANT bronze → flatten",
      lambda: land([TRIAL_A], "A_clean")),
     (240, "Trial B (clean) — incremental pickup",
@@ -254,14 +291,24 @@ SCRIPT = [
      lambda: land([TRIAL_E], "E_netnew")),
     (360, "Trial A re-lands + min_ecog — additive schema evolution; dedup latest-wins",
      lambda: land([TRIAL_A_V2], "A_min_ecog")),
-    (360, "BAD: record missing trial_id — route to quarantine, don't crash",
+    (300, "Trial F (clean, net-new) — the catalog keeps growing",
+     lambda: land([TRIAL_F], "F_netnew")),
+    (240, "Trial B re-lands, conflicting criteria — latest-wins (newest load_ts) holds",
+     lambda: land([TRIAL_B_V2], "B_conflict")),
+]
+
+# ── Stage 2 (dirty) — the BAD records. The presenter releases these ON CUE, only after
+#    teams have a working pipeline, so they teach ("it worked… now dirty data arrived,
+#    harden it") instead of blocking. Each team's incremental Auto Loader picks up only
+#    these new files on the next run; a correct pipeline routes them to quarantine and
+#    keeps silver clean.
+DIRTY_SCRIPT = [
+    (0,   "BAD: record missing trial_id — route to quarantine, don't crash",
      lambda: land([{"title": "Unknown Registry Export", "status": "Recruiting",
                     "eligibility": {"sex": "Female", "min_age_years": 18, "max_age_years": 75,
                                     "her2_status": "Positive"},
                     "eligibility_text": "Row with no trial_id — cannot be keyed.",
                     "feed_version": 1, "load_ts": None}], "bad_missing_id")),
-    (300, "Trial F (clean, net-new) — good rows still flow WHILE bad ones quarantine",
-     lambda: land([TRIAL_F], "F_netnew")),
     (240, "BAD: malformed JSON line — try_parse_json returns NULL → quarantine",
      lambda: land([], "bad_malformed",
                   raw_lines=['{"trial_id": "MALF1", "title": "Truncated record", "eligibility": {'])),
@@ -272,23 +319,35 @@ SCRIPT = [
                                     "her2_status": "Positive"},
                     "eligibility_text": "min_age_years arrived as a string — uncastable to int.",
                     "feed_version": 1, "load_ts": None}], "bad_wrongtype")),
-    (240, "Trial B re-lands, conflicting criteria — latest-wins (newest load_ts) holds",
-     lambda: land([TRIAL_B_V2], "B_conflict")),
 ]
 
-log("── Phase 1: scripted opening act ──")
-for i, (delay, note, drop) in enumerate(SCRIPT, start=1):
-    if out_of_time():
-        log("⏹ max-runtime reached during opening act; stopping.")
-        sys.exit(0)
-    sleep_scaled(delay)
-    log(f"[{i:02d}/{len(SCRIPT)}] {note}")
-    drop()
 
-log("✅ Opening act complete. All concepts landed: clean → evolution → bad records.")
+def run_script(script, header):
+    log(header)
+    for i, (delay, note, drop) in enumerate(script, start=1):
+        if out_of_time():
+            log("⏹ max-runtime reached; stopping.")
+            sys.exit(0)
+        sleep_scaled(delay)
+        log(f"[{i:02d}/{len(script)}] {note}")
+        drop()
 
-# ── Phase 2 — heartbeat: keep the stream alive with clean latest-version re-lands ──
-log(f"── Phase 2: heartbeat every {HEARTBEAT}s (clean re-lands). Cancel the run to stop. ──")
+
+# ── Run the requested stage(s) ────────────────────────────────────────────────────
+if STAGE in ("clean", "all"):
+    run_script(CLEAN_SCRIPT,
+               "── Stage 1 (clean): valid records only — build & validate your pipeline here ──")
+    log("✅ Clean stage complete: clean trials + net-new + additive schema evolution + latest-wins.")
+
+if STAGE in ("dirty", "all"):
+    if STAGE == "dirty":
+        log("▶ Stage 2 released by presenter: landing the bad records now.")
+    run_script(DIRTY_SCRIPT,
+               "── Stage 2 (dirty): bad records — the quarantine reveal ──")
+    log("✅ Dirty stage complete: missing-id, malformed, and wrong-type records landed.")
+
+# ── Heartbeat — keep the stream alive with clean latest-version re-lands ────────────
+log(f"── Heartbeat every {HEARTBEAT}s (clean re-lands). Cancel the run to stop. ──")
 version = 3
 beat = 0
 while True:

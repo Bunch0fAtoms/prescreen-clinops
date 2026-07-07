@@ -72,9 +72,9 @@ gates. Use judgment.
    | Kit | Has DAB? | `deploy_target.kind` | Stand-up shape |
    |---|---|---|---|
    | Shared Foundation (`fred-hutch-prescreen-foundation`) | yes | `job` (`foundation_setup_job`) | deploy → run the job: `generate_omop_data` writes the 6 OMOP tables (one-time), `land_trial_feed` is a **long-running, presenter-controlled live trials feed** (streams files until the run is cancelled; the run stays RUNNING by design). Stand this up FIRST — the other kits read from it. |
-   | Governance (`fred-hutch-governance-session`) | yes | `job` (`setup_clone_job`) | deploy → run the deep-clone job (lands 6 OMOP tables in the governance schema) |
-   | Data Engineering (`fred-hutch-omop-data-eng-session`) | yes | `bundle` | deploy only; reads the 6 OMOP source tables + the shared live trials feed Volume from `source_schema` (both stood up by the foundation) |
-   | ML / Pre-Screening (`fred-hutch-clinical-trial-prescreening`) | yes | `job` (`data_generation_job`) | deploy → run the data-generation job |
+   | Governance (`fred-hutch-governance-session`) | **no bundle** | `none` | **No bundle, no clone.** Governance is Genie-Code-driven policy on the **shared foundation** tables, governed in place. Set classification and a tag-based policy at the catalog and schema level so it inherits to every child asset. Setup = confirm the foundation's 6 OMOP tables exist, then point Genie Code at the shared foundation schema. Do NOT create a per-team clone. `notebooks/` are optional facilitator backup. |
+   | Data Engineering (`fred-hutch-omop-data-eng-session`) | **no bundle** | `none` | **No bundle to deploy.** The team builds the trials-feed ingest LIVE with Genie Code (see the kit's `GENIE_CODE_PROMPTS.md`: Track 1 Structured Streaming notebook → Job, or Track 2 Lakeflow Declarative Pipeline). Setup = confirm the foundation source tables and live feed Volume are up, then point Genie Code at the read-only `source_schema` and a writable `client_schema` (the first prompt creates it). No `databricks.yml`, no widget defaults to write. `notebooks/` are optional facilitator backup. |
+   | ML / Pre-Screening (`fred-hutch-clinical-trial-prescreening`) | **no bundle** | `none` | **No bundle to run.** ML reads the **shared foundation's** 6 OMOP tables and builds via Genie Code. The ONE pre-built notebook that MUST run is `05` (ClinicalBERT → UC), which Genie Code cannot author. Setup = confirm the foundation tables exist, then point Genie Code at the foundation schema (reads) and a writable `client_schema` (writes). `notebooks/` are the facilitator backup. |
    | Admin / Genie One | **no bundle** | n/a | **No adaptation needed** — SQL + Genie One over `system.billing`. If asked, point the user at the kit's `sql/` + `GENIE_ONE_PROMPTS.md`; there is nothing to deploy. |
 
 3. Everything below is driven by the active kit's facts — never hardcode a kit's tables, deploy
@@ -98,8 +98,11 @@ gates. Use judgment.
 | Task needs… | Read from facts |
 |---|---|
 | Deploy / run command | `deploy_target.run_command` (+ `deploy_target.kind`) |
-| Editable DAB variable names | `name_vars` (`catalog_var`, `schema_var`, `warehouse_var`, and kit-specific extras like `group_var`, `source_schema_var`) |
-| Synthetic ↔ real switch | `toggle` (may be a boolean var, OR source-repointing via `source_catalog_var`/`source_schema_var`) |
+| Editable DAB variable names | `name_vars` (`catalog_var`, `schema_var`, `warehouse_var`, and kit-specific extras like `group_var`, `source_catalog_var`, `source_schema_var`) |
+| Synthetic ↔ real switch | `toggle` (a boolean var AND/OR source-repointing via `source_catalog_var` + `source_schema_var`; read `real_source_catalog`/`real_source_schema`). Real OMOP is a DIFFERENT catalog, so set BOTH. |
+| Synthetic-only columns absent from real OMOP | `synthetic_only_columns` (in the shared FOUNDATION's facts). In real mode, strip or guard every downstream reference to these; they do not exist in real data |
+| Notebook widget defaults to rewrite | `widget_config` (`file` + `widgets` map). Notebooks read widgets, not DAB vars — rewrite these defaults so a run inherits the chosen values. |
+| How to finish a real-data switch | `real_mode` (`how` + `rebuild_assets`) — repoint, then rebuild anything already materialized from synthetic |
 | What each table is / expected counts | `tables[]` |
 | Upstream/downstream + dashboard/genie refs | `dependency_map[]` |
 | Valid grain columns, min partition size | `grain_constraints[]` |
@@ -116,7 +119,8 @@ gates. Use judgment.
 - `MUST NOT EDIT` anything under `.assistant/**` — including this skill file. The adaptation skill MUST NOT modify itself or any skill. (This prohibition always binds.)
 - Locks are keyed by `lock_targets[].task_class`, which is GRANULAR and operation-specific (`rename_table` vs `rename_column`, `add_metric`, `change_grain`, `setup`). Match your intent to the SPECIFIC operation, never a substring. Treat every path in a matching entry as `MUST NOT EDIT \`<exact-path>\``. Only when the operation is genuinely ambiguous, fall back to the UNION of all `lock_targets[].paths` as a safe floor. Writing to a locked path is a reasoning defect — STOP.
 - **Never deploy from inside Genie Code.** The CLI is sandboxed in `executeCode` and can't `cd` to the bundle root. Always OUTPUT web-terminal commands and stop.
-- **Never bind masks / row filters to a shared source schema** (governance kit): policies change what *everyone* sees. Bind only to the kit's own `client_schema`. If the target is a schema another track reads → STOP.
+- **Governance governs the SHARED foundation, on purpose** (governance kit): set classification and policy at the catalog and schema level on the shared foundation tables so it inherits to every child asset. Policies change what *everyone* sees, and that is the point, they are group-gated (data office sees raw, researchers see masked). Do NOT create a per-team clone and do NOT steer the team toward an isolated schema.
+- **Rewriting widget DEFAULTS is allowed (it is setup, not a rename).** During setup you MAY edit the default value (the 2nd arg of `dbutils.widgets.text`) in the `widget_config.file` for the widgets named in `widget_config.widgets`. That is how the chosen catalog/schema/warehouse/source values reach an interactive run. This is distinct from a `rename_table` lock, which forbids changing table-identifier strings — do NOT touch table identifiers, SQL logic, or the trials-feed path.
 
 ## 4. Setup flow — "run in my workspace" [GENERIC]
 
@@ -130,16 +134,39 @@ gates. Use judgment.
    | schema is empty/default | ASK; offer the kit's default (`client_schema` default in facts) |
    | a running warehouse found | use; confirm |
    | none running | ASK which to use |
-3. **Synthetic vs real**, driven by the kit's `toggle`:
-   - **Boolean toggle** (ML): ask "start with synthetic data (recommended — runs end-to-end
-     immediately) or your own OMOP data?" Set the `toggle.variable` accordingly.
-   - **Source-repointing** (Governance, Data Engineering): the switch is which `source_catalog`/
-     `source_schema` you read/clone FROM — synthetic (`toggle.default_source_*`) vs real
-     (`curated_omop.omop`). Set those vars; no boolean.
-4. **Write ONLY `databricks.yml`** — update `targets.client.variables` (`name_vars` + kit extras).
-   NEVER hardcode catalog/schema/warehouse/group into Python/SQL/notebooks; those flow from DAB
-   variables and notebook widgets. A hardcoded constant in a pipeline/notebook is a packaging bug →
-   surface and stop. Present as Accept/Reject; don't auto-write.
+3. **Synthetic vs real**, driven by the kit's `toggle`. Ask "start with synthetic data (recommended —
+   runs end-to-end immediately) or your own OMOP data?" Then, for **real**:
+   - **Boolean toggle** (ML, Foundation): set `toggle.variable` to `real_value`. For the Foundation
+     this also no-ops the generator (real OMOP already exists); the trials feed still runs.
+   - **Source-repointing (ALWAYS set BOTH vars).** Real OMOP lives in a **different catalog**
+     (`curated_omop.omop`), so setting `source_schema` alone is not enough — you MUST set
+     `source_catalog_var` **and** `source_schema_var` (read `real_source_catalog` /
+     `real_source_schema` from `toggle`). This applies to ML and DE (read/ingest FROM) and Governance
+     (which governs those tables **in place**, no clone). For synthetic, `source_catalog` = the shared
+     foundation catalog (or blank) and `source_schema` = `clinops_foundation`.
+   - **Do NOT repoint the DE trials feed.** The trials feed (`feed_schema`) is a synthetic workshop
+     simulator on the foundation. It is independent of `source_schema` — leave it on the foundation
+     even in real mode, or nb 05's Volume path breaks.
+   - **Strip synthetic-only columns in real mode.** The shared foundation adds a few columns that
+     exist ONLY in synthetic data. They are listed in the FOUNDATION's `ADAPTATION_FACTS.json` under
+     `synthetic_only_columns` (for example `person.is_high_profile`, the VIP flag behind the
+     Governance row-filter demo). Real `curated_omop.omop` does NOT have them. When you switch a kit
+     to real data, find every downstream reference to a `synthetic_only_columns` column in the code
+     you are adapting (row filters, masks, `SELECT` lists, joins, `WHERE` clauses) and drop or guard
+     it, or the query fails with `UNRESOLVED_COLUMN`. If the customer has a real equivalent (for
+     example a real VIP indicator), offer to repoint the logic at that column instead of deleting it.
+4. **Write `databricks.yml` AND the notebook widget defaults.**
+   - **`databricks.yml`** — update `targets.client.variables` (`name_vars` + kit extras, incl. both
+     source vars for real mode).
+   - **Widget defaults** — the notebooks read from `dbutils.widgets`, NOT from DAB vars, so a
+     `databricks.yml` change alone never reaches an interactive run. Using `widget_config`, rewrite
+     each named widget's DEFAULT (2nd arg of `dbutils.widgets.text`) in `widget_config.file` to match
+     the chosen values (catalog, schema, warehouse, and for source-repointing kits `source_catalog` /
+     `source_schema`; leave DE `feed_schema` on the foundation). This is the step that makes the
+     synth/real choice actually reach the build. It is allowed setup — see §3.
+   - NEVER hardcode catalog/schema/warehouse/group as literals in SQL logic or elsewhere; only the
+     widget DEFAULTS named in `widget_config` may be set. A hardcoded constant anywhere else is a
+     packaging bug → surface and stop. Present as Accept/Reject; don't auto-write.
 5. **Deploy from a web terminal — NOT from Genie Code.** Output the kit's exact commands (from
    `deploy_target`) and stop. Shapes by `deploy_target.kind`:
    > Open a Web Terminal (Compute → Terminal, or ⌘+Shift+T) and paste:
@@ -147,11 +174,15 @@ gates. Use judgment.
    > cd ~/<your-unzipped-kit-folder>
    > databricks bundle validate --target client
    > databricks bundle deploy   --target client
-   > # kind=job → also run the job that lands data:
-   > #   databricks bundle run <resource_key> --target client
-   > #   (Foundation = foundation_setup_job · Governance = setup_clone_job · ML = data_generation_job)
-   > # kind=bundle (Data Engineering) → no data job; the 6 OMOP source tables + the shared
-   > #   live trials feed Volume must already exist in source_schema (stood up by the foundation).
+   > # kind=job → also run the job that lands data. ONLY the Foundation runs a job:
+   > #   databricks bundle run foundation_setup_job --target client
+   > # Governance, Data Engineering, and ML → NO bundle to deploy. All three build live with Genie Code
+   > #   on the SHARED foundation tables. Governance governs them in place (classify, then policy at the
+   > #   catalog and schema level, no clone). DE ingests the live trials feed (Track 1 Structured
+   > #   Streaming notebook to Job, or Track 2 Lakeflow Declarative Pipeline). ML reads the foundation
+   > #   tables and builds the pre-screen (plus the one pre-built HF notebook 05). Setup is just: confirm
+   > #   the foundation's 6 OMOP tables (and DE's live trials Volume) exist, then point Genie Code at the
+   > #   foundation schema and a writable client_schema. Nothing to deploy or run for these three.
    > ```
    > **Foundation note:** `foundation_setup_job` includes `land_trial_feed`, a long-running live
    > feed that runs until cancelled — so the job run stays RUNNING by design. Tell the presenter to
@@ -159,9 +190,28 @@ gates. Use judgment.
    > regen is harmless) or Repair-run selecting only `land_trial_feed`. Never deploy or run from Genie Code.
    Triage failures: "variable not found" → a `${var.*}` rename was missed (grep + fix);
    `permission denied` on catalog → user lacks `CREATE SCHEMA`; serverless not available → change job
-   environment client id to a cluster policy; DE "source table not found" → wrong `source_schema`.
+   environment client id to a cluster policy; DE/ML "source table not found" → wrong `source_catalog`
+   **or** `source_schema` (real OMOP is a different catalog — check both, in the widget defaults too).
+A **pre-built notebook that reads OMOP by bare name** (e.g. `FROM note`) fails with
+`TABLE_OR_VIEW_NOT_FOUND` in onsite mode: bare reads resolve against the notebook's DEFAULT schema,
+which `_config` sets to the WRITE schema (`clinops_ml`), but the OMOP source lives in a DIFFERENT
+schema (`clinops_foundation`). Fix: add an explicit `USE CATALOG {SOURCE_CATALOG}; USE SCHEMA
+{SOURCE_SCHEMA}` right after `%run ./_config` so reads hit the source; writes stay pinned by `fqn()`,
+so they still land in the write schema. The ML **HuggingFace notebook `05` ships with this section**,
+it is the one pre-built notebook that MUST run in the onsite because Genie Code cannot register a
+Hugging Face model to Unity Catalog. Validated this session: with HF egress, `05` runs end to end on
+serverless (pip install, ~440 MB weight download, register to UC, `spark_udf` embed), and the UC
+registration happens BEFORE the note reads, so a mis-scoped notebook still registers the model,
+only the embeddings table and similarity break.
 6. **Idempotency:** if `databricks.yml` already matches the workspace + chosen targets, say "no edits
    needed, ready to redeploy" and point at the run command.
+7. **Real mode is more than a var flip — rebuild what was built on synthetic.** If the team is
+   switching to real data AFTER already building on synthetic, read `real_mode.rebuild_assets` and
+   walk them through it. Everything that reads source (silver/gold tables, NLP output, the model, the
+   Genie space, the app; or, for Governance, the classification and masks/filters/policy on the shared foundation) was materialized from
+   synthetic and must be re-run so it reflects real data. Repointing the vars alone leaves those
+   assets stale. Name the specific re-runs from `real_mode` / `dependency_map`; the DE trials segment
+   is unaffected (it keeps reading the foundation feed).
 
 ## 5. Rename flow — "use my naming convention" [GENERIC]
 
@@ -232,7 +282,7 @@ a policy/logic change (governance masks, DE guards) → re-run the affected note
 | Schema mismatch WITH a clear alias path | CONTINUE with confirmation |
 | `dependency_map` incomplete for the target | HALT |
 | A `verify_queries` check fails | HALT + propose rollback scope |
-| Target is a shared source schema (governance) | HALT — never bind policies there |
+| Governance binding policy on the shared foundation | CONTINUE, that is the design (govern in place, group-gated). Do NOT clone into a per-team schema |
 
 ## 8. Post-edit evidence contract [GENERIC]
 
@@ -243,4 +293,33 @@ identifiers = consistent); (3) verify-query output; (4) redeploy-scope decision 
 
 Keep this skill lean and kit-agnostic. Every per-kit specific belongs in that kit's
 `ADAPTATION_FACTS.json`, not here. Do not append unbounded "gotchas"; read the matching facts field on
-demand rather than inlining it.
+demand rather than inlining it. **One sanctioned exception:** §10's build-patterns list. It is not
+per-kit facts, it is current-API knowledge (Lakeflow/DLT + VARIANT) that helps any builder write code
+Genie Code otherwise gets wrong on a first pass. Keep it short and prune an item the moment Genie
+Code's own defaults handle it.
+
+## 10. Build patterns, pre-load so Genie Code builds clean the first time [DE]
+
+> These are current Lakeflow/DLT + VARIANT API details Genie Code sometimes gets wrong on a first
+> pass. Pre-loading them is the "harden the skill" strategy in the project plan: an API-friction
+> failure teaches nothing about the customer's problem, so we fix it once here rather than in the
+> room. Apply these when a builder is assembling the **Data Engineering trials-feed ingest** (either
+> framework). Suggest them as you help; do not silently rewrite a builder's code.
+
+**Both frameworks:**
+- **VARIANT reads are null-safe, always.** Extract every field with
+  `try_variant_get(col, '$.path', 'TYPE')`, including the nested `eligibility.*` ones. Never a strict
+  `::` cast: it throws `INVALID_VARIANT_CAST` the moment a trial legitimately omits a field. This
+  applies in the flatten step AND inside any data-quality predicate.
+- **Latest-wins, one row per `trial_id`.** LDP: use an `apply_changes` (AUTO CDC) flow with
+  `keys=["trial_id"]`, `sequence_by="load_ts"`. Structured Streaming: dedup the source to one row per
+  key (`row_number()` newest by `load_ts`) BEFORE the `foreachBatch` MERGE, or the first batch inserts
+  every version of a re-landed trial.
+
+**LDP-specific (each cost a full pipeline run in dry-run testing):**
+- **`apply_changes` uses `column_list`, not `columns`.** The keyword is `column_list=[...]`.
+- **CDC quality expectations go on the SOURCE view, not `create_streaming_table`.** Decorate the
+  flow's source view with `@dlt.expect_all_or_drop({...})` and read it via `dlt.read_stream`.
+  Expectations placed on `create_streaming_table` are validated against the post-`column_list` target
+  columns, so they cannot see raw/helper columns you projected out, and you get `UNRESOLVED_COLUMN`.
+  Keep the raw flattened view separate so the quarantine table can still read the bad rows.

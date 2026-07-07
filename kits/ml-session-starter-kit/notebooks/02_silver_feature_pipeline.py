@@ -2,9 +2,9 @@
 # MAGIC %md-sandbox
 # MAGIC <div style="background:linear-gradient(90deg,#C8102E 0%,#7A0019 100%); color:white; padding:22px 28px; border-radius:8px">
 # MAGIC   <div style="font-size:0.9em; letter-spacing:2px; opacity:0.85">NOTEBOOK 02 · FEATURE ENGINEERING · YOU BUILD THE PIVOTS</div>
-# MAGIC   <div style="font-size:2.0em; font-weight:700; margin-top:4px">🥈 Silver layer — a Lakeflow pipeline in SQL</div>
+# MAGIC   <div style="font-size:2.0em; font-weight:700; margin-top:4px">🥈 Silver layer: a Lakeflow pipeline in SQL</div>
 # MAGIC   <div style="font-size:1.1em; margin-top:8px; max-width:880px; opacity:0.95">
-# MAGIC     Reshape the raw OMOP tables into three analytics-ready, per-patient feature views —
+# MAGIC     Reshape the raw OMOP tables into three analytics-ready, per-patient feature views,
 # MAGIC     declared entirely in SQL.
 # MAGIC   </div>
 # MAGIC </div>
@@ -16,7 +16,7 @@
 # MAGIC
 # MAGIC **Lakeflow Declarative Pipelines** let you describe *what* each table should contain; Databricks
 # MAGIC works out the dependency graph, the incremental refresh, and the data-quality enforcement. We
-# MAGIC write it in **SQL** on purpose — it's the simplest thing a clinical-data team can read, review,
+# MAGIC write it in **SQL** on purpose. It's the simplest thing a clinical-data team can read, review,
 # MAGIC and own.
 # MAGIC
 # MAGIC Three silver feature views, one per concept the trial criteria care about:
@@ -30,8 +30,8 @@
 # MAGIC <div style="background:#FFF8E1; border-left:6px solid #F2A900; padding:12px 16px; border-radius:4px">
 # MAGIC <b>The wiring is pre-built; the logic is yours.</b> The pipeline source file, the UI click-path, and
 # MAGIC two of the three views (<code>silver_prior_therapy</code>, <code>silver_demographics</code>) are
-# MAGIC written for you as worked examples. <b>You build <code>silver_biomarker_profile</code></b> — the
-# MAGIC HER2/ER/PR pivot — both in the pipeline source and in the run-it-now path below.
+# MAGIC written for you as worked examples. <b>You build <code>silver_biomarker_profile</code></b>, the
+# MAGIC HER2/ER/PR pivot, both in the pipeline source and in the run-it-now path below.
 # MAGIC </div>
 
 # COMMAND ----------
@@ -41,18 +41,18 @@
 # COMMAND ----------
 
 # MAGIC %md-sandbox
-# MAGIC ## ▸ Option A — the Lakeflow Declarative Pipeline (workshop path)
+# MAGIC ## ▸ Option A: the Lakeflow Declarative Pipeline (workshop path)
 # MAGIC
 # MAGIC In a pipeline, `${source_catalog}` / `${source_schema}` are supplied as pipeline **configuration**
 # MAGIC parameters, and `CONSTRAINT … EXPECT` clauses become enforced **data-quality expectations**.
 # MAGIC
 # MAGIC The pipeline source below has the two worked-example views filled in and the biomarker pivot
-# MAGIC **left for you to complete** (see the `# TODO` in the file-writer cell — it writes the same SQL).
+# MAGIC **left for you to complete** (see the `# TODO` in the file-writer cell, it writes the same SQL).
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ### Creating & running the pipeline (the reproducible click-path) — PRE-BUILT steps
+# MAGIC ### Creating & running the pipeline (the reproducible click-path), PRE-BUILT steps
 # MAGIC
 # MAGIC > These are the steps you perform in the **Lakeflow Pipelines UI**. Doing it in the UI keeps the
 # MAGIC > visual clean (pipeline graph + Run button) and avoids any Python orchestration / polling code.
@@ -67,11 +67,11 @@
 
 # COMMAND ----------
 
-# DBTITLE 1,Write the pipeline source file — TWO views pre-built, the pivot is YOURS
+# DBTITLE 1,Write the pipeline source file: TWO views pre-built, the pivot is YOURS
 import os
 
 # NOTE: silver_prior_therapy and silver_demographics are complete worked examples.
-# silver_biomarker_profile is left as a TODO — fill in the MAX(CASE WHEN ...) pivot.
+# silver_biomarker_profile is left as a TODO: fill in the MAX(CASE WHEN ...) pivot.
 SILVER_LAYER_SQL = """
 -- ── silver_biomarker_profile ──────────────────────────────────────────────
 -- TODO (you build this): pivot the long `measurement` table into ONE row per
@@ -150,18 +150,18 @@ print("   ⚠ Finish the silver_biomarker_profile TODO before pointing a pipelin
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## ▸ Option B — run the same logic now (no pipeline required)
+# MAGIC ## ▸ Option B: run the same logic now (no pipeline required)
 # MAGIC
 # MAGIC Identical SELECTs, materialized as tables right here so downstream notebooks have their inputs
 # MAGIC immediately. The two worked-example views are pre-built; **you build the biomarker pivot**.
 
 # COMMAND ----------
 
-# DBTITLE 1,TODO — silver_biomarker_profile (HER2 / ER / PR pivot) — YOU BUILD THIS
+# DBTITLE 1,TODO: silver_biomarker_profile (HER2 / ER / PR pivot), YOU BUILD THIS
 # MAGIC %sql
 # MAGIC -- TODO (you build this): create silver_biomarker_profile, one row per patient with
 # MAGIC --   her2_status / er_status / pr_status pivoted from the long `measurement` table.
-# MAGIC -- This is the SAME pivot as in the pipeline source above — write it once, here, against
+# MAGIC -- This is the SAME pivot as in the pipeline source above. Write it once, here, against
 # MAGIC --   the bare table name (USE CATALOG/SCHEMA already ran in _config).
 # MAGIC --
 # MAGIC -- CREATE OR REPLACE TABLE silver_biomarker_profile
@@ -179,7 +179,7 @@ print("   ⚠ Finish the silver_biomarker_profile TODO before pointing a pipelin
 
 # COMMAND ----------
 
-# DBTITLE 1,silver_prior_therapy — anti-HER2 & endocrine flags (PRE-BUILT example)
+# DBTITLE 1,silver_prior_therapy: anti-HER2 & endocrine flags (PRE-BUILT example)
 # MAGIC %sql
 # MAGIC CREATE OR REPLACE TABLE silver_prior_therapy
 # MAGIC COMMENT 'Per-person prior-therapy flags derived from drug_exposure'
@@ -192,7 +192,7 @@ print("   ⚠ Finish the silver_biomarker_profile TODO before pointing a pipelin
 
 # COMMAND ----------
 
-# DBTITLE 1,silver_demographics — age-at-dx, menopausal status, stage (PRE-BUILT example)
+# DBTITLE 1,silver_demographics: age-at-dx, menopausal status, stage (PRE-BUILT example)
 # MAGIC %sql
 # MAGIC CREATE OR REPLACE TABLE silver_demographics
 # MAGIC COMMENT 'Per-person demographics + diagnosis context for trial eligibility'
@@ -235,7 +235,7 @@ print("   ⚠ Finish the silver_biomarker_profile TODO before pointing a pipelin
 # MAGIC <div style="background:#E8F5E9; border-left:6px solid #2E7D32; padding:12px 16px; border-radius:4px">
 # MAGIC <b>What you built:</b> three clean per-patient silver views. Note that
 # MAGIC <code>silver_biomarker_profile</code> only has biomarkers for the ~240 patients with structured
-# MAGIC <code>measurement</code> rows — the 60 <b>notes-only</b> patients are still missing. That gap is
+# MAGIC <code>measurement</code> rows. The 60 <b>notes-only</b> patients are still missing. That gap is
 # MAGIC exactly what notebook 03 quantifies and notebook 04 fills with NLP.
 # MAGIC </div>
 # MAGIC

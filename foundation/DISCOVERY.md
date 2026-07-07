@@ -1,9 +1,10 @@
 # 🔎 Data discovery — get to know the 6 OMOP tables before you build
 
-**Goal: understand the data before you build on it.** Both the Data Engineering and the
-Applied AI groups start here, on the same six tables. Spend the first part of the session
-interrogating the foundation so the build that follows is grounded in what the data actually
-says, not in assumptions.
+**Goal: understand the data before you build on it.** This is a whole-room session, and everyone
+is here: Data Engineering, Applied AI, Governance, and Admin all start on the same six tables.
+Spend the first part of the session interrogating the foundation so the build that follows is
+grounded in what the data actually says, not in assumptions. It is a genuinely fun first hour,
+because the data starts answering your questions right away.
 
 You have two ways to explore, and using both is the point:
 
@@ -12,6 +13,13 @@ You have two ways to explore, and using both is the point:
 2. **A Genie space** — a saved, self-serve place where anyone on the team, including a clinical
    researcher who does not write SQL, can ask questions about the data in plain English. See
    `genie/genie_space.md` to stand one up over these six tables.
+
+**This session doubles as Governance's requirements-gathering.** As the room asks real questions of
+the data, the Governance group watches what comes up. Which columns hold patient identifiers? Which
+questions imply that one group should see more than another? Those answers become the control set
+Governance applies right afterward, so the governance work is grounded in how the room actually uses
+the data. Admin is here too, getting a feel for the tables that the cost and usage story sits on
+top of.
 
 The six tables are the Observational Medical Outcomes Partnership (OMOP) Common Data Model
 (CDM), a shared standard for clinical data: `person`, `condition_occurrence`, `measurement`,
@@ -60,6 +68,15 @@ Engineering group makes sure never silently drops rows.
 *What you learn:* whether the structured data and the notes tell the same story. They should.
 This builds trust in the foundation before you extend it.
 
+### 5. Spot what needs protecting (Governance lens)
+> **"Across the six tables, which columns hold something that identifies a patient, like a name,
+> a date of birth, a record number, or free-text notes that could name someone? List them by
+> table, and flag the ones a general researcher should not see in the clear."**
+
+*What you learn:* a first draft of the control set. This is the Governance group's starting point.
+The identifiers you list here are the columns you will tag, mask, and row-filter next, so the
+governance you apply reflects what the room actually saw in the data.
+
 ---
 
 ## Where each group goes next
@@ -69,6 +86,11 @@ This builds trust in the foundation before you extend it.
 - **Applied AI** moves to `../kits/ml-session-starter-kit/` — build the features, recover the
   notes-only patients with language models, and produce the trial pre-screen and a Genie space
   clinical researchers can question.
+- **Governance** moves to `../kits/governance-session-starter-kit/` — turn the requirements it
+  just captured into real tags, column masks, and row filters on the shared tables, then re-apply
+  them to what Data Engineering and Applied AI build.
+- **Admin** moves to `../kits/admin-session-starter-kit/` — answer cost and usage questions and set
+  budget alerts in plain language with Genie One, over the workspace billing system tables.
 
 The discovery Genie space you build here is worth keeping. It becomes the front door a
 researcher uses to ask about the data, and it is a natural thing to show in your final

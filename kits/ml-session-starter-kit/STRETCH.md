@@ -1,8 +1,8 @@
-# 🚀 STRETCH — make it your own
+# 🚀 STRETCH: make it your own
 
-Finished the core build (notebooks 01–08, all the `# TODO (you build this)` markers)? Pick an
+Finished the core build (notebooks 01 to 08, all the `# TODO (you build this)` markers)? Pick an
 extension. These map to the `# EXTENSION (optional)` hooks scattered through the notebooks. None are
-required — they're for teams who want to push further or have a real FH use case in mind.
+required. They're for teams who want to push further or have a real FH use case in mind.
 
 Ground rules still apply: **Unity-Catalog-scoped, synthetic data only, no hardcoded secrets, no
 hive_metastore.**
@@ -26,21 +26,21 @@ Fit something simple (logistic regression or gradient-boosted trees), log and re
 Catalog with MLflow, then score with `mlflow.pyfunc.spark_udf` so you stay in Spark and keep UC
 lineage. Add the predicted rank as a column on the eligible list and sort the coordinator app by it.
 
-Why this is the honest place for a model: eligibility stays a transparent, auditable rule with a
+Why this is the right place for a model: eligibility stays a transparent, auditable rule with a
 reason per patient, and the model only orders the people who already passed. The model helps a human
 work the list faster. It never decides who is eligible.
 
-## 1. The coordinator App (nb 09) — the obvious last mile
+## 1. The coordinator App (nb 09): the obvious last mile
 
 Build a Databricks App over `gold_trial_prescreen`:
 - A **trial-selector dropdown** (Trial A / Trial B) filtering on `trial_a_eligible` / `trial_b_eligible`.
 - A sortable **eligible-patient list** with the `trial_*_reason` string.
-- A **provenance badge** from `biomarker_source`: green *"Structured"* vs amber *"NLP-recovered"* —
+- A **provenance badge** from `biomarker_source`: green *"Structured"* vs amber *"NLP-recovered"*,
   the whole story of the solution, made visible to a non-technical user.
 - Optionally **embed the Genie space** (nb 08) for free-text follow-ups inside the app.
 
 Use the `databricks-apps` / `databricks-apps-python` skill. Deploy by uploading source to the
-workspace and deploying from there, scoped to your UC catalog. Keep it thin — a CDN-served React or a
+workspace and deploying from there, scoped to your UC catalog. Keep it thin, a CDN-served React or a
 small Streamlit app, no heavy build step.
 
 ## 2. Add a third trial
@@ -63,7 +63,7 @@ Notebook 07 computes accuracy by hand for transparency. Reach for the managed pa
 ## 4. Fine-tune ClinicalBERT for real
 
 Notebook 05 uses ClinicalBERT's base encoder for **mean-pooled note embeddings** to show the
-*governance mechanics* (register-to-UC + score-in-Spark) honestly — the model doing what it's good at.
+*governance mechanics* (register-to-UC + score-in-Spark) cleanly, the model doing what it's good at.
 The next step: **fine-tune** it on labeled pathology reports with a real sequence-classification head,
 register **that** to UC, and compare it head-to-head with `ai_query` in the nb 07 eval. The
 log → register → `spark_udf` flow barely changes. (Hook: nb 05 `# EXTENSION`.) A second stretch: index
@@ -75,7 +75,7 @@ real cohort-retrieval endpoint.
 The whole kit runs on synthetic data. Prove the toggle works the way FH will use it:
 - In `databricks.yml`, set `run_with_synthetic_data: "no"` and point `source_catalog` /
   `source_schema` at a *second synthetic schema* (stand in for `curated_omop.omop`).
-- Re-deploy and confirm every silver/gold/NLP query runs **unchanged** — the 6 OMOP table names are
+- Re-deploy and confirm every silver/gold/NLP query runs **unchanged**. The 6 OMOP table names are
   identical in both modes. This is the security-first payoff: nothing breaks if real PHI is gated.
 - **Never** point it at real PHI in the workshop; the toggle exists so you don't have to.
 
@@ -85,7 +85,7 @@ Lean into the security-first lens:
 - Add **column masking** (e.g. mask `person_id` for an analyst role) or a **row filter** on
   `gold_trial_prescreen` and show it in Catalog Explorer.
 - Inspect the **lineage graph** from `note` → `silver_nlp_biomarkers` → `gold_trial_prescreen` (and,
-  if you ran nb 05, through the registered model) — it's recorded automatically because everything is UC.
+  if you ran nb 05, through the registered model). It's recorded automatically because everything is UC.
 - Grant `EXECUTE` on the ClinicalBERT model to a team group and show the permission in the UI.
 
 ## 7. Metric view for governed KPIs

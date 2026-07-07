@@ -6,7 +6,7 @@
 # MAGIC   <div style="font-size:1.1em; margin-top:8px; max-width:880px; opacity:0.95">
 # MAGIC     You can't govern what you haven't classified. Scan the 6 OMOP tables, decide which columns
 # MAGIC     are direct identifiers / quasi-identifiers / clinical PHI, and stamp them with Unity Catalog
-# MAGIC     <b>tags</b> — so every downstream policy (and every auditor) can find them.
+# MAGIC     <b>tags</b>, so every downstream policy (and every auditor) can find them.
 # MAGIC   </div>
 # MAGIC </div>
 
@@ -17,7 +17,7 @@
 # MAGIC
 # MAGIC Masks (nb 02) and row filters (nb 03) are only as good as your knowledge of *what to protect*.
 # MAGIC In a real OMOP warehouse with dozens of tables, "which columns hold PHI?" is the first question an
-# MAGIC auditor asks — and the hardest to answer by eye. Unity Catalog **tags** make the answer queryable:
+# MAGIC auditor asks, and the hardest to answer by eye. Unity Catalog **tags** make the answer queryable:
 # MAGIC once a column is tagged `phi=direct_identifier`, you can find every such column across the whole
 # MAGIC catalog with one query against `information_schema`, drive ABAC policies off it (nb 03), and prove
 # MAGIC coverage to a reviewer.
@@ -34,10 +34,10 @@
 # MAGIC %md
 # MAGIC ## 1️⃣ Scan: what's actually in these tables? (PRE-BUILT)
 # MAGIC
-# MAGIC Before tagging, look at the columns and a few values. The sensitive ones are not subtle here —
-# MAGIC `person_id` (who), `note_text` (a free-text pathology report — the highest-risk unstructured PHI),
+# MAGIC Before tagging, look at the columns and a few values. The sensitive ones are not subtle here:
+# MAGIC `person_id` (who), `note_text` (a free-text pathology report, the highest-risk unstructured PHI),
 # MAGIC `year_of_birth` (a re-identification quasi-identifier), and the clinical `*_source_value` columns
-# MAGIC (diagnosis, biomarker, drug — sensitive health facts).
+# MAGIC (diagnosis, biomarker, drug, sensitive health facts).
 
 # COMMAND ----------
 
@@ -54,7 +54,7 @@ display(inv)
 
 # COMMAND ----------
 
-# DBTITLE 1,Peek at the highest-risk column — a raw pathology note (PRE-BUILT)
+# DBTITLE 1,Peek at the highest-risk column: a raw pathology note (PRE-BUILT)
 # MAGIC %sql
 # MAGIC SELECT person_id, note_source_value, LEFT(note_text, 240) AS note_preview
 # MAGIC FROM note
@@ -66,15 +66,15 @@ display(inv)
 # MAGIC %md-sandbox
 # MAGIC ## 2️⃣ The classification you'll apply (PRE-BUILT reference)
 # MAGIC
-# MAGIC `_config` ships a `PHI_COLUMNS` map — the agreed answer to "what is sensitive and how sensitive."
+# MAGIC `_config` ships a `PHI_COLUMNS` map: the agreed answer to "what is sensitive and how sensitive."
 # MAGIC We classify in two dimensions, mapped to the metastore's **governed tag policies**:
 # MAGIC
 # MAGIC <div style="background:#FFF8E1; border-left:6px solid #F2A900; padding:12px 16px; border-radius:4px">
-# MAGIC <b><code>phi</code> = HIPAA identifier type</b> — only on columns that <i>identify the patient</i>:
+# MAGIC <b><code>phi</code> = HIPAA identifier type</b>, only on columns that <i>identify the patient</i>:
 # MAGIC <code>person_id</code> and free-text <code>note_text</code> get <code>phi=other_identifier</code>;
 # MAGIC <code>year_of_birth</code> / <code>birth_date</code> get <code>phi=birth_date</code>. These are the
 # MAGIC columns you'll <b>mask</b> in nb 02.<br>
-# MAGIC <b><code>data_sensitivity</code> = official | official_sensitive</b> — on <i>every</i> sensitive
+# MAGIC <b><code>data_sensitivity</code> = official | official_sensitive</b>, on <i>every</i> sensitive
 # MAGIC column, including clinical facts (diagnosis, biomarker, drug) that aren't identifiers but are still
 # MAGIC protected health information.
 # MAGIC </div>
@@ -83,12 +83,12 @@ display(inv)
 # MAGIC <b>⚠️ Governed tag policy (a real FH-style control):</b> this metastore <b>constrains the allowed
 # MAGIC tag values</b> for <code>phi</code> and <code>data_sensitivity</code>. A typo or an off-list value
 # MAGIC (<code>'high'</code>, <code>'direct_identifier'</code>) is <b>rejected</b> at <code>ALTER TABLE</code>.
-# MAGIC That's the point — governance enforces one vocabulary. The allowed values are in <code>_config</code>.
+# MAGIC That's the point. Governance enforces one vocabulary. The allowed values are in <code>_config</code>.
 # MAGIC </div>
 
 # COMMAND ----------
 
-# DBTITLE 1,The PHI map you'll tag from (PRE-BUILT — from _config)
+# DBTITLE 1,The PHI map you'll tag from (PRE-BUILT, from _config)
 for tbl, cols in PHI_COLUMNS.items():
     print(f"{tbl}:")
     for col, (phi, sens) in cols.items():
@@ -114,19 +114,19 @@ for tbl, cols in PHI_COLUMNS.items():
 # MAGIC
 # MAGIC <div style="background:#E3F2FD; border-left:6px solid #1565C0; padding:12px 16px; border-radius:4px">
 # MAGIC Each entry in <code>PHI_COLUMNS</code> is <code>(phi_type, sensitivity)</code>. When
-# MAGIC <code>phi_type is None</code> the column is sensitive but not an identifier — set
+# MAGIC <code>phi_type is None</code> the column is sensitive but not an identifier. Set
 # MAGIC <code>data_sensitivity</code> only (no <code>phi</code> tag). These tags are what nb 03's ABAC
 # MAGIC policy and nb 04's identifier audit read back, so use the exact allowed values from <code>_config</code>.
 # MAGIC </div>
 
 # COMMAND ----------
 
-# DBTITLE 1,TODO — tag every PHI column across all 6 tables
+# DBTITLE 1,TODO: tag every PHI column across all 6 tables
 # TODO (you build this): loop over PHI_COLUMNS and apply UC tags to each column.
 #   Each entry is (phi_type, sensitivity). For each (table, column, phi_type, sensitivity):
 #     • if phi_type is not None  -> set BOTH 'phi' and 'data_sensitivity'
 #     • if phi_type is None      -> set ONLY 'data_sensitivity' (it's sensitive, not an identifier)
-#   Use the governed allowed values straight from PHI_COLUMNS (don't invent values — they'll be rejected).
+#   Use the governed allowed values straight from PHI_COLUMNS (don't invent values, they'll be rejected).
 #   Build the SQL and run spark.sql(...) inside the loop.
 #
 # Skeleton (fill the body):
@@ -148,7 +148,7 @@ for tbl, cols in PHI_COLUMNS.items():
 # MAGIC %md
 # MAGIC ## 3️⃣ Prove the classification stuck (PRE-BUILT verification)
 # MAGIC
-# MAGIC Tags live in `information_schema.column_tags`. This is the auditor's view — and the same query
+# MAGIC Tags live in `information_schema.column_tags`. This is the auditor's view, and the same query
 # MAGIC nb 03 / nb 04 build on. After your TODO runs, this should list every column you tagged.
 
 # COMMAND ----------
@@ -163,7 +163,7 @@ for tbl, cols in PHI_COLUMNS.items():
 
 # COMMAND ----------
 
-# DBTITLE 1,Coverage check — every PHI column tagged? (PRE-BUILT)
+# DBTITLE 1,Coverage check: every PHI column tagged? (PRE-BUILT)
 # Every sensitive column must carry at least a data_sensitivity tag; identifiers must also carry phi.
 expected = {(t, c) for t, cols in PHI_COLUMNS.items() for c in cols}
 expected_phi = {(t, c) for t, cols in PHI_COLUMNS.items()
@@ -180,7 +180,7 @@ if missing:
 else:
     show_md(f"<b>✅ Checkpoint 1 met.</b> All {len(expected)} sensitive columns tagged "
             f"(<code>{len(expected_phi)}</code> identifier columns also carry a <code>phi</code> tag). "
-            "The catalog now <i>knows</i> what's sensitive — masks & filters can target it.")
+            "The catalog now <i>knows</i> what's sensitive. Masks & filters can target it.")
 
 # COMMAND ----------
 

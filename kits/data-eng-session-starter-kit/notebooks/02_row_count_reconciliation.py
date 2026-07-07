@@ -15,13 +15,13 @@
 # MAGIC ## Why this matters (FH ask: Chetan #17)
 # MAGIC
 # MAGIC "Did we load everything?" is a question a clinical-data team must answer with **evidence**, not a
-# MAGIC shrug. A row-count match is necessary but not sufficient — you also need to know **which records are
+# MAGIC shrug. A row-count match is necessary but not sufficient. You also need to know **which records are
 # MAGIC missing** when counts disagree. This notebook builds a reusable reconciliation framework over all 6
 # MAGIC OMOP tables:
 # MAGIC
-# MAGIC 1. **Counts** — source vs. target, per table, with a delta and a pass/fail flag.
-# MAGIC 2. **Anti-join** — the source keys with **no match** in the target (the missing records).
-# MAGIC 3. **Summary table** — `recon_summary`, one persisted row per table per run, timestamped for audit.
+# MAGIC 1. **Counts**: source vs. target, per table, with a delta and a pass/fail flag.
+# MAGIC 2. **Anti-join**: the source keys with **no match** in the target (the missing records).
+# MAGIC 3. **Summary table**: `recon_summary`, one persisted row per table per run, timestamped for audit.
 # MAGIC
 # MAGIC <div style="background:#FFF8E1; border-left:6px solid #F2A900; padding:12px 16px; border-radius:4px">
 # MAGIC <b>The harness is pre-built; the reconciliation logic is yours.</b> We pre-build the bronze copies
@@ -36,10 +36,10 @@
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 1️⃣ Land bronze copies — with one deliberate mismatch (PRE-BUILT)
+# MAGIC ## 1️⃣ Land bronze copies, with one deliberate mismatch (PRE-BUILT)
 # MAGIC
 # MAGIC We copy each source table into your schema as `bronze_<table>`. For **`measurement`** we deliberately
-# MAGIC **drop 7 rows** to simulate a dropped-record incident — your reconciliation must catch it and name
+# MAGIC **drop 7 rows** to simulate a dropped-record incident. Your reconciliation must catch it and name
 # MAGIC the missing keys. The other tables copy clean (counts should match exactly).
 
 # COMMAND ----------
@@ -60,15 +60,15 @@ print("✅ Bronze copies written. measurement is short by", len(DROPPED_MEASUREM
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 2️⃣ 🛠️ TODO — count reconciliation (source vs. target, per table)
+# MAGIC ## 2️⃣ 🛠️ TODO: count reconciliation (source vs. target, per table)
 # MAGIC
 # MAGIC Build a DataFrame with one row per OMOP table: the **source count**, the **target count**, the
 # MAGIC **delta**, and a `match` boolean. This is the top-line "did the counts agree?" answer.
 
 # COMMAND ----------
 
-# DBTITLE 1,TODO — build the per-table count comparison (YOU BUILD THIS)
-# TODO (you build this): produce `count_recon` — a DataFrame with columns
+# DBTITLE 1,TODO: build the per-table count comparison (YOU BUILD THIS)
+# TODO (you build this): produce `count_recon`, a DataFrame with columns
 #   table_name, source_count, target_count, delta, match (boolean)
 #   for every table in OMOP_TABLES.
 # PATTERN: loop OMOP_TABLES, count spark.table(src(t)) and spark.table(fqn("bronze_"+t)), assemble rows,
@@ -90,14 +90,14 @@ display(count_recon.orderBy("match"))   # mismatches float to the top
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 3️⃣ 🛠️ TODO — find the MISSING keys (anti-join)
+# MAGIC ## 3️⃣ 🛠️ TODO: find the MISSING keys (anti-join)
 # MAGIC
 # MAGIC A count delta tells you *how many* are missing; an **anti-join** tells you *which*. Find the
 # MAGIC `measurement_id`s present in the **source** `measurement` but absent from your **bronze** copy.
 
 # COMMAND ----------
 
-# DBTITLE 1,TODO — anti-join to list the missing measurement keys (YOU BUILD THIS)
+# DBTITLE 1,TODO: anti-join to list the missing measurement keys (YOU BUILD THIS)
 # MAGIC %sql
 # MAGIC -- TODO (you build this): return the measurement_id (and person_id) of every row that is in the
 # MAGIC --   SOURCE measurement but NOT in your bronze_measurement copy.
@@ -105,7 +105,7 @@ display(count_recon.orderBy("match"))   # mismatches float to the top
 # MAGIC --   SELECT s.measurement_id, s.person_id
 # MAGIC --   FROM <source_schema>.measurement s
 # MAGIC --   LEFT ANTI JOIN bronze_measurement b ON s.measurement_id = b.measurement_id;
-# MAGIC -- TIP: your source is in a DIFFERENT schema — qualify it. _config exposes it as the `src()` helper
+# MAGIC -- TIP: your source is in a DIFFERENT schema, so qualify it. _config exposes it as the `src()` helper
 # MAGIC --   in Python; in SQL, reference ${...} via the source_schema widget, e.g.
 # MAGIC --   serverless..._catalog.clinops_foundation.measurement  (use your own catalog/source_schema).
 # MAGIC -- EXPECTED: exactly the 7 planted ids (101, 202, 303, 404, 505, 606, 707).
@@ -113,7 +113,7 @@ display(count_recon.orderBy("match"))   # mismatches float to the top
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 4️⃣ Persist a reconciliation summary table (PRE-BUILT — runs on your `count_recon`)
+# MAGIC ## 4️⃣ Persist a reconciliation summary table (PRE-BUILT, runs on your `count_recon`)
 # MAGIC
 # MAGIC The counts are ephemeral; the **audit trail** is not. We append `count_recon` to a persisted
 # MAGIC `recon_summary` table with a run timestamp, so every reconciliation run is queryable later.
@@ -137,14 +137,14 @@ fails = count_recon.filter(~F.col("match")).count()
 if fails == 0:
     print("✅ RECONCILED: every table's source and target counts agree.")
 else:
-    print(f"❌ {fails} table(s) FAILED reconciliation — see the missing keys above. "
+    print(f"❌ {fails} table(s) FAILED reconciliation, see the missing keys above. "
           "(measurement is expected to fail by exactly 7 in this kit.)")
 
 # COMMAND ----------
 
 # MAGIC %md-sandbox
 # MAGIC <div style="background:#E8F5E9; border-left:6px solid #2E7D32; padding:12px 16px; border-radius:4px">
-# MAGIC <b>What you built:</b> a reusable reconciliation framework — counts, the exact missing keys, and a
+# MAGIC <b>What you built:</b> a reusable reconciliation framework: counts, the exact missing keys, and a
 # MAGIC timestamped audit table. When a steward asks "did we load everything?", you don't guess; you query
 # MAGIC <code>recon_summary</code> and name the 7 missing <code>measurement</code> rows.
 # MAGIC </div>

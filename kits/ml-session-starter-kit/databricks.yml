@@ -1,8 +1,8 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# Databricks Asset Bundle — Fred Hutch Clinical Trial Pre-Screening (ML session)
+# Databricks Asset Bundle, Fred Hutch Clinical Trial Pre-Screening (ML session)
 #
 # This bundle is PRE-BUILT for you. It is Unity-Catalog-scoped (catalog/schema are
-# variables — no hive_metastore, no hardcoded workspace) and per-team. It reads the
+# variables, no hive_metastore, no hardcoded workspace) and per-team. It reads the
 # 6 OMOP source tables read-only and writes everything (silver features, NLP, gold
 # pre-screen, the model, the Genie space) to YOUR own schema. To use it:
 #   1. Fill in the `client` target's client_catalog / client_schema / source_schema / warehouse_id.
@@ -21,7 +21,7 @@ variables:
   #     in the same catalog as your team.
   #   Real: point source_catalog / source_schema at your real OMOP, e.g.
   #     source_catalog = curated_omop, source_schema = omop.
-  # The 6 OMOP table names are identical in both cases — no query changes required.
+  # The 6 OMOP table names are identical in both cases, no query changes required.
   source_catalog:
     description: "Catalog holding the read-only OMOP source tables. Defaults to your team catalog (synthetic); set to curated_omop for real."
     default: "<your_catalog>"
@@ -30,7 +30,7 @@ variables:
     description: "Read-only schema holding the 6 OMOP source tables. Synthetic default clinops_foundation; set to omop for the real curated_omop.omop tables."
     default: "clinops_foundation"
 
-  # ── Client (per-team) catalog / schema — where YOU write ─────────────────────
+  # ── Client (per-team) catalog / schema, where YOU write ─────────────────────
   # FILL THESE IN. Silver features, NLP output, the gold pre-screen tables, the UC
   # model, and the Genie space all get created here. No hive_metastore.
   client_catalog:
@@ -46,14 +46,14 @@ variables:
     default: "<your_warehouse_id>"
 
 targets:
-  # ── Client target (default) — fill in your workspace values, then deploy. ────
+  # ── Client target (default). Fill in your workspace values, then deploy. ────
   # Per-team isolation: give each team its own writable schema so nobody steps on
   # anybody else's tables. The source_schema is shared and read-only.
   client:
     default: true
-    # Omit `mode:` — DAB defaults to production behavior (no dev_<user>_ prefix),
+    # Omit `mode:`, DAB defaults to production behavior (no dev_<user>_ prefix),
     # which keeps the table names stable for the Genie space and the app.
-    # No `workspace.host:` — the CLI uses your profile's host (deploy with -p <profile>),
+    # No `workspace.host:`, the CLI uses your profile's host (deploy with -p <profile>),
     # so there's no host to mismatch. Add one only if you deploy without a profile.
     variables:
       client_catalog: "<your_catalog>"

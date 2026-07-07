@@ -1,5 +1,5 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# PRE-BUILT — deep-clones the 6 OMOP tables into your isolated governance schema.
+# PRE-BUILT: deep-clones the 6 OMOP tables into your isolated governance schema.
 # Run once before you start the notebooks:
 #   databricks bundle run setup_clone_job --target client
 # This lands person / condition_occurrence / measurement / observation / drug_exposure / note
@@ -9,7 +9,7 @@
 resources:
   jobs:
     setup_clone_job:
-      name: "[${bundle.target}] FH Governance — deep-clone OMOP tables into governed schema"
+      name: "[${bundle.target}] FH Governance: deep-clone OMOP tables into governed schema"
       description: >
         DEEP CLONEs the 6 OMOP tables into the isolated governance schema so masks/row filters
         can be applied without affecting the source data.

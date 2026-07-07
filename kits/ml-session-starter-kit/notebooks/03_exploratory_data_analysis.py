@@ -4,7 +4,7 @@
 # MAGIC   <div style="font-size:0.9em; letter-spacing:2px; opacity:0.85">NOTEBOOK 03 · EXPLORE · MOSTLY PRE-BUILT</div>
 # MAGIC   <div style="font-size:2.0em; font-weight:700; margin-top:4px">🔎 Exploratory data analysis</div>
 # MAGIC   <div style="font-size:1.1em; margin-top:8px; max-width:880px; opacity:0.95">
-# MAGIC     Get to know the cohort in a few cells — and surface the exact gap that justifies the NLP work
+# MAGIC     Get to know the cohort in a few cells, and surface the exact gap that justifies the NLP work
 # MAGIC     that follows.
 # MAGIC   </div>
 # MAGIC </div>
@@ -15,10 +15,10 @@
 # MAGIC ## How easy is EDA on Databricks?
 # MAGIC
 # MAGIC Every query below returns a Spark DataFrame. Click **`+` → Visualization** on any result to chart
-# MAGIC it — no matplotlib, no export. We explore in three passes:
-# MAGIC 1. **Who are these patients?** — demographics, stage, menopausal status
-# MAGIC 2. **What do the biomarkers look like?** — HER2 / ER / PR distribution
-# MAGIC 3. **Where do the biomarkers live?** — the structured-vs-notes gap (the punchline you'll quantify)
+# MAGIC it: no matplotlib, no export. We explore in three passes:
+# MAGIC 1. **Who are these patients?** demographics, stage, menopausal status
+# MAGIC 2. **What do the biomarkers look like?** HER2 / ER / PR distribution
+# MAGIC 3. **Where do the biomarkers live?** the structured-vs-notes gap (the punchline you'll quantify)
 
 # COMMAND ----------
 
@@ -27,7 +27,7 @@
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 1️⃣ Who are these patients? (PRE-BUILT — try the suggested viz on each)
+# MAGIC ## 1️⃣ Who are these patients? (PRE-BUILT, try the suggested viz on each)
 
 # COMMAND ----------
 
@@ -62,25 +62,25 @@
 # COMMAND ----------
 
 # MAGIC %md-sandbox
-# MAGIC ## 3️⃣ Where do the biomarkers live? — the gap 🎯
+# MAGIC ## 3️⃣ Where do the biomarkers live? The gap 🎯
 # MAGIC
 # MAGIC This is the whole reason for the NLP work. Classify every patient by **where** their biomarker
 # MAGIC evidence exists: **structured** (rows in `measurement`) vs **note** (a pathology report in `note`).
 # MAGIC
 # MAGIC <div style="background:#FFEBEE; border-left:6px solid #C62828; padding:12px 16px; border-radius:4px">
 # MAGIC Patients with <b>a pathology note but NO structured measurement</b> are invisible to the silver
-# MAGIC pipeline — and to every SQL cohort query. Real, potentially-eligible patients we would miss.
+# MAGIC pipeline, and to every SQL cohort query. Real, potentially-eligible patients we would miss.
 # MAGIC </div>
 
 # COMMAND ----------
 
-# DBTITLE 1,TODO — classify every patient by biomarker evidence source
+# DBTITLE 1,TODO, classify every patient by biomarker evidence source
 # MAGIC %sql
 # MAGIC -- TODO (you build this): for every patient, label whether their biomarker evidence is
 # MAGIC --   'both', 'notes-only', 'structured-only', or 'neither', and COUNT patients per label.
-# MAGIC -- WHY: this is the single most important slide of the session — the 'notes-only' count is the
+# MAGIC -- WHY: this is the single most important slide of the session: the 'notes-only' count is the
 # MAGIC --   number of patients a SQL-only pipeline silently misses. You'll prove you recovered them in nb 04.
-# MAGIC -- HINT: build two helper sets with WITH —
+# MAGIC -- HINT: build two helper sets with WITH:
 # MAGIC --   has_struct = DISTINCT person_id from measurement where marker IN (HER2/ER/PR)
 # MAGIC --   has_note   = DISTINCT person_id from note where note_source_value = 'PATHOLOGY_REPORT'
 # MAGIC --   then LEFT JOIN person to both and CASE on which side is NULL.
@@ -88,7 +88,7 @@
 
 # COMMAND ----------
 
-# DBTITLE 1,Quantify the missed opportunity, in plain language (PRE-BUILT — runs after your query)
+# DBTITLE 1,Quantify the missed opportunity, in plain language (PRE-BUILT, runs after your query)
 notes_only = spark.sql("""
   WITH has_struct AS (
     SELECT DISTINCT person_id FROM measurement
@@ -109,7 +109,7 @@ them. Recovering them is the job of notebook 04 (ai_query) and notebook 05 (Clin
 
 # COMMAND ----------
 
-# DBTITLE 1,Peek at a notes-only patient — see why SQL can't parse it (PRE-BUILT)
+# DBTITLE 1,Peek at a notes-only patient, see why SQL can't parse it (PRE-BUILT)
 # MAGIC %sql
 # MAGIC WITH has_struct AS (
 # MAGIC   SELECT DISTINCT person_id FROM measurement
@@ -126,7 +126,7 @@ them. Recovering them is the job of notebook 04 (ai_query) and notebook 05 (Clin
 # MAGIC %md
 # MAGIC <div style="background:#E8F5E9; border-left:6px solid #2E7D32; padding:12px 16px; border-radius:4px">
 # MAGIC <b>Takeaway:</b> the notes phrase HER2/ER/PR a dozen ways (<i>"3+ by IHC"</i>, <i>"FISH ratio 3.1,
-# MAGIC amplified"</i>, <i>"overexpression confirmed"</i>). No <code>LIKE</code> catches them all — but a
+# MAGIC amplified"</i>, <i>"overexpression confirmed"</i>). No <code>LIKE</code> catches them all, but a
 # MAGIC Foundation Model reads them like a clinician. That's next.
 # MAGIC </div>
 # MAGIC

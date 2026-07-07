@@ -1,7 +1,7 @@
-# 🔑 Answer Key — SA / MENTOR ONLY
+# 🔑 Answer Key, SA / MENTOR ONLY
 
 > **For the mentor. Reveal a snippet only if a team is genuinely stuck** (after the nudge → hint →
-> pair ladder in `RUNBOOK.md`). Per `13-mentor-brief.md`, reveal late and push creative extension —
+> pair ladder in `RUNBOOK.md`). Per `13-mentor-brief.md`, reveal late and push creative extension,
 > *except* on plumbing or anything PHI/security-sensitive, where you reveal early. The **complete,
 > runnable solution** is the original working notebook series (referenced per item below); these are
 > the intended approaches + the gotchas so you can unblock without hunting.
@@ -11,7 +11,7 @@ The full solution notebooks (the finished build this kit was decomposed from) li
 
 ---
 
-## NB 01 — planted-cohort validation SQL (light TODO)
+## NB 01: planted-cohort validation SQL (light TODO)
 
 **Intended Trial A count** (structured baseline):
 ```sql
@@ -25,11 +25,11 @@ WHERE m.measurement_source_value = 'HER2/neu' AND m.value_source_value = 'Positi
 ```
 **Trial B count:** self-join `measurement` (ER alias + HER2 alias) and join `observation` for
 `Menopausal status = 'Postmenopausal'`. See nb 01 source cells "Trial A/Trial B".
-- **Expected:** ≥ 20 each (person 1–20 / 31–50 guaranteed; incidental matches are fine, don't panic).
+- **Expected:** ≥ 20 each (person 1 to 20 / 31 to 50 guaranteed; incidental matches are fine, don't panic).
 - **Gotcha:** teams may forget the `NOT IN (anti-HER2)` exclusion → count comes back too high; that's
-  the teaching moment for the ineligible controls (person 21–30).
+  the teaching moment for the ineligible controls (person 21 to 30).
 
-## NB 02 — `silver_biomarker_profile` pivot (GUIDED TODO)
+## NB 02: `silver_biomarker_profile` pivot (GUIDED TODO)
 
 **Intended logic** (same in the pipeline source and the run-it-now cell):
 ```sql
@@ -49,12 +49,12 @@ SELECT person_id, her2_status, er_status, pr_status FROM biomarkers;
 - **Gotcha (pipeline):** in the `.sql` file, sources are `${source_catalog}.${source_schema}.measurement`;
   the run-it-now cell uses the bare name. Don't mix them up.
 
-## NB 03 — biomarker-evidence classification (light TODO)
+## NB 03: biomarker-evidence classification (light TODO)
 
 Two `WITH` sets (`has_struct`, `has_note`), LEFT JOIN `person` to both, `CASE` on which side is NULL.
 Full query in nb 03 source. **Expected:** both ≈ 180, notes-only ≈ 60, structured-only ≈ 60.
 
-## NB 04 — `ai_query` NLP extraction (🧠 SIGNPOSTED — the GenAI core)
+## NB 04: `ai_query` NLP extraction (🧠 SIGNPOSTED, the GenAI core)
 
 **Intended single-note call:**
 ```sql
@@ -72,38 +72,38 @@ FROM (
 ```
 Then `CREATE OR REPLACE TABLE silver_nlp_biomarkers AS …` (same call, no LIMIT, add
 `'nlp' AS biomarker_source`).
-- **⚠ THE #1 GOTCHA (reveal early — it's plumbing, not the lesson):** without `responseFormat`, the
-  model wraps output in ```` ```json … ``` ```` fences and `from_json` returns **NULL for every row** —
-  the whole column comes back empty and teams think the model failed. The fix is the
+- **⚠ THE #1 GOTCHA (reveal early, it's plumbing, not the lesson):** without `responseFormat`, the
+  model wraps output in ```` ```json … ``` ```` fences and `from_json` returns **NULL for every row**.
+  The whole column comes back empty and teams think the model failed. The fix is the
   `responseFormat` arg. The DDL form needs the single-top-field `STRUCT<result:STRUCT<…>>` wrapper;
-  `from_json` parses the flat keys. This is the bug the original build hit — give teams the two
+  `from_json` parses the flat keys. This is the bug the original build hit. Give teams the two
   response shapes (they're already in the nb cheat-sheet) and let them write the prompt.
-- **Expected:** silver_nlp_biomarkers = 240 rows, all 60 notes-only (181–240) recovered, ~100% fill.
-- **Mentor note:** this is the team's learnable "aha" — don't reveal the prompt wording; do reveal the
+- **Expected:** silver_nlp_biomarkers = 240 rows, all 60 notes-only (181 to 240) recovered, ~100% fill.
+- **Mentor note:** this is the team's learnable "aha". Don't reveal the prompt wording; do reveal the
   `responseFormat` mechanic if they're stuck (it's plumbing).
 
-## NB 05 — ClinicalBERT note embeddings → UC (PRE-BUILT, optional)
+## NB 05: ClinicalBERT note embeddings → UC (PRE-BUILT, optional)
 
-Fully written. **This is the bring-your-own-model governance story, NOT the extraction path** — it
+Fully written. **This is the bring-your-own-model governance story, NOT the extraction path.** It
 registers `Bio_ClinicalBERT`'s base `AutoModel` encoder as an MLflow pyfunc (mean-pooled 768-dim
 embeddings), scores every pathology note in Spark via `spark_udf`, writes
 `silver_clinicalbert_note_embeddings`, and closes with a cosine-similarity demo (cohort discovery).
 Model registers as `fqn('clinicalbert_note_embedder')`.
 
-**Why embeddings, not cloze/classification:** Bio_ClinicalBERT was never fine-tuned to call HER2/ER/PR,
+**Why embeddings, not cloze/classification:** Bio_ClinicalBERT was never fine-tuned to call HER2/ER/PR;
 so classifying with it is unreliable AND slow (the earlier masked-LM cloze approach hung ~5h). `ai_query`
-(nb 04) owns accurate extraction; ClinicalBERT does what it's actually good at — representations.
+(nb 04) owns accurate extraction; ClinicalBERT does what it's actually good at, representations.
 
-**Nothing downstream depends on this notebook** — nb 06 fuses `silver_biomarker_profile` (nb 02) +
+**Nothing downstream depends on this notebook.** nb 06 fuses `silver_biomarker_profile` (nb 02) +
 `silver_nlp_biomarkers` (nb 04). If HF download/egress fails or serving isn't approved by the hard stop,
-**skip to nb 06** — the gold path is unaffected; the embeddings are an additive cohort-discovery primitive.
+**skip to nb 06**. The gold path is unaffected; the embeddings are an additive cohort-discovery primitive.
 Mentor gotchas: needs serverless / outbound internet for the HF pull; `save_pretrained(safe_serialization=False)`
 (pytorch_model.bin) avoids the executor-side "SafetensorError: header too large" on `spark_udf` load;
 `predict()` returns a 2-D float32 ndarray so `result_type="array<float>"` coerces cleanly.
 
-## NB 06 — gold fusion + eligibility (GUIDED TODO)
+## NB 06: gold fusion + eligibility (GUIDED TODO)
 
-**Unified profile** — FULL OUTER JOIN + COALESCE (structured wins) + source CASE:
+**Unified profile,** FULL OUTER JOIN + COALESCE (structured wins) + source CASE:
 ```sql
 SELECT COALESCE(s.person_id, n.person_id) AS person_id,
   COALESCE(s.her2_status, n.her2_status) AS her2_status,
@@ -121,34 +121,34 @@ FROM silver_biomarker_profile s FULL OUTER JOIN silver_nlp_biomarkers n ON s.per
 Reasons are a `CASE` returning `'Eligible: …'` (interpolate `biomarker_source`) else the failed
 criterion. Full CASE blocks in nb 06 source.
 - **Gotcha:** use FULL OUTER + COALESCE, **not** UNION (union double-rows the "both" patients).
-- **Gotcha:** `COALESCE(t.had_anti_her2_therapy, false)` — patients with no therapy row are NULL, not
+- **Gotcha:** `COALESCE(t.had_anti_her2_therapy, false)`, patients with no therapy row are NULL, not
   false; without the COALESCE the boolean goes NULL and they drop out of Trial A.
 - **Payoff:** eligible cohort split by source shows the `'nlp'` patients SQL-only would have missed.
 
-## NB 07 — MLflow eval (🧠 SIGNPOSTED)
+## NB 07: MLflow eval (🧠 SIGNPOSTED)
 
 Two TODOs inside `run_config()`:
-1. **Scoring query** — one `ai_query('{model}', '{safe_prompt}' || '\n\nReport:\n' || note_text,
+1. **Scoring query:** one `ai_query('{model}', '{safe_prompt}' || '\n\nReport:\n' || note_text,
    responseFormat => 'STRUCT<her2_status:STRING, er_status:STRING, pr_status:STRING>')` over the
    goldset; alias predicted columns `pred_her2/pred_er/pred_pr`. (Note: here the eval `responseFormat`
-   uses the flat 3-field form, no `result` wrapper, because there's no `from_json` step — `ai_query`
+   uses the flat 3-field form, no `result` wrapper, because there's no `from_json` step. `ai_query`
    returns a struct directly when given a flat DDL. See nb 07 source.)
-2. **MLflow logging** — `mlflow.log_params({model, prompt_name, prompt_text})` +
+2. **MLflow logging:** `mlflow.log_params({model, prompt_name, prompt_text})` +
    `mlflow.log_metrics({her2_acc, er_acc, pr_acc, overall_acc})` inside `mlflow.start_run(...)`.
 
 Prompts: V1 terse, V2 spells out IHC 3+/FISH-amplified ⇒ Positive, IHC 0/1+ ⇒ Negative, IHC 2+/
 equivocal ⇒ Unknown. Full text in nb 07 source.
-- **Gotcha:** `safe_prompt = prompt_text.replace("'", "''")` — single quotes in the prompt break the
+- **Gotcha:** `safe_prompt = prompt_text.replace("'", "''")`, single quotes in the prompt break the
   interpolated SQL otherwise.
-- **Expected outcome:** misses cluster on HER2 IHC 2+ (equivocal) — a *safe* miss (Unknown), which is
+- **Expected outcome:** misses cluster on HER2 IHC 2+ (equivocal), a *safe* miss (Unknown), which is
   the teaching point. The leaderboard + error-pattern cells are pre-built and will light up once both
   TODOs are filled.
 
-## NB 08 — Genie verify SQL (light TODO)
+## NB 08: Genie verify SQL (light TODO)
 
 `SELECT COUNT(*) FROM gold_trial_prescreen WHERE trial_a_eligible = TRUE` and `… AND biomarker_source
 = 'nlp'`. The comments + UI steps + curated content are pre-built (`genie/genie_space.md`).
 
-## NB 09 — coordinator app (STRETCH)
+## NB 09: coordinator app (STRETCH)
 
-No answer key — open-ended. Point teams at the `databricks-apps` skill and `STRETCH.md`.
+No answer key, open-ended. Point teams at the `databricks-apps` skill and `STRETCH.md`.

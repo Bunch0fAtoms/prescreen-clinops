@@ -2,9 +2,9 @@
 # MAGIC %md-sandbox
 # MAGIC <div style="background:linear-gradient(90deg,#C8102E 0%,#7A0019 100%); color:white; padding:22px 28px; border-radius:8px">
 # MAGIC   <div style="font-size:0.9em; letter-spacing:2px; opacity:0.85">NOTEBOOK 03 · INGEST GATE · YOU BUILD THE GUARD</div>
-# MAGIC   <div style="font-size:2.0em; font-weight:700; margin-top:4px">🚦 Block restricted tables — from config, not code</div>
+# MAGIC   <div style="font-size:2.0em; font-weight:700; margin-top:4px">🚦 Block restricted tables, from config, not code</div>
 # MAGIC   <div style="font-size:1.1em; margin-top:8px; max-width:880px; opacity:0.95">
-# MAGIC     A reusable guard that checks a Unity Catalog <b>allow/deny-list</b> before any write — so a
+# MAGIC     A reusable guard that checks a Unity Catalog <b>allow/deny-list</b> before any write, so a
 # MAGIC     restricted table is refused <b>before a single row lands</b>, and the list is governed in UC,
 # MAGIC     never hardcoded.
 # MAGIC   </div>
@@ -16,7 +16,7 @@
 # MAGIC ## Why this matters (FH ask: Jenn #16)
 # MAGIC
 # MAGIC In a security-first shop, "don't ingest the restricted tables" can't live in a code comment or a
-# MAGIC reviewer's memory — it must be **enforced** and **changeable without a deploy**. So we drive the gate
+# MAGIC reviewer's memory. It must be **enforced** and **changeable without a deploy**. So we drive the gate
 # MAGIC from a **Unity Catalog config table** (`ingest_allowlist`): a steward edits a row, the gate's
 # MAGIC behavior changes immediately, and every decision is auditable.
 # MAGIC
@@ -29,7 +29,7 @@
 # MAGIC
 # MAGIC <div style="background:#FFF8E1; border-left:6px solid #F2A900; padding:12px 16px; border-radius:4px">
 # MAGIC <b>The config table + the safe-write wrapper are pre-built; the guard is yours.</b> You write
-# MAGIC <code>assert_ingest_allowed(table)</code> — the function that reads the UC allow-list and raises
+# MAGIC <code>assert_ingest_allowed(table)</code>, the function that reads the UC allow-list and raises
 # MAGIC <i>before</i> any data moves. Nothing is hardcoded: change the table, change the behavior.
 # MAGIC </div>
 
@@ -48,7 +48,7 @@
 
 # COMMAND ----------
 
-# DBTITLE 1,Seed the allow-list config table in UC (PRE-BUILT — a steward owns this, not code)
+# DBTITLE 1,Seed the allow-list config table in UC (PRE-BUILT, a steward owns this, not code)
 # MAGIC %sql
 # MAGIC CREATE TABLE IF NOT EXISTS ingest_allowlist (
 # MAGIC   table_name     STRING,
@@ -60,14 +60,14 @@
 # MAGIC -- Idempotent reseed so the notebook is rerunnable.
 # MAGIC DELETE FROM ingest_allowlist;
 # MAGIC INSERT INTO ingest_allowlist VALUES
-# MAGIC   ('person',               true,  'internal',   'OMOP demographics — synthetic'),
-# MAGIC   ('condition_occurrence', true,  'internal',   'OMOP diagnoses — synthetic'),
-# MAGIC   ('measurement',          true,  'internal',   'OMOP labs/biomarkers — synthetic'),
-# MAGIC   ('observation',          true,  'internal',   'OMOP observations — synthetic'),
-# MAGIC   ('drug_exposure',        true,  'internal',   'OMOP medications — synthetic'),
-# MAGIC   ('note',                 true,  'internal',   'OMOP clinical notes — synthetic'),
-# MAGIC   ('genomic_sequencing',   false, 'restricted', 'Genomic data — separate IRB approval required'),
-# MAGIC   ('provider_pii',         false, 'restricted', 'Provider PII — out of scope for this pipeline');
+# MAGIC   ('person',               true,  'internal',   'OMOP demographics, synthetic'),
+# MAGIC   ('condition_occurrence', true,  'internal',   'OMOP diagnoses, synthetic'),
+# MAGIC   ('measurement',          true,  'internal',   'OMOP labs/biomarkers, synthetic'),
+# MAGIC   ('observation',          true,  'internal',   'OMOP observations, synthetic'),
+# MAGIC   ('drug_exposure',        true,  'internal',   'OMOP medications, synthetic'),
+# MAGIC   ('note',                 true,  'internal',   'OMOP clinical notes, synthetic'),
+# MAGIC   ('genomic_sequencing',   false, 'restricted', 'Genomic data, separate IRB approval required'),
+# MAGIC   ('provider_pii',         false, 'restricted', 'Provider PII, out of scope for this pipeline');
 
 # COMMAND ----------
 
@@ -78,18 +78,18 @@
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 2️⃣ 🛠️ TODO — the guard function `assert_ingest_allowed(table)`
+# MAGIC ## 2️⃣ 🛠️ TODO: the guard function `assert_ingest_allowed(table)`
 # MAGIC
 # MAGIC Write the reusable guard. It reads `ingest_allowlist` from UC and:
 # MAGIC - **raises** `PermissionError` if the table is missing from the list **or** has `allowed = false`,
 # MAGIC - **returns** quietly (allowing the write) if `allowed = true`.
 # MAGIC
-# MAGIC The key property: it must hit the **config table**, never an in-code list — so a steward can change
+# MAGIC The key property: it must hit the **config table**, never an in-code list, so a steward can change
 # MAGIC the rules without a deploy.
 
 # COMMAND ----------
 
-# DBTITLE 1,TODO — assert_ingest_allowed: read the UC allow-list, block or pass (YOU BUILD THIS)
+# DBTITLE 1,TODO: assert_ingest_allowed: read the UC allow-list, block or pass (YOU BUILD THIS)
 from pyspark.sql import functions as F
 
 def assert_ingest_allowed(table: str) -> None:
@@ -111,7 +111,7 @@ def assert_ingest_allowed(table: str) -> None:
           raise PermissionError(f"🚫 Ingest BLOCKED for '{table}' ...")
     """
     # ---- your code below ----
-    raise NotImplementedError("Build assert_ingest_allowed — see the TODO above.")
+    raise NotImplementedError("Build assert_ingest_allowed. See the TODO above.")
 
 # COMMAND ----------
 
@@ -123,7 +123,7 @@ def assert_ingest_allowed(table: str) -> None:
 
 # COMMAND ----------
 
-# DBTITLE 1,safe_ingest — guard, then write (PRE-BUILT, calls YOUR function)
+# DBTITLE 1,safe_ingest: guard, then write (PRE-BUILT, calls YOUR function)
 def safe_ingest(table: str) -> None:
     """Guard with assert_ingest_allowed(), then copy source -> bronze. Restricted tables raise here."""
     assert_ingest_allowed(table)                         # <- your guard; raises to block
@@ -135,7 +135,7 @@ def safe_ingest(table: str) -> None:
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 4️⃣ Prove it: allowed passes, restricted is blocked (PRE-BUILT — runs your guard)
+# MAGIC ## 4️⃣ Prove it: allowed passes, restricted is blocked (PRE-BUILT, runs your guard)
 
 # COMMAND ----------
 
@@ -148,13 +148,13 @@ safe_ingest("person")   # allowed = true -> should write bronze_person
 import traceback
 try:
     safe_ingest("genomic_sequencing")   # allowed = false -> your guard must raise
-    print("⚠ Unexpected: the restricted table was NOT blocked — check your guard.")
+    print("⚠ Unexpected: the restricted table was NOT blocked. Check your guard.")
 except PermissionError as e:
     print("✅ Correctly BLOCKED a restricted table:")
     print("   " + str(e))
     # confirm nothing landed
     assert not spark.catalog.tableExists(fqn("bronze_genomic_sequencing")), \
-        "A bronze table was created for a blocked source — the guard ran too late!"
+        "A bronze table was created for a blocked source: the guard ran too late!"
     print("   ✅ Verified: no bronze_genomic_sequencing table was created.")
 except NotImplementedError:
     print("⏳ Build assert_ingest_allowed first (the TODO above), then re-run.")
@@ -164,11 +164,11 @@ except NotImplementedError:
 # MAGIC %md-sandbox
 # MAGIC <div style="background:#E8F5E9; border-left:6px solid #2E7D32; padding:12px 16px; border-radius:4px">
 # MAGIC <b>What you built:</b> a config-driven ingest gate. Want to allow a new table tomorrow? A steward
-# MAGIC flips <code>allowed</code> in <code>ingest_allowlist</code> — no code change, no deploy, full audit
+# MAGIC flips <code>allowed</code> in <code>ingest_allowlist</code>, no code change, no deploy, full audit
 # MAGIC trail. Flip the seed to a <i>deny-list</i> by inverting the boolean and the default.
 # MAGIC </div>
 # MAGIC
-# MAGIC <!-- EXTENSION (optional): drive the gate from UC TAGS instead of a table — read information_schema
+# MAGIC <!-- EXTENSION (optional): drive the gate from UC TAGS instead of a table, read information_schema
 # MAGIC      tag assignments and block any source tagged classification=restricted. See STRETCH.md. -->
 # MAGIC
 # MAGIC ## ▶️ Next step
