@@ -92,15 +92,21 @@ grows as the feed drops files.
 
 ## 🥈 Prompt 2, Silver + quarantine (latest-wins, and route the bad rows)
 
-> **"Now add the silver and quarantine steps, reading from `bronze_trial_catalog`. GOOD records go to
-> `silver_trial_criteria` with typed columns pulled from the `trial_raw` VARIANT: `trial_id`, `title`,
-> `status`, `phase`, `sex` (from `eligibility.sex`), `min_age_years`, `max_age_years`, `her2_status`,
-> `er_status`, `menopausal_status`, `no_prior_anti_her2`, `min_ecog`, `eligibility_text`,
-> `feed_version`, `load_ts`, plus `_source_file`. Keep exactly ONE row per `trial_id`, newest by
-> `load_ts` (latest-wins), use `MERGE INTO` so re-runs upsert. BAD records go to
-> `quarantine_trial_criteria` with a `quarantine_reason`: `malformed_json` when `trial_raw` is NULL,
-> else `missing_trial_id` when the id is null, else `invalid_type` when `min_age_years` can't be an
-> int; keep the raw text and source file for replay. Show me the cells, don't run yet."**
+> **⚠️ CRITICAL: Read `SILVER_TRIAL_CRITERIA_CONTRACT.md` first!** That document specifies the EXACT column names and mappings the Applied AI team expects. Column names must match exactly or the ML pre-screen will fail.
+
+> **"Now add the silver and quarantine steps, reading from `bronze_trial_catalog`. Follow the column mappings in `SILVER_TRIAL_CRITERIA_CONTRACT.md` EXACTLY. GOOD records go to `silver_trial_criteria` with these specific columns:
+> - `trial_id` (from `trial_id`)
+> - `trial_name` (from `title` - RENAME!)
+> - `status`
+> - `req_sex` (from `eligibility.sex` - PREFIX with req_!)
+> - `age_min` and `age_max` (from `eligibility.min_age_years` and `max_age_years` - RENAME!)
+> - `req_her2`, `req_er`, `req_pr` (from `eligibility.*_status` - PREFIX with req_!)
+> - `req_menopausal` (from `eligibility.menopausal_status` - PREFIX with req_!)
+> - `req_no_prior_anti_her2` (from `eligibility.no_prior_anti_her2` - PREFIX with req_!)
+> - `min_ecog` (from `eligibility.min_ecog`)
+> - `eligibility_text`, `feed_version`, `load_ts`
+>
+> Keep exactly ONE row per `trial_id`, newest by `load_ts` (latest-wins), use `MERGE INTO` so re-runs upsert. BAD records go to `quarantine_trial_criteria` with a `quarantine_reason`: `malformed_json` when `trial_raw` is NULL, else `missing_trial_id` when the id is null, else `invalid_type` when a required field can't be cast; keep the raw text and source file for replay. Show me the cells, don't run yet."**
 
 *Good looks like:* `silver_trial_criteria` has one row per trial, and when a trial re-lands with a
 newer `load_ts` (a heartbeat or a conflicting update) the **newest** version wins;

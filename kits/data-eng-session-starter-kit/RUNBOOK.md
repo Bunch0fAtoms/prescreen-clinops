@@ -52,6 +52,32 @@ incrementally), not in guessing syntax. Reveal the mechanism early if a team is 
 
 ---
 
+## 🗺️ Build surface map: Genie Code builds it, the UI schedules and stages it
+
+**The rule:** the pipeline is built **live in Genie Code**, on whichever of the two tracks the team
+picks. Genie Code authors the artifact itself, a notebook for Track 1 or pipeline source for Track 2.
+The **UI** does the two things Genie Code does not: the presenter stages the live feed from the Jobs
+UI, and the team schedules the finished pipeline from the Jobs or Pipelines UI. There is **no bundle
+to deploy for this kit**. The `notebooks/` are worked reference for a stalled team, not the path.
+Note the contrast with the ML kit: Genie Code *authors* the Track 1 notebook here, you do not open a
+pre-built notebook and run it.
+
+| Block | The work | Build surface | Fallback / notes |
+|---|---|---|---|
+| Block 0 | Confirm the source and feed Volume, create a writable team schema | **Genie Code** (SQL check, `CREATE SCHEMA`) | n/a |
+| Block 1 (Track 1) | Auto Loader `readStream` → VARIANT bronze → `foreachBatch` MERGE to silver and quarantine | **Genie Code authors a notebook** | `notebooks/` backup |
+| Block 1 (Track 2) | The same tables as a Lakeflow Declarative Pipeline: streaming tables, `expect_all_or_drop`, `apply_changes` CDC | **Genie Code authors pipeline source**, run as a pipeline | `notebooks/` backup |
+| Feed staging (presenter) | Release `--stage clean`, then `--stage dirty` on cue | **Jobs UI** ("Run now with different parameters" on the foundation `land_trial_feed` task) | Not a redeploy, run-time parameters only |
+| Block 2 | Re-run incrementally on the dirty stage, route bad rows to quarantine | **Genie Code** (re-run the notebook or pipeline) | n/a |
+| Block 3 · SLA schedule | Schedule the ingest in the 08:00 to 22:00 window, `pause_status: PAUSED` | **Jobs UI** (Track 1 Job) or the **pipeline schedule** (Track 2) | n/a |
+| Block 3 · reconciliation | Per-file recon into a timestamped `recon_summary` | **Genie Code** (SQL step) | n/a |
+| Block 3 · config-driven gate | Drive allowed trials or fields from a UC config table | **Genie Code** (SQL and a UC config table) | n/a |
+
+**No notebook to open and run, and no bundle to deploy.** Genie Code builds the pipeline; the Jobs or
+Pipelines UI stages the feed and schedules the result.
+
+---
+
 ## 🎢 The staged feed: clean first, then dirty (presenter-controlled)
 
 The foundation feed (`land_trial_feed`) is **staged** so teams build against a working stream first,

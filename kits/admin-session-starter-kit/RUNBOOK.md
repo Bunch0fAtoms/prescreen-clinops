@@ -17,6 +17,27 @@ builders. So the path is: ask in plain English, trust-but-verify against the val
 
 ---
 
+## 🗺️ Build surface map: Genie One and the DBSQL click-path (no notebooks, no Genie Code)
+
+**The rule:** this session is natural-language and click-driven, not a notebook or Genie Code build.
+Amy asks questions in **Genie One**, trust-verifies against the two validated SQL files in the **SQL
+editor**, then schedules the report and alert from the **DBSQL UI**. The SQL files were delivered by
+the one Day-1 foundation deploy, so there is **no separate bundle to deploy for this kit**. The only
+non-self-serve piece is an account admin enabling `system.billing`.
+
+| Block | The work | Build surface | Fallback / notes |
+|---|---|---|---|
+| Block 0 | Confirm `system.billing` is readable | **SQL editor / Genie One** (count check) | An account admin enables `system.billing`; synthetic CTE fallback is in Block 0 below |
+| Block 1 | Chargeback: total, then by department, then month-over-month | **Genie One** (prompts 1 to 3), verified against `sql/cost_by_category.sql` in the **SQL editor** | Add the trusted SQL as a Genie One sample query if the numbers drift |
+| Block 2 · alert | Which categories are within 10% of budget | **Genie One** (prompt 4), verify against `sql/budget_threshold_alert.sql` | Set FH's real budgets in the `budget_config` CTE |
+| Block 2 · schedule | Email the report and fire the alert on schedule | **DBSQL UI**: a SQL Alert on the budget query, and a scheduled dashboard or subscription on the cost query | `resources/cost_report_job.yml` is the deploy scaffold; it rides the foundation deploy |
+
+**No notebooks and no Genie Code in this session.** It is Genie One for the questions, the SQL editor
+to verify, and the DBSQL click-path to schedule. This is the lightest, most natural-language track of
+the four.
+
+---
+
 ## Block 0 · Confirm system tables (pre-flight)
 
 - **Where the SQL is:** you do not clone anything. Both files were delivered into the workspace by
