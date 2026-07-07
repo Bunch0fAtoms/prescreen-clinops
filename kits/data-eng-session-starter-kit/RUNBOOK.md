@@ -57,19 +57,35 @@ incrementally), not in guessing syntax. Reveal the mechanism early if a team is 
 The foundation feed (`land_trial_feed`) is **staged** so teams build against a working stream first,
 then harden once the bad data arrives. This is how the presenter progresses the feed:
 
-> 1. **Release the clean stage (Build 1).** In the deployed **foundation** job, Run now (or Repair-run)
->    the `land_trial_feed` task with **`--stage clean`** (add `--speed 6` to compress a dry run to about
->    5 minutes). This lands only valid records: clean trials, net-new trials, an additive `min_ecog`
->    change, and a latest-wins conflict, then heartbeats. Teams build and confirm their whole pipeline
->    against this.
-> 2. **Release the dirty stage on cue (Build 2).** Once teams have Build 1 working, cancel the run, then
->    Run now `land_trial_feed` with **`--stage dirty`**. This lands the three bad records (missing key,
->    malformed line, wrong-typed field) so teams re-run incrementally and harden.
->    (`--stage all`, the default, lands clean then dirty in one run if you are not staging by hand.)
+> **First, the key distinction: you deploy ONCE, then RUN as many times as you like.**
+> `databricks bundle deploy` uploads the code and creates the foundation job. You do this a single
+> time when you stand up the foundation. `--stage clean` and `--stage dirty` are NOT redeploys. They
+> are two separate *runs* of that same already-deployed job, and the only difference between them is
+> the parameter you pass at run time. Nothing is rebuilt or re-uploaded between stages.
 >
-> To pause, cancel the run; to resume, Run now (OMOP regen is harmless) or Repair-run just
-> `land_trial_feed`. The same `--stage` / `--speed` / `--reset` knobs are documented on the
-> `land_trial_feed` task description in `foundation/resources/foundation_job.yml`.
+> **How to pass a stage:** the `land_trial_feed` task ships with just `<catalog> <schema>` as its
+> parameters (so a plain run uses `--stage all`, the default). To stage by hand, use the Jobs UI
+> **"Run now with different parameters"** button (the dropdown next to Run now) and set the
+> `land_trial_feed` parameters for that one run. This overrides the parameters for that run only; it
+> does not change the deployed job.
+>
+> 1. **Release the clean stage (Build 1).** In the deployed **foundation** job, use **Run now with
+>    different parameters** (or Repair-run) on the `land_trial_feed` task with parameters
+>    **`<catalog> <schema> --reset --stage clean --speed 6`** (`--speed 6` compresses a dry run to about
+>    5 minutes; `--reset` clears any leftover files from a prior run so the stream starts fresh). This
+>    lands only valid records: clean trials, net-new trials, an additive `min_ecog` change, and a
+>    latest-wins conflict, then heartbeats. Teams build and confirm their whole pipeline against this.
+> 2. **Release the dirty stage on cue (Build 2).** Once teams have Build 1 working, cancel the clean run,
+>    then use **Run now with different parameters** again with **`<catalog> <schema> --stage dirty`**
+>    (no `--reset`, so it continues numbering after the clean files). This lands the three bad records
+>    (missing key, malformed line, wrong-typed field) so teams re-run incrementally and harden.
+>    (`--stage all`, the default of a plain Run now, lands clean then dirty in one run if you are not
+>    staging by hand.)
+>
+> To pause, cancel the run; to resume, Run now again (OMOP regen is harmless) or Repair-run just
+> `land_trial_feed`. Again, cancelling and re-running never needs a redeploy. The same `--stage` /
+> `--speed` / `--reset` knobs are documented on the `land_trial_feed` task description in
+> `foundation/resources/foundation_job.yml`.
 
 ---
 

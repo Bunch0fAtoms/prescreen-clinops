@@ -31,7 +31,9 @@ gave you the source feed and a writable schema (see this kit's `README.md`).
 ## 🎢 The build arc: clean first, then dirty (this is how the feed is staged)
 
 The foundation feed (`land_trial_feed`) is **staged** so you build against a working stream first,
-then harden once the bad data arrives. The presenter controls it:
+then harden once the bad data arrives. The presenter controls it. (For the presenter: `--stage clean`
+and `--stage dirty` are just two *runs* of the already-deployed foundation job via "Run now with
+different parameters," not redeploys. See the kit RUNBOOK for the exact steps.)
 
 - **Build 1, clean stage.** The presenter runs the feed with `--stage clean`. It lands only **valid**
   records (clean trials, net-new trials, one additive schema change, one latest-wins conflict). You
