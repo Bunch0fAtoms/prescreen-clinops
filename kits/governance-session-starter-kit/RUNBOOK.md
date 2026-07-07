@@ -29,6 +29,32 @@ The checkpoints below still define "done" no matter which path they take.
 
 ---
 
+## 🗺️ Build surface map: Genie Code vs. the admin console vs. the notebooks
+
+**The rule:** the whole governance build is SQL, so it is authored **live in Genie Code** (tag →
+mask UDF → row filter → tag-based ABAC policy). The only things that are not Genie Code are two
+**Account Console** setup actions (create and federate the OCDO group; enable the system-table
+schemas) and an **optional facilitator-backup bundle** that clones the tables into isolation. Every
+numbered notebook is a stall fallback; none needs to be run for the primary govern-in-place path.
+
+| Block / notebook | The work | Build surface | Fallback / notes |
+|---|---|---|---|
+| Prerequisite | Create the OCDO group and federate it to the workspace | **Account Console** (admin click-path) | Masks and filters gate on `is_account_group_member`; without federation the owner-vs-researcher flip won't demo |
+| `00_START_HERE` | Point widgets at the shared foundation, run the foundation check | Set widgets and run | Setup |
+| `01_discover_and_classify` | Tag every PHI column (`phi` and `data_sensitivity`) | **Genie Code** (SQL, `SET TAGS`) | Backup notebook |
+| `02_column_masks` | Two masking UDFs, then `ALTER TABLE … SET MASK` | **Genie Code** (SQL) | Backup notebook |
+| `03_row_filters_abac` | Row-filter UDF and bind, then a tag-based ABAC policy catalog-wide | **Genie Code** (SQL) | Backup notebook; ABAC may be preview-gated, fall back to per-table binds |
+| `04_phi_identifier_search` | By-value and structural PHI scan | **Genie Code** (SQL) | Backup notebook |
+| `05_ai_feature_governance` | "AI reads through the mask" `ai_query` demo and serving-usage report | **Genie Code** (SQL) | Needs an account admin to enable the serving-usage system tables |
+| `06_inactive_users_report` | Inactive-user audit over `system.access.audit` | **Genie Code** (SQL) | Needs an account admin to enable `system.access` |
+| (optional) clone-into-isolation | Clone the 6 tables into a separate schema to demo in isolation | **`bundle deploy` and run** | Facilitator-backup path ONLY; the primary path governs in place with no bundle |
+
+**Nothing here is a notebook you must run.** The build is Genie Code SQL. The only non-Genie-Code
+pieces are the Account Console prerequisite and the account-admin system-table enablement that
+notebooks `05` and `06` depend on.
+
+---
+
 ## Block 0 · Setup and foundation (pre-build)
 
 - **Pre-built by the foundation:** the six shared OMOP tables every group uses. This kit adds `_config`

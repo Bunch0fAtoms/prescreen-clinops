@@ -34,6 +34,32 @@ them as *starters the team can adapt*, not a script.
 
 ---
 
+## 🗺️ Build surface map: Genie Code vs. the notebooks you run
+
+**The rule:** Genie Code runs on a SQL warehouse, so anything expressible in SQL is built **live in
+Genie Code**. Anything that needs Python on serverless (importing a Hugging Face model, logging an
+MLflow experiment) is a **notebook you open and Run All**. Every numbered notebook also exists as a
+stall fallback; only `05` and `07` are ones you actually run.
+
+| Notebook | The work | Build surface | Notebook role |
+|---|---|---|---|
+| `00_START_HERE` | Config / widgets | Read + set widgets | Setup |
+| `01_data_foundation_omop` | Profile the 6 OMOP tables | **Genie Code** (SQL) | Backup |
+| `02_silver_feature_pipeline` | Structured silver (biomarker pivot, demographics, prior therapy) | **Genie Code** (SQL) | Backup |
+| `03_exploratory_data_analysis` | Cohort charts + name the notes-only gap | **Genie Code** (it authors a serverless notebook for the Python charts) | Backup |
+| `04_nlp_biomarker_extraction` | `ai_query` recovers notes-only patients | **Genie Code** (SQL) | Backup |
+| `05_clinicalbert_mlflow_uc` | Register the HF model to UC, embed notes | **Notebook, Run All** | **The one step Genie Code cannot do (`%pip` + Python on serverless)** |
+| `06_gold_unified_prescreen` | Fuse structured and NLP, generic trials-as-data pre-screen, patient timeline | **Genie Code** (materialized views) | Backup |
+| `07_mlflow_evaluation_runs` | Extraction eval | **Genie Code** for the live SQL accuracy check; **Notebook, Run All** for the logged MLflow experiment (runs, leaderboard, traces) | **Run the notebook only for the deeper artifact** |
+| `08_genie_space_setup` | Coordinator Genie space | **Genie Code** (via the `prompt-to-genie` skill) | Backup |
+| `09_app` | Coordinator app | Inspiration demo, pre-built at `app/` | Reference |
+
+**Two notebooks you run: `05` (required for the model and similarity enrichment) and `07` (optional, the
+logged eval). Everything else is Genie Code.** The dividing line is the runtime, not the notebook
+number: SQL → Genie Code; Python on serverless → a notebook you run.
+
+---
+
 ## Block 0 · Setup (pre-build)
 
 - **Pre-built by the foundation:** the six shared OMOP tables (300 patients, planted cohorts) this
