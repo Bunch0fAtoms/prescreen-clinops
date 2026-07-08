@@ -211,10 +211,21 @@ def _rf(pid: int, offset: int, lo: float, hi: float) -> float:
     return round(random.uniform(lo, hi), 1)
 
 
-def _er_phrase(pid: int, status: str) -> str:
+def _er_phrase(pid: int, status: str, hard: bool = False) -> str:
     pct = _ri(pid, 1, 70, 95)
     allred = _ri(pid, 2, 6, 8)
     intensity = _r(pid, 3, ["moderate", "strong", "strong diffuse"])
+    if hard and status == "Positive":
+        # ER-low-positive gray zone: 1-8% weak staining. Technically POSITIVE (>= 1% per
+        # ASCO/CAP), but a terse prompt often mislabels it Negative or Unknown. The note
+        # deliberately does NOT say "positive"; the model must apply the >= 1% rule.
+        low_pct = _ri(pid, 4, 1, 8)
+        low_allred = _ri(pid, 5, 2, 4)
+        return _r(pid, 6, [
+            f"Estrogen receptor (ER): {low_pct}% weak nuclear staining, Allred score {low_allred}/8",
+            f"ER immunostain: {low_pct}% of tumor nuclei show weak reactivity (Allred {low_allred}/8)",
+            f"Estrogen receptor: weak nuclear staining in {low_pct}% of cells, Allred {low_allred}/8",
+        ])
     if status == "Positive":
         return _r(pid, 10, [
             f"Estrogen receptor (ER): Positive ({pct}% nuclear staining, Allred score {allred}/8)",
@@ -259,9 +270,22 @@ def _pr_phrase(pid: int, status: str) -> str:
         return "Progesterone receptor (PR): Borderline (5% nuclear staining)"
 
 
-def _her2_phrase(pid: int, status: str) -> str:
+def _her2_phrase(pid: int, status: str, hard: bool = False) -> str:
     fish_ratio = _rf(pid, 21, 2.4, 3.8)
     fish_ratio_neg = _rf(pid, 22, 1.2, 1.7)
+    if hard:
+        # Equivocal IHC 2+ with a reflex FISH that RESOLVES the call, but the note never
+        # states "amplified" / "not detected". A terse prompt stops at "2+ equivocal" and
+        # answers Unknown; a careful prompt applies the ASCO/CAP rule (ratio >= 2.0 AND
+        # >= 4 copies/nucleus => amplified => Positive; otherwise Negative).
+        if status == "Positive":
+            ratio  = _rf(pid, 23, 2.0, 2.3)   # borderline-amplified
+            copies = _rf(pid, 24, 4.0, 5.6)
+        else:  # Negative
+            ratio  = _rf(pid, 23, 1.4, 1.9)   # not amplified
+            copies = _rf(pid, 24, 2.8, 3.9)
+        return (f"HER2 (c-erbB-2): 2+ (equivocal by IHC). Reflex dual-probe FISH: "
+                f"HER2/CEP17 ratio {ratio}, average HER2 copy number {copies}/nucleus")
     if status == "Positive":
         return _r(pid, 30, [
             "HER2: Positive (3+ by IHC)",
@@ -283,8 +307,14 @@ def _her2_phrase(pid: int, status: str) -> str:
 
 
 def generate_pathology_note(pid: int, er: str, pr: str, her2: str,
-                             dx_date: date, patient_name: str) -> str:
-    """Return a realistic surgical pathology / IHC report for a breast cancer patient."""
+                             dx_date: date, patient_name: str, hard: bool = False) -> str:
+    """Return a realistic surgical pathology / IHC report for a breast cancer patient.
+
+    When `hard` is True, the HER2 and ER lines use equivocal-but-resolvable phrasing
+    (IHC 2+ with a reflex FISH ratio, ER-low-positive) and the subtype line is withheld,
+    so the structured value stays the definite gold label but the NOTE requires careful
+    reading. This is what gives the MLflow / GenAI evaluation genuine contrast.
+    """
     random.seed(pid * 1000 + 99)
 
     acc_no = f"FH-PATH-{random.randint(100000, 999999)}"
@@ -306,12 +336,15 @@ def generate_pathology_note(pid: int, er: str, pr: str, her2: str,
     date_recv = dx_date
     date_rep = dx_date + timedelta(days=random.randint(1, 3))
 
-    er_line  = _er_phrase(pid, er)
+    er_line  = _er_phrase(pid, er, hard=hard)
     pr_line  = _pr_phrase(pid, pr)
-    her2_line = _her2_phrase(pid, her2)
+    her2_line = _her2_phrase(pid, her2, hard=hard)
 
-    # Staging note based on biomarker combo
-    if her2 == "Positive" and er == "Positive":
+    # Staging note based on biomarker combo. For the hard/equivocal cases we withhold a
+    # subtype that would leak the answer; the receptor call is deferred to confirmatory review.
+    if hard:
+        subtype = "Pending confirmatory biomarker review"
+    elif her2 == "Positive" and er == "Positive":
         subtype = "HR+/HER2+ (luminal B-like, HER2-positive)"
     elif her2 == "Positive" and er == "Negative":
         subtype = "HER2-positive (non-luminal)"
@@ -476,6 +509,17 @@ Fred Hutchinson Cancer Center
 # ─────────────────────────────────────────────────────────────────────────────
 # PATIENT PROFILE GENERATION
 # ─────────────────────────────────────────────────────────────────────────────
+
+# ── Hard/equivocal-note band ──────────────────────────────────────────────────────
+# A fixed sub-band of the both-agree cohort (person 61-90, 30 patients) whose pathology
+# notes are written with equivocal-but-resolvable phrasing (HER2 IHC 2+ with a reflex FISH
+# ratio, ER-low-positive). Their STRUCTURED measurement keeps the definite value, so this
+# does NOT change any eligibility count (Trial A = 140, Trial B = 56, +31 NLP-recovered all
+# hold). It exists only so the MLflow / GenAI evaluation (which compares an NLP read of the
+# note against the structured gold on the both-agree cohort) has genuine disagreements: a
+# careful prompt / stronger model resolves these, a terse prompt / weaker model slips.
+HARD_CASE_IDS = set(range(61, 91))
+
 
 def make_patient_profiles() -> pd.DataFrame:
     """Build the master profile for all 300 patients (includes hidden _columns)."""
@@ -658,6 +702,10 @@ def make_patient_profiles() -> pd.DataFrame:
             "_age_at_dx":        age,
             "_is_postmenopausal": is_post,
             "_has_anti_her2":    has_anti_her2,
+            # Hard/equivocal-note band (both-agree only): the structured value stays the
+            # definite gold label, but the pathology note is written ambiguously so the
+            # MLflow / GenAI evaluation shows real contrast. See HARD_CASE_IDS below.
+            "_hard_case":        (pid in HARD_CASE_IDS),
             "_dx_date":          dx_date,
         })
 
@@ -976,6 +1024,7 @@ def build_note(profiles: pd.DataFrame) -> pd.DataFrame:
                 her2=str(p._her2),
                 dx_date=note_date,
                 patient_name=str(p._name),
+                hard=bool(p._hard_case),
             )
             title = random.choice([
                 "Surgical Pathology Report",
@@ -1290,6 +1339,14 @@ def main():
         WHERE person_id BETWEEN 181 AND 240
     """).collect()[0].n
     print(f"  Notes-only — measurement rows (expect 0):              {no_meas}")
+
+    hard_notes = spark.sql(f"""
+        SELECT COUNT(*) AS n FROM {CATALOG}.{SCHEMA}.note
+        WHERE person_id BETWEEN 61 AND 90
+          AND note_source_value = 'PATHOLOGY_REPORT'
+          AND note_text LIKE '%equivocal by IHC%'
+    """).collect()[0].n
+    print(f"  Hard-case notes — equivocal phrasing 61-90 (expect 30): {hard_notes}")
 
     print("\nAJCC stage distribution:")
     stage_dist = spark.sql(f"""

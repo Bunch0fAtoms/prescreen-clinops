@@ -49,6 +49,8 @@ resources:
             - task_key: generate_omop_data
           spark_python_task:
             python_file: ../src/data_generation/generate_trial_feed.py
+            # Allow passing additional parameters for stage control
+            # When using databricks bundle run with --python-params, these get appended
             parameters:
               - "${var.client_catalog}"
               - "${var.client_schema}"

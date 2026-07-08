@@ -86,11 +86,12 @@ def parse_args(argv):
     p.add_argument("schema", nargs="?", default="clinops_foundation")
     p.add_argument("--speed", type=float, default=1.0,
                    help="Divides every delay. >1 = faster. Default 1.0 (~35-min clean stage).")
-    p.add_argument("--stage", choices=["clean", "dirty", "all"], default="all",
+    p.add_argument("--stage", choices=["clean", "dirty", "clean_with_c", "all"], default="all",
                    help="Which records to land. clean = only valid records (Build 1 target), "
                         "then heartbeat. dirty = only the bad records (presenter releases these "
-                        "on cue, after teams have a working pipeline). all = clean then dirty "
-                        "(default; the original single-run behavior).")
+                        "on cue, after teams have a working pipeline). clean_with_c = only Trial C "
+                        "(the 'add a trial = drop a file' stretch), then heartbeat. all = clean "
+                        "then dirty then clean_with_c (default; the original single-run behavior).")
     p.add_argument("--heartbeat-seconds", type=int, default=300,
                    help="Seconds between heartbeat drops after the opening act. Default 300.")
     p.add_argument("--max-runtime-min", type=int, default=0,
@@ -321,6 +322,13 @@ DIRTY_SCRIPT = [
                     "feed_version": 1, "load_ts": None}], "bad_wrongtype")),
 ]
 
+# ── Stage 3 (clean_with_c) — Just Trial C as the stretch goal
+# This allows teams to test adding Trial C independently without re-running A & B
+CLEAN_WITH_C_SCRIPT = [
+    (0,   "Trial C (clean) — validated baseline for stretch goal",
+     lambda: land([TRIAL_C], "C_clean_stretch")),
+]
+
 
 def run_script(script, header):
     log(header)
@@ -334,35 +342,61 @@ def run_script(script, header):
 
 
 # ── Run the requested stage(s) ────────────────────────────────────────────────────
-if STAGE in ("clean", "all"):
+# Make stages mutually exclusive (except "all" which runs everything)
+if STAGE == "clean":
     run_script(CLEAN_SCRIPT,
                "── Stage 1 (clean): valid records only — build & validate your pipeline here ──")
     log("✅ Clean stage complete: clean trials + net-new + additive schema evolution + latest-wins.")
 
-if STAGE in ("dirty", "all"):
-    if STAGE == "dirty":
-        log("▶ Stage 2 released by presenter: landing the bad records now.")
+elif STAGE == "dirty":
+    log("▶ Stage 2 released by presenter: landing ONLY the bad records now (no clean data).")
     run_script(DIRTY_SCRIPT,
                "── Stage 2 (dirty): bad records — the quarantine reveal ──")
     log("✅ Dirty stage complete: missing-id, malformed, and wrong-type records landed.")
 
+elif STAGE == "clean_with_c":
+    log("▶ Stage 3: landing ONLY Trial C for stretch goal testing.")
+    run_script(CLEAN_WITH_C_SCRIPT,
+               "── Stage 3 (clean_with_c): Trial C only — stretch goal ──")
+    log("✅ Clean_with_c stage complete: Trial C landed for stretch goal.")
+
+elif STAGE == "all":
+    # Run all stages in sequence
+    run_script(CLEAN_SCRIPT,
+               "── Stage 1 (clean): valid records only — build & validate your pipeline here ──")
+    log("✅ Clean stage complete: clean trials + net-new + additive schema evolution + latest-wins.")
+
+    run_script(DIRTY_SCRIPT,
+               "── Stage 2 (dirty): bad records — the quarantine reveal ──")
+    log("✅ Dirty stage complete: missing-id, malformed, and wrong-type records landed.")
+
+    run_script(CLEAN_WITH_C_SCRIPT,
+               "── Stage 3 (clean_with_c): Trial C only — stretch goal ──")
+    log("✅ Clean_with_c stage complete: Trial C landed for stretch goal.")
+
+else:
+    log(f"❌ Invalid stage: {STAGE}. Must be one of: clean, dirty, clean_with_c, all")
+    sys.exit(1)
+
 # ── Heartbeat — keep the stream alive with clean latest-version re-lands ────────────
-log(f"── Heartbeat every {HEARTBEAT}s (clean re-lands). Cancel the run to stop. ──")
-version = 3
-beat = 0
-while True:
-    if out_of_time():
-        log("⏹ max-runtime reached; stopping the heartbeat.")
-        break
-    sleep_scaled(HEARTBEAT)
-    base = CLEAN_ROTATION[beat % len(CLEAN_ROTATION)]
-    rec = dict(base)
-    rec["feed_version"] = version
-    rec["load_ts"] = None  # re-stamped in land()
-    land([rec], f"heartbeat_{base['trial_id']}_v{version}")
-    log(f"   ♥ heartbeat {beat + 1}: re-landed Trial {base['trial_id']} as feed_version {version}")
-    beat += 1
-    if beat % len(CLEAN_ROTATION) == 0:
-        version += 1
+# Only run heartbeat if we're not in "dirty" stage (bad data shouldn't heartbeat)
+if STAGE != "dirty":
+    log(f"── Heartbeat every {HEARTBEAT}s (clean re-lands). Cancel the run to stop. ──")
+    version = 3
+    beat = 0
+    while True:
+        if out_of_time():
+            log("⏹ max-runtime reached; stopping the heartbeat.")
+            break
+        sleep_scaled(HEARTBEAT)
+        base = CLEAN_ROTATION[beat % len(CLEAN_ROTATION)]
+        rec = dict(base)
+        rec["feed_version"] = version
+        rec["load_ts"] = None  # re-stamped in land()
+        land([rec], f"heartbeat_{base['trial_id']}_v{version}")
+        log(f"   ♥ heartbeat {beat + 1}: re-landed Trial {base['trial_id']} as feed_version {version}")
+        beat += 1
+        if beat % len(CLEAN_ROTATION) == 0:
+            version += 1
 
 log("Feed stopped.")
