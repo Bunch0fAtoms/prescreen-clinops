@@ -168,9 +168,10 @@ drives the +31 home. This is the headline. Say these numbers, and show that char
 > **"Score the `ai_query` extraction against the structured biomarkers as ground truth. Compare two prompts (terse vs. careful) side by side, and show me each prompt's accuracy plus the rows where they disagree, all in SQL."**
 
 *Good looks like:* a small accuracy table Genie Code builds inline, one row per prompt, showing which
-prompt reads the notes better and where the misses cluster (HER2 IHC 2+ is the usual culprit). On the
-clean both-agree goldset both prompts may score ~100% (a tie). To get real contrast, seed a few
-**ambiguous notes** (IHC 2+, borderline ER) first.
+prompt reads the notes better and where the misses cluster (HER2 IHC 2+ is the usual culprit). The
+foundation plants a **hard-case band** (person 61-90) with equivocal-but-resolvable notes (HER2 IHC 2+
+with a reflex FISH ratio, ER-low-positive), so the careful prompt visibly beats the terse one and the
+disagreement rows are real. Point the accuracy check at those patients to make the contrast pop.
 
 > ⚙️ **Want the full logged MLflow experiment (runs, leaderboard, traces)?** That part is Python on
 > serverless, and it is heavier than the Genie Code chat authors reliably. For the live demonstration,

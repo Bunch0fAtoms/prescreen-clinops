@@ -1,0 +1,27 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Databricks Apps config for the coordinator pre-screening app.
+#
+# Before deploying, set the three environment variables below to point at your
+# team's catalog, schema, and SQL warehouse. The app queries the SQL warehouse
+# with the databricks-sql-connector package and authenticates as the app
+# service principal (SP) using databricks.sdk.core.Config.
+# ─────────────────────────────────────────────────────────────────────────────
+command: ["streamlit", "run", "app.py"]
+
+env:
+  # Unity Catalog catalog that holds the two gold tables.
+  # DEPLOYER: set this to your team catalog (matches client_catalog in databricks.yml).
+  - name: CLINOPS_CATALOG
+    value: "<your_catalog>"
+
+  # Schema inside that catalog where the gold tables live.
+  # DEPLOYER: set this to your writable schema (matches client_schema, default clinops_ml).
+  - name: CLINOPS_SCHEMA
+    value: "clinops_ml"
+
+  # HTTP path of the SQL warehouse the app queries.
+  # DEPLOYER: set this to your warehouse HTTP path, for example
+  #   /sql/1.0/warehouses/<your_warehouse_id>
+  # Find it in the SQL warehouse's Connection details tab.
+  - name: DATABRICKS_WAREHOUSE_HTTP_PATH
+    value: "/sql/1.0/warehouses/<your_warehouse_id>"

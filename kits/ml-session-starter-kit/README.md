@@ -70,6 +70,10 @@ The synthetic data is planted so you can check your work: persons **1 to 20** ar
 for Trial B (51 to 60 are controls who fail on menopausal or ER status). Full spec in
 `../../foundation/PLANTED_COHORTS.md`.
 
+📋 **Canonical eligibility card:** every trial's `req_*` fields, the eligible counts (Trial A 140, Trial
+B 56), and the one matching rule live in one place, the card in `../../SHARED_FOUNDATION.md`. That is the
+single source of truth; this table summarizes it. Read the card rather than re-deriving criteria.
+
 > 🔗 **Trials are data, not hardcoded rules.** Do not hardcode the Trial A/B conditions above.
 > Build a small `trial_criteria` table (one row per trial, a `req_*` column per condition) and have
 > your pre-screen **join it** with one generic rule: a patient qualifies when **each non-NULL `req_*`
