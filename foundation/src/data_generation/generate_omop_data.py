@@ -514,8 +514,8 @@ Fred Hutchinson Cancer Center
 # A fixed sub-band of the both-agree cohort (person 61-90, 30 patients) whose pathology
 # notes are written with equivocal-but-resolvable phrasing (HER2 IHC 2+ with a reflex FISH
 # ratio, ER-low-positive). Their STRUCTURED measurement keeps the definite value, so this
-# does NOT change any eligibility count (Trial A = 140, Trial B = 56, +31 NLP-recovered all
-# hold). It exists only so the MLflow / GenAI evaluation (which compares an NLP read of the
+# does NOT change any eligibility count (the validated Trial A = 140, Trial B = 70, and the NLP
+# uplift of +31 for A / +14 for B all hold). It exists only so the MLflow / GenAI evaluation (which compares an NLP read of the
 # note against the structured gold on the both-agree cohort) has genuine disagreements: a
 # careful prompt / stronger model resolves these, a terse prompt / weaker model slips.
 HARD_CASE_IDS = set(range(61, 91))

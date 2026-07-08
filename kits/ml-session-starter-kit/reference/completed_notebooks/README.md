@@ -44,4 +44,4 @@ endpoints (`databricks-claude-haiku-4-5`, `databricks-claude-sonnet-4-6`). Noteb
 internet for the HuggingFace download, and its serving-endpoint cell provisions for a few minutes.
 Notebook 07 installs a recent MLflow and restarts Python at the top, so run it as its own pass.
 
-Validated numbers to expect: **Trial A eligible = 140**, **Trial B = 56**, **31 recovered only via NLP**.
+Validated numbers to expect: **Trial A eligible = 140**, **Trial B = 70**, **31 recovered only via NLP for Trial A, 14 more for Trial B**.

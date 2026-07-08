@@ -144,7 +144,7 @@ equivocal ⇒ Unknown. Full text in nb 07 source.
   equivocal-but-resolvable notes (HER2 IHC 2+ with a reflex FISH ratio, ER-low-positive), so the
   leaderboard shows a real spread (careful prompt and stronger model win) and the error table has rows.
   The misses cluster on HER2 IHC 2+, a *safe* miss (Unknown), which is the teaching point. Structured
-  values stay the definite gold label, so no cohort count changes (Trial A 140, Trial B 56, +31 hold).
+  values stay the definite gold label, so no cohort count changes (Trial A 140, Trial B 70, and the NLP uplift of +31 for A / +14 for B all hold).
 - **The GenAI eval (completed notebook sections 6-8):** `mlflow.genai.evaluate()` with per-row
   **traces**, an **LLM-as-judge** (`Guidelines`), and **custom `@scorer` metrics**, run for the terse
   and careful prompts on the hard band so the managed harness shows the same contrast. The

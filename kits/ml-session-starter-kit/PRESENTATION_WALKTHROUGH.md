@@ -83,8 +83,8 @@ Open `06_gold_unified_prescreen`. Two ideas to land:
   that the Data Engineering team builds this same catalog from a live feed; repointing to their table
   is the cross-team stretch.
 
-Run the payoff cell. Land the numbers again: Trial A = 140, Trial B = 56, and 31 patients recovered
-only from the notes.
+Run the payoff cell. Land the numbers again: Trial A = 140, Trial B = 70, and, for Trial A, 31 patients
+recovered only from the notes (14 more for Trial B).
 
 ## Segment 6: evaluation, traces, judges, custom metrics (notebook 07, 7 minutes) 🧠📊
 
@@ -94,8 +94,8 @@ on AI. Open `07_mlflow_evaluation_runs`.
 The contrast comes from a **hard-case band** the foundation plants (person 61-90): both-agree patients
 whose structured value is the definite gold label, but whose pathology note is written equivocally
 (HER2 IHC 2+ with a reflex FISH ratio, ER-low-positive). Those are the cases where a careful prompt and
-a terse prompt disagree, so the eval has something real to show. No cohort count changes (140 / 56 / +31
-all hold), because the structured value still wins in the gold layer.
+a terse prompt disagree, so the eval has something real to show. No cohort count changes (A 140 / B 70 /
+NLP +31 for A, +14 for B all hold), because the structured value still wins in the gold layer.
 
 - **Sections 1 to 5, the transparent path.** We treat the prompt like a model: hold it to a
   ground-truth test set (the 180 both-agree patients), score 2 prompts against 2 models, log every run
@@ -146,4 +146,4 @@ pipeline would miss, and we can prove the extraction quality with a test set, tr
 That is a mature, measurable, governed pattern, not a demo that only works on slides.
 
 **Numbers to have memorized:** 300 patients, 60 notes-only, Trial A 109 structured to 140 with NLP
-(a gain of 31), Trial B 56.
+(a gain of 31), Trial B 56 structured to 70 with NLP (a gain of 14).

@@ -132,8 +132,8 @@ trial does not constrain that field." This is your eligibility contract. The pre
 > **"Build `gold_unified_biomarker_profile`: FULL OUTER JOIN the structured silver and `silver_nlp_biomarkers` (dedup NLP to one row per person via ROW_NUMBER on note_id) on person_id, `COALESCE` each biomarker, and add a `biomarker_source` audit column = both / structured / nlp. Then build `gold_trial_prescreen` by JOINING the unified profile, demographics, and prior therapy against MY OWN `trial_criteria` table (from 3a), a GENERIC eligibility match, NOT hardcoded Trial A/B. The rule: a patient qualifies for a trial when, for every non-NULL `req_*` criterion the patient's value matches, AND age BETWEEN `age_min` AND `age_max`. A NULL `req_*` means that trial does not constrain that field, so it passes. Sex match is case-insensitive (the data stores `FEMALE`). Emit one row per (patient, trial) with an eligible boolean and a plain-English reason. Show me the files before you run them."**
 
 *Good looks like:* unified profile by source = **both 180 / nlp 60 / structured 60**. The generic join
-reproduces the validated numbers with **no per-trial code**: **Trial A 140**, **Trial B 56**, and the
-**+31 NLP-recovered** patients preserved. **Schema facts to feed it:** `menopausal_status` and `ajcc_stage`
+reproduces the validated numbers with **no per-trial code**: **Trial A 140**, **Trial B 70**, and the
+**NLP-recovered patients preserved (+31 for Trial A, +14 for Trial B)**. **Schema facts to feed it:** `menopausal_status` and `ajcc_stage`
 live on the biomarker tables (not `silver_demographics`, which has only `gender`, `age_at_dx_years`);
 prior-therapy column is `prior_anti_her2`; join `trial_criteria`'s
 `req_sex`/`req_her2`/`req_er`/`req_pr`/`req_menopausal`/`req_no_prior_anti_her2` against the matching

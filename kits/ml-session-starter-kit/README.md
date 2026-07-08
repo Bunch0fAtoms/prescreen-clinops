@@ -71,7 +71,7 @@ for Trial B (51 to 60 are controls who fail on menopausal or ER status). Full sp
 `../../foundation/PLANTED_COHORTS.md`.
 
 📋 **Canonical eligibility card:** every trial's `req_*` fields, the eligible counts (Trial A 140, Trial
-B 56), and the one matching rule live in one place, the card in `../../SHARED_FOUNDATION.md`. That is the
+B 70), and the one matching rule live in one place, the card in `../../SHARED_FOUNDATION.md`. That is the
 single source of truth; this table summarizes it. Read the card rather than re-deriving criteria.
 
 > 🔗 **Trials are data, not hardcoded rules.** Do not hardcode the Trial A/B conditions above.

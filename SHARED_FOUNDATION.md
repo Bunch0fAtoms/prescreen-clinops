@@ -1,4 +1,4 @@
-# 🧱 Shared foundation — what every group inherits
+# 🧱 Shared foundation: what every group inherits
 
 **Goal: one shared, governed foundation that lets all four groups build in parallel.** This page
 is the contract. It says exactly what is present before the groups split, and what each group
@@ -33,7 +33,7 @@ This card summarizes those rows so no one has to hunt for them mid-build.**
 | `req_menopausal` | (unconstrained) | **Postmenopausal** | (unconstrained) |
 | `req_no_prior_anti_her2` | **true** (excludes prior anti-HER2 therapy) | (unconstrained) | (unconstrained) |
 | `min_ecog` | 1 (carried, not matched) | (unconstrained) | (unconstrained) |
-| Eligible patients | **140** (109 from structured data, 31 recovered via NLP) | **56** | net-new triple-negative cohort, roughly 50 (data-dependent, verify with a count) |
+| Eligible patients | **140** (109 from structured data, 31 recovered via NLP) | **70** (56 from structured data, 14 recovered via NLP) | net-new triple-negative cohort, 53 (40 structured, 13 recovered via NLP) |
 
 **The one rule to remember:** a patient qualifies for a trial when every non-null `req_*` matches the
 patient's value AND age is within range. A NULL `req_*` means the trial does not constrain that field.
@@ -48,7 +48,8 @@ Read the fine print once, so nobody re-derives it under time pressure:
   all summarize that one table. To add or change a trial, change the data, not code.
 - **Data Engineering feed nuance (so the two numbers reconcile):** the live trials feed deliberately
   re-lands a **tightened Trial B** (age ceiling 70, ECOG 2) as a "latest-wins" teaching case. The
-  validated count of 56 is against the base Trial B (age 18 to 75), which is what the pre-screen's own
+  validated count of 70 (56 from structured data plus 14 recovered via NLP) is against the base Trial B
+  (age 18 to 75), which is what the pre-screen's own
   `silver_trial_criteria` seed uses. If a team repoints the pre-screen to the DE group's catalog, Trial
   B reflects that newest record, so its criteria and count shift. That is the DE lesson, not a defect.
 
@@ -123,12 +124,12 @@ Volume themselves, so this connection is a hand-off, never a hard blocker.
 ## The payoff, in numbers
 
 When the pieces come together, the pre-screen produces one row per patient per trial and yields
-**Trial A: 140 eligible, Trial B: 56, Trial C: 53**. Of the Trial A patients, **31 are found only
-because language models recovered their biomarker status from pathology notes.** Those 31 are the
-patients a structured-only filter would have missed. That is the headline the Applied AI group
-demonstrates, and the reason the notes-only gap matters.
+**Trial A: 140 eligible, Trial B: 70, Trial C: 53**. Of the Trial A patients, **31 are found only
+because language models recovered their biomarker status from pathology notes**, and NLP likewise
+recovers **14 of Trial B's 70**. Those are the patients a structured-only filter would have missed.
+That is the headline the Applied AI group demonstrates, and the reason the notes-only gap matters.
 
-## Governance is the spine
+## Governance is the foundation everyone builds on
 
 The Governance group sets its requirements in the Day 1 whole-room Genie session, then applies its
 controls to the foundation the same day. On Day 2 it rotates across the Data Engineering and Applied
