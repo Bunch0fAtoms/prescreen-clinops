@@ -34,6 +34,9 @@ MEASUREMENTS_TABLE = f"{CATALOG}.{SCHEMA}.gold_patient_measurements"
 # overwritten and every override is auditable. The app writes here; data scientists LEFT JOIN it
 # back to gold_trial_prescreen for an adjudicated coordinator_decision column.
 REVIEW_TABLE = f"{CATALOG}.{SCHEMA}.trial_prescreen_review"
+# The trials catalog, one row per trial with a req_* column per criterion. The app shows the
+# selected trial's rules straight from here, the same table the pre-screen joins against.
+CRITERIA_TABLE = f"{CATALOG}.{SCHEMA}.silver_trial_criteria"
 
 # ── Trial catalog. Keys map to the trial_<x>_eligible / trial_<x>_reason columns.
 # Trial A = HER2+ ; Trial B = ER+/HER2-/postmenopausal ; Trial C = triple-negative.
@@ -75,6 +78,19 @@ def run_query(query: str) -> pd.DataFrame:
 def load_prescreen() -> pd.DataFrame:
     """Load the one-row-per-patient pre-screen table."""
     return run_query(f"SELECT * FROM {PRESCREEN_TABLE}")
+
+
+@st.cache_data(ttl=300)
+def load_criteria() -> dict:
+    """Load the trials catalog as a dict keyed by trial_id ('A'/'B'/'C'). The app
+    renders these criteria directly, so what the coordinator reads is the same rule
+    set the pre-screen joins against. Trials stay data, not hardcoded UI text."""
+    df = run_query(
+        "SELECT trial_id, trial_name, status, req_sex, age_min, age_max, req_her2, "
+        "req_er, req_pr, req_menopausal, req_no_prior_anti_her2, min_ecog, eligibility_text "
+        f"FROM {CRITERIA_TABLE}"
+    )
+    return {row["trial_id"]: row.to_dict() for _, row in df.iterrows()}
 
 
 @st.cache_data(ttl=300)
@@ -172,6 +188,47 @@ def provenance_badge_html(source: str) -> str:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Trial criteria card. Shows the selected trial's rules in the sidebar, read from
+# the trials catalog, so a coordinator sees exactly what they are screening against.
+# ─────────────────────────────────────────────────────────────────────────────
+def render_trial_criteria(crit: dict) -> None:
+    """Render one trial's eligibility criteria as a compact table in the sidebar."""
+    st.markdown("**Eligibility criteria**")
+    if not crit:
+        st.caption("Criteria unavailable this session.")
+        return
+
+    def _has(v) -> bool:
+        return v is not None and str(v).strip() != "" and str(v).lower() != "nan"
+
+    rows: list[tuple[str, str]] = [("Diagnosis", "Breast cancer")]
+    if _has(crit.get("req_sex")):
+        rows.append(("Sex", str(crit["req_sex"])))
+    if _has(crit.get("age_min")) and _has(crit.get("age_max")):
+        rows.append(("Age", f"{int(crit['age_min'])} to {int(crit['age_max'])}"))
+    for label, key in [("HER2", "req_her2"), ("ER", "req_er"), ("PR", "req_pr"),
+                       ("Menopausal", "req_menopausal")]:
+        if _has(crit.get(key)):
+            rows.append((label, str(crit[key])))
+    if crit.get("req_no_prior_anti_her2") in (True, "true", "True"):
+        rows.append(("Prior therapy", "No prior anti-HER2"))
+
+    body = "".join(
+        f'<tr><td style="padding:2px 10px 2px 0;color:#6B7780;white-space:nowrap;'
+        f'vertical-align:top;">{k}</td><td style="padding:2px 0;font-weight:600;">{v}</td></tr>'
+        for k, v in rows
+    )
+    st.markdown(
+        f'<table style="border-collapse:collapse;font-size:13px;">{body}</table>',
+        unsafe_allow_html=True,
+    )
+    st.caption(
+        "A patient qualifies when every listed criterion matches. Read live from "
+        "`silver_trial_criteria`, the same catalog the pre-screen joins against."
+    )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Page setup + Fred Hutch-ish header (red/navy, no external assets or CDNs).
 # ─────────────────────────────────────────────────────────────────────────────
 st.set_page_config(page_title="Trial Pre-Screening — Coordinator", page_icon="🔬", layout="wide")
@@ -218,6 +275,13 @@ with st.sidebar:
         options=list(TRIALS.keys()),
         format_func=lambda k: TRIALS[k]["label"],
     )
+    # The selected trial's eligibility rules, straight from the trials catalog.
+    try:
+        _criteria_map = load_criteria()
+    except Exception:  # noqa: BLE001 — criteria card is best-effort, never blocks the app
+        _criteria_map = {}
+    render_trial_criteria(_criteria_map.get(trial_key))
+    st.divider()
     st.caption(
         "Provenance: **Structured** biomarkers came from coded lab and pathology "
         "data. **NLP-recovered** biomarkers were read from a clinical note that "
