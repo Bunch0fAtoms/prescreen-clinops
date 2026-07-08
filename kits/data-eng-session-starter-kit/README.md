@@ -52,6 +52,10 @@ See the "Harden further" section of `GENIE_CODE_PROMPTS.md`.
 > ML pre-screen joins against**. If the ML group gets there first, they can read the same Volume
 > themselves, so it is a hand-off, never a blocker. Adding a trial becomes a file landing, not a code
 > change.
+>
+> 📋 **The eligibility criteria for every trial** (each `req_*` field, the counts, the matching rule, and
+> the note that the feed re-lands a tightened Trial B for the latest-wins demo) are on the canonical card
+> in `../../SHARED_FOUNDATION.md`. Read it rather than re-deriving the criteria from the feed records.
 
 ---
 
