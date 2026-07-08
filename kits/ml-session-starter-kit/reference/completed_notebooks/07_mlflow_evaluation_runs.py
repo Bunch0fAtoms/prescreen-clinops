@@ -102,8 +102,11 @@ print("Models :", MODELS)
 # MAGIC %md
 # MAGIC ## 3️⃣ Run all four configurations and log to MLflow (COMPLETED)
 # MAGIC
-# MAGIC For each (prompt, model) pair: one `ai_query` pass over the goldset, compute per-marker accuracy
-# MAGIC vs gold, and log **one MLflow run** so the Experiments UI lines the four up.
+# MAGIC For each (prompt, model) pair: one `ai_query` pass, compute per-marker accuracy vs gold, and log
+# MAGIC **one MLflow run** so the Experiments UI lines the four up. To keep the live run quick we score a
+# MAGIC **60-patient slice** of the goldset (all 30 equivocal hard cases, person 61-90, plus 30 clear ones,
+# MAGIC person 1-30). Concentrating the hard cases makes the terse-vs-careful gap easy to see; drop the
+# MAGIC `WHERE` clause below to score the full 180 both-agree set.
 
 # COMMAND ----------
 
@@ -122,19 +125,25 @@ def run_config(model: str, prompt_name: str, prompt_text: str):
     # COMPLETED TODO #1, the scoring query. One ai_query pass over the goldset. We use the same
     # result-wrapper responseFormat as nb 04 (the DDL allows one top-level field) and read the nested
     # struct fields directly, aliasing them pred_her2 / pred_er / pred_pr.
+    # ai_query with responseFormat returns a JSON STRING on this runtime, so we parse it with
+    # from_json using the FLAT inner schema (same proven pattern as nb 04), then read the fields.
     preds = spark.sql(f"""
         SELECT person_id, note_text, gold_her2, gold_er, gold_pr,
-               x.result.her2_status AS pred_her2,
-               x.result.er_status   AS pred_er,
-               x.result.pr_status   AS pred_pr
+               x.her2_status AS pred_her2,
+               x.er_status   AS pred_er,
+               x.pr_status   AS pred_pr
         FROM (
           SELECT person_id, note_text, gold_her2, gold_er, gold_pr,
-            ai_query(
-              '{model}',
-              '{safe_prompt}' || '\\n\\nReport:\\n' || note_text,
-              responseFormat => 'STRUCT<result:STRUCT<her2_status:STRING, er_status:STRING, pr_status:STRING>>'
+            from_json(
+              ai_query(
+                '{model}',
+                '{safe_prompt}' || '\\n\\nReport:\\n' || note_text,
+                responseFormat => 'STRUCT<result:STRUCT<her2_status:STRING, er_status:STRING, pr_status:STRING>>'
+              ),
+              'STRUCT<her2_status:STRING, er_status:STRING, pr_status:STRING>'
             ) AS x
           FROM {GOLDSET}
+          WHERE person_id BETWEEN 1 AND 30 OR person_id BETWEEN 61 AND 90
         )
     """)
 
@@ -308,22 +317,30 @@ eval_data = [
 ]
 
 
-def make_extractor(prompt_text: str, model: str = LLM_STRONG):
+def make_extractor(prompt_text: str, model: str = LLM_FAST):
     """Build a traced predict_fn bound to a specific prompt and model, so we can evaluate more than
     one configuration and compare. @mlflow.trace records each call as a trace MLflow attaches to the
-    evaluation run."""
+    evaluation run.
+
+    We deliberately default to the FAST model here. The leaderboard above shows the strong model
+    scores ~100% on both prompts, so it MASKS the prompt difference; the fast model is where prompt
+    quality actually moves the needle, which is the honest lesson: engineer the prompt when you are
+    optimizing a smaller, cheaper model, and the equivocal cases are where that work pays off."""
     safe_prompt = prompt_text.replace("'", "''")
 
     @mlflow.trace
     def _extract(note_text: str) -> dict:
         safe_note = (note_text or "").replace("'", "''")
         row = spark.sql(f"""
-            SELECT x.result.her2_status AS her2, x.result.er_status AS er, x.result.pr_status AS pr
+            SELECT x.her2_status AS her2, x.er_status AS er, x.pr_status AS pr
             FROM (
-              SELECT ai_query(
-                '{model}',
-                '{safe_prompt}' || '\\n\\nReport:\\n' || '{safe_note}',
-                responseFormat => 'STRUCT<result:STRUCT<her2_status:STRING, er_status:STRING, pr_status:STRING>>'
+              SELECT from_json(
+                ai_query(
+                  '{model}',
+                  '{safe_prompt}' || '\\n\\nReport:\\n' || '{safe_note}',
+                  responseFormat => 'STRUCT<result:STRUCT<her2_status:STRING, er_status:STRING, pr_status:STRING>>'
+                ),
+                'STRUCT<her2_status:STRING, er_status:STRING, pr_status:STRING>'
               ) AS x
             )
         """).first()
@@ -389,10 +406,13 @@ print("Scorers ready: her2_exact_match (custom), biomarker_agreement (custom), v
 # MAGIC ## 8️⃣ Run `mlflow.genai.evaluate()` for both prompts (COMPLETED)
 # MAGIC
 # MAGIC We evaluate **two configurations** on the hard slice, the terse prompt and the careful prompt,
-# MAGIC each as its own MLflow run. Every run applies all three scorers and records a trace per row.
-# MAGIC Expect the **careful prompt to score higher** on `her2_exact_match` and `biomarker_agreement`,
-# MAGIC because it resolves the equivocal FISH and ER-low-positive notes the terse prompt slips on. Open
-# MAGIC each run in the **Experiments** UI, then the **Traces** tab, to click into a single patient's call.
+# MAGIC each as its own MLflow run, both on the **fast model**. Every run applies all three scorers and
+# MAGIC records a trace per row. We use the fast model on purpose: the leaderboard above shows the strong
+# MAGIC model scores ~100% on both prompts, so it **hides** the prompt difference. The fast model is where
+# MAGIC prompt quality moves the number, so the **careful prompt scores higher** on `her2_exact_match` and
+# MAGIC `biomarker_agreement`, because it resolves the equivocal FISH and ER-low-positive notes the terse
+# MAGIC prompt slips on. Open each run in the **Experiments** UI, then the **Traces** tab, to click into a
+# MAGIC single patient's call.
 
 # COMMAND ----------
 
@@ -410,11 +430,52 @@ for name, prompt_text in configs.items():
         )
         genai_results[name] = res.metrics
 
-print("Managed-eval metrics by prompt (watch the careful prompt win on the hard cases):")
-for name, metrics in genai_results.items():
-    print(f"\n▶ {name}")
-    for k, v in metrics.items():
-        print(f"    {k}: {v}")
+# Render the contrast as a table (not console text) so it reads on a big screen. One column per
+# prompt, one row per metric; the match metrics should be higher for the careful prompt.
+import pandas as pd
+
+_metric_names = sorted({k for m in genai_results.values() for k in m.keys()})
+metrics_comparison = pd.DataFrame(
+    {name: [genai_results[name].get(k) for k in _metric_names] for name in configs},
+    index=_metric_names,
+).reset_index().rename(columns={"index": "metric"})
+print("Managed-eval metrics, terse vs careful (higher is better on the match metrics):")
+display(metrics_comparison)
+
+# COMMAND ----------
+
+# DBTITLE 1,Head-to-head on the hard cases: where the careful prompt fixes the terse one (COMPLETED)
+# The clearest way to SEE the contrast without opening the Traces UI: line up the two prompts' HER2
+# predictions on the equivocal hard-case band, side by side with the gold label, from the section-3
+# scoring pass. We use the FAST model, because that is where the prompt difference shows (the strong
+# model scores ~100% on both). The rows where terse missed and careful caught it are the equivocal
+# IHC 2+/reflex-FISH notes, exactly the cases the careful prompt was written for.
+from pyspark.sql import functions as F
+
+
+def _preds_for(prompt_name, model=LLM_FAST):
+    return next(r["preds"] for r in results if r["model"] == model and r["prompt"] == prompt_name)
+
+
+_terse = _preds_for("v1_terse").select(
+    "person_id", "note_text", "gold_her2", F.col("pred_her2").alias("terse_her2")
+)
+_careful = _preds_for("v2_careful").select("person_id", F.col("pred_her2").alias("careful_her2"))
+
+head_to_head = (
+    _terse.join(_careful, "person_id")
+    .where(F.col("person_id").between(61, 90))  # the equivocal hard-case band
+    .withColumn("terse_ok", F.col("terse_her2") == F.col("gold_her2"))
+    .withColumn("careful_ok", F.col("careful_her2") == F.col("gold_her2"))
+    .withColumn("note_snippet", F.substring("note_text", 1, 180))
+    .select(
+        "person_id", "gold_her2", "terse_her2", "terse_ok",
+        "careful_her2", "careful_ok", "note_snippet",
+    )
+    .orderBy("person_id")
+)
+print("HER2 on the hard-case band, terse vs careful (watch terse_ok=false flip to careful_ok=true):")
+display(head_to_head)
 
 # COMMAND ----------
 

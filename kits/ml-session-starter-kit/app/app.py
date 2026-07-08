@@ -29,6 +29,11 @@ HTTP_PATH = os.environ.get("DATABRICKS_WAREHOUSE_HTTP_PATH", "")
 # Fully-qualified table names.
 PRESCREEN_TABLE = f"{CATALOG}.{SCHEMA}.gold_trial_prescreen_wide"
 MEASUREMENTS_TABLE = f"{CATALOG}.{SCHEMA}.gold_patient_measurements"
+# Companion review table: the coordinator's human decision per (patient, trial). Kept SEPARATE
+# from the AI-produced gold table (which the notebook pipeline rebuilds), so a decision is never
+# overwritten and every override is auditable. The app writes here; data scientists LEFT JOIN it
+# back to gold_trial_prescreen for an adjudicated coordinator_decision column.
+REVIEW_TABLE = f"{CATALOG}.{SCHEMA}.trial_prescreen_review"
 
 # ── Trial catalog. Keys map to the trial_<x>_eligible / trial_<x>_reason columns.
 # Trial A = HER2+ ; Trial B = ER+/HER2-/postmenopausal ; Trial C = triple-negative.
@@ -81,6 +86,70 @@ def load_measurements(person_id: int) -> pd.DataFrame:
         f"WHERE person_id = {int(person_id)} "
         f"ORDER BY measurement_date"
     )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Review write-back. The coordinator's Approve/Reject + reasoning per (patient,
+# trial) is written to REVIEW_TABLE, kept separate from the rebuilt gold table.
+# ─────────────────────────────────────────────────────────────────────────────
+def execute_dml(statement: str) -> None:
+    """Run a data-changing statement (CREATE / MERGE) with no result set."""
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(statement)
+    finally:
+        conn.close()
+
+
+def ensure_review_table() -> None:
+    """Create the companion review table if it does not exist. Idempotent."""
+    execute_dml(
+        f"CREATE TABLE IF NOT EXISTS {REVIEW_TABLE} ("
+        "  person_id BIGINT, trial_id STRING, decision STRING, reasoning STRING,"
+        "  reviewer STRING, reviewed_at TIMESTAMP"
+        ") COMMENT 'Coordinator human review of AI pre-screen, one latest row per (person_id, trial_id).'"
+    )
+
+
+@st.cache_data(ttl=30)
+def load_reviews() -> pd.DataFrame:
+    """Latest review per (person_id, trial_id). Short TTL so a submit shows up fast."""
+    return run_query(
+        "SELECT person_id, trial_id, decision, reasoning, reviewer, reviewed_at FROM ("
+        "  SELECT *, ROW_NUMBER() OVER (PARTITION BY person_id, trial_id ORDER BY reviewed_at DESC) rn"
+        f"  FROM {REVIEW_TABLE}"
+        ") WHERE rn = 1"
+    )
+
+
+def submit_review(person_id: int, trial_id: str, decision: str, reasoning: str, reviewer: str) -> None:
+    """MERGE the reviewer's decision so they can revise it (latest wins per patient+trial)."""
+    r = (reasoning or "").replace("'", "''")
+    rev = (reviewer or "unknown").replace("'", "''")
+    execute_dml(
+        f"MERGE INTO {REVIEW_TABLE} t "
+        f"USING (SELECT {int(person_id)} AS person_id, '{trial_id}' AS trial_id) s "
+        "ON t.person_id = s.person_id AND t.trial_id = s.trial_id "
+        f"WHEN MATCHED THEN UPDATE SET decision='{decision}', reasoning='{r}', "
+        f"  reviewer='{rev}', reviewed_at=current_timestamp() "
+        "WHEN NOT MATCHED THEN INSERT (person_id, trial_id, decision, reasoning, reviewer, reviewed_at) "
+        f"  VALUES ({int(person_id)}, '{trial_id}', '{decision}', '{r}', '{rev}', current_timestamp())"
+    )
+
+
+def current_reviewer() -> str:
+    """Best-effort identity of the app viewer (Databricks Apps injects user headers);
+    falls back to the service principal when unavailable."""
+    try:
+        h = st.context.headers
+        return (
+            h.get("X-Forwarded-Email")
+            or h.get("X-Forwarded-Preferred-Username")
+            or "app-service-principal"
+        )
+    except Exception:  # noqa: BLE001
+        return "app-service-principal"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -166,6 +235,31 @@ except Exception as exc:  # noqa: BLE001 — surface any connection/query error 
     st.error(f"Could not read {PRESCREEN_TABLE}.\n\n{exc}")
     st.stop()
 
+# Ensure the companion review table exists, then load the latest decision per (patient, trial).
+review_map: dict = {}  # (person_id, trial_id) -> {"decision", "reasoning", "reviewer"}
+reviews_available = True
+try:
+    ensure_review_table()
+    for _rr in load_reviews().itertuples():
+        review_map[(int(_rr.person_id), _rr.trial_id)] = {
+            "decision": _rr.decision, "reasoning": _rr.reasoning, "reviewer": _rr.reviewer,
+        }
+except Exception as exc:  # noqa: BLE001
+    reviews_available = False
+    st.warning(f"Review write-back unavailable this session (decisions not recorded): {exc}")
+
+
+def decision_badge_html(person_id) -> str:
+    """A thumbs badge for the current decision on (person_id, selected trial)."""
+    r = review_map.get((int(person_id), trial_key))
+    if not r or not r.get("decision"):
+        return '<span style="color:#6B7780;">— not reviewed</span>'
+    if r["decision"] == "approved":
+        return ('<span style="background:#DCEFE6;color:#1F6B45;border:1px solid #A9D8C2;'
+                'border-radius:999px;padding:2px 10px;font-size:12px;font-weight:600;">👍 Approved</span>')
+    return ('<span style="background:#F7DCDC;color:#9B2226;border:1px solid #E3A9A9;'
+            'border-radius:999px;padding:2px 10px;font-size:12px;font-weight:600;">👎 Rejected</span>')
+
 # Patients eligible for the selected trial.
 eligible = df[df[elig_col] == True].copy()  # noqa: E712 — explicit boolean match
 
@@ -229,6 +323,8 @@ else:
     # Turn the raw source string into a colored provenance pill.
     table["Provenance"] = table["biomarker_source"].map(provenance_badge_html)
     table = table.drop(columns=["biomarker_source"])
+    # Reflect the coordinator's current decision for this trial (read-only here; set it in the drill-down).
+    table["Decision"] = table["Person ID"].map(decision_badge_html)
 
     # st.markdown with unsafe_allow_html renders the colored pills. We sort by
     # Person ID by default; the coordinator can re-sort by clicking headers is
@@ -299,5 +395,34 @@ if drill_options:
             hide_index=True,
             use_container_width=True,
         )
+
+    # ── Reviewer decision for this (patient, trial). Writes to the review table. ──
+    st.markdown(f"##### Reviewer decision — {TRIALS[trial_key]['label']}")
+    _existing = review_map.get((int(person_id), trial_key), {})
+    _cur = _existing.get("decision")
+    if _cur:
+        st.caption(
+            f"Current: {'👍 Approved' if _cur == 'approved' else '👎 Rejected'} "
+            f"by {_existing.get('reviewer', 'unknown')}."
+        )
+    with st.form(f"review_{person_id}_{trial_key}"):
+        choice = st.radio(
+            "Decision", options=["approved", "rejected"], horizontal=True,
+            index=1 if _cur == "rejected" else 0,
+            format_func=lambda x: "👍 Approve" if x == "approved" else "👎 Reject",
+        )
+        reasoning = st.text_area(
+            "Reasoning (why this patient does or does not fit the trial)",
+            value=_existing.get("reasoning") or "",
+        )
+        submitted = st.form_submit_button("Save decision", disabled=not reviews_available)
+    if submitted:
+        try:
+            submit_review(person_id, trial_key, choice, reasoning, current_reviewer())
+            st.cache_data.clear()
+            st.success("Decision saved to the review table.")
+            st.rerun()
+        except Exception as exc:  # noqa: BLE001
+            st.error(f"Could not save the decision: {exc}")
 else:
     st.caption("No patients available to drill into.")
