@@ -108,6 +108,13 @@ then harden once the bad data arrives. This is how the presenter progresses the 
 >    (`--stage all`, the default of a plain Run now, lands clean then dirty in one run if you are not
 >    staging by hand.)
 >
+> **Stages are mutually exclusive now.** `--stage clean` lands the valid trials (Trials A, B, C plus the
+> net-new and schema-evolution records) and then heartbeats clean re-lands. `--stage dirty` lands ONLY
+> the three bad records and does NOT heartbeat (bad data should not re-land). `--stage clean_with_c`
+> lands ONLY Trial C, for demonstrating "add one trial" in isolation without re-running A and B (the ML
+> team's Trial C stretch consumes it). `--stage all` runs clean, then dirty, then clean_with_c in order.
+> Full command reference: `foundation/TRIAL_FEED_STAGES.md`.
+>
 > To pause, cancel the run; to resume, Run now again (OMOP regen is harmless) or Repair-run just
 > `land_trial_feed`. Again, cancelling and re-running never needs a redeploy. The same `--stage` /
 > `--speed` / `--reset` knobs are documented on the `land_trial_feed` task description in

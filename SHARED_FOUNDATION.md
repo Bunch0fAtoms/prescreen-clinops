@@ -1,4 +1,4 @@
-# 🧱 Shared foundation — what every group inherits
+# 🧱 Shared foundation: what every group inherits
 
 **Goal: one shared, governed foundation that lets all four groups build in parallel.** This page
 is the contract. It says exactly what is present before the groups split, and what each group
@@ -16,6 +16,42 @@ Standing up `foundation/` on Day 1 creates two things, shared and read-only for 
 The six tables are the seed. Both the Data Engineering and the Applied AI groups start from the
 same six tables and build independently. Neither group waits on the other to produce a data layer,
 so they run fully in parallel.
+
+## ⭐ Clinical-trial eligibility criteria (the one card, do not re-derive)
+
+**These are the eligibility rules the pre-screen uses. The single source of truth is the
+`silver_trial_criteria` table (trials are data: one row per trial, one `req_*` column per criterion).
+This card summarizes those rows so no one has to hunt for them mid-build.**
+
+| Field | Trial A (HER2+) | Trial B (ER+/HER2−) | Trial C (triple-negative) |
+|---|---|---|---|
+| `req_sex` | Female | Female | Female |
+| age (`age_min` to `age_max`) | 18 to 75 | 18 to 75 | 18 to 75 |
+| `req_her2` | **Positive** | **Negative** | **Negative** |
+| `req_er` | (unconstrained) | **Positive** | **Negative** |
+| `req_pr` | (unconstrained) | (unconstrained) | **Negative** |
+| `req_menopausal` | (unconstrained) | **Postmenopausal** | (unconstrained) |
+| `req_no_prior_anti_her2` | **true** (excludes prior anti-HER2 therapy) | (unconstrained) | (unconstrained) |
+| `min_ecog` | 1 (carried, not matched) | (unconstrained) | (unconstrained) |
+| Eligible patients | **140** (109 from structured data, 31 recovered via NLP) | **70** (56 from structured data, 14 recovered via NLP) | net-new triple-negative cohort, 53 (40 structured, 13 recovered via NLP) |
+
+**The one rule to remember:** a patient qualifies for a trial when every non-null `req_*` matches the
+patient's value AND age is within range. A NULL `req_*` means the trial does not constrain that field.
+One rule, every trial.
+
+Read the fine print once, so nobody re-derives it under time pressure:
+- `min_ecog` is **carried through but not matched**. The patients have no ECOG performance-status field,
+  so the pre-screen shows the threshold but does not filter on it.
+- `req_sex` (Female) and age (18 to 75) are **constant across all three trials** today. They still must
+  match; they just do not distinguish the trials from one another.
+- **Source of truth:** the rows of `silver_trial_criteria`. This card, the notebook prose, and the app
+  all summarize that one table. To add or change a trial, change the data, not code.
+- **Data Engineering feed nuance (so the two numbers reconcile):** the live trials feed deliberately
+  re-lands a **tightened Trial B** (age ceiling 70, ECOG 2) as a "latest-wins" teaching case. The
+  validated count of 70 (56 from structured data plus 14 recovered via NLP) is against the base Trial B
+  (age 18 to 75), which is what the pre-screen's own
+  `silver_trial_criteria` seed uses. If a team repoints the pre-screen to the DE group's catalog, Trial
+  B reflects that newest record, so its criteria and count shift. That is the DE lesson, not a defect.
 
 ## How the code is packaged: one foundation bundle, plus a bundle only where a group needs one
 
@@ -88,12 +124,12 @@ Volume themselves, so this connection is a hand-off, never a hard blocker.
 ## The payoff, in numbers
 
 When the pieces come together, the pre-screen produces one row per patient per trial and yields
-**Trial A: 140 eligible, Trial B: 56, Trial C: 53**. Of the Trial A patients, **31 are found only
-because language models recovered their biomarker status from pathology notes.** Those 31 are the
-patients a structured-only filter would have missed. That is the headline the Applied AI group
-demonstrates, and the reason the notes-only gap matters.
+**Trial A: 140 eligible, Trial B: 70, Trial C: 53**. Of the Trial A patients, **31 are found only
+because language models recovered their biomarker status from pathology notes**, and NLP likewise
+recovers **14 of Trial B's 70**. Those are the patients a structured-only filter would have missed.
+That is the headline the Applied AI group demonstrates, and the reason the notes-only gap matters.
 
-## Governance is the spine
+## Governance is the foundation everyone builds on
 
 The Governance group sets its requirements in the Day 1 whole-room Genie session, then applies its
 controls to the foundation the same day. On Day 2 it rotates across the Data Engineering and Applied

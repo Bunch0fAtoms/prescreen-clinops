@@ -140,9 +140,15 @@ Prompts: V1 terse, V2 spells out IHC 3+/FISH-amplified ⇒ Positive, IHC 0/1+ �
 equivocal ⇒ Unknown. Full text in nb 07 source.
 - **Gotcha:** `safe_prompt = prompt_text.replace("'", "''")`, single quotes in the prompt break the
   interpolated SQL otherwise.
-- **Expected outcome:** misses cluster on HER2 IHC 2+ (equivocal), a *safe* miss (Unknown), which is
-  the teaching point. The leaderboard + error-pattern cells are pre-built and will light up once both
-  TODOs are filled.
+- **Expected outcome:** the foundation now plants a **hard-case band** (person 61-90) with
+  equivocal-but-resolvable notes (HER2 IHC 2+ with a reflex FISH ratio, ER-low-positive), so the
+  leaderboard shows a real spread (careful prompt and stronger model win) and the error table has rows.
+  The misses cluster on HER2 IHC 2+, a *safe* miss (Unknown), which is the teaching point. Structured
+  values stay the definite gold label, so no cohort count changes (Trial A 140, Trial B 70, and the NLP uplift of +31 for A / +14 for B all hold).
+- **The GenAI eval (completed notebook sections 6-8):** `mlflow.genai.evaluate()` with per-row
+  **traces**, an **LLM-as-judge** (`Guidelines`), and **custom `@scorer` metrics**, run for the terse
+  and careful prompts on the hard band so the managed harness shows the same contrast. The
+  `Guidelines` judge needs a workspace judge model; drop that one scorer if unavailable.
 
 ## NB 08: Genie verify SQL (light TODO)
 

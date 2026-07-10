@@ -48,6 +48,17 @@ The headline ask anchoring this session is **Josh's, mask patient data and filte
 group** (notebooks 02 and 03). The rest round out a full governance posture: an inactive-user audit,
 identifier search, and knowing the AI-feature limits before turning them on.
 
+> **Read before nb 02 / 03:** `docs/masking-and-downstream-impact.html` explains how the mask style you
+> pick affects downstream joins (the NULL-on-a-join-key trap that stalls readers), and how to classify
+> PHI at scale without writing a separate mask function for every data type. Talk track for presenting it
+> live: `docs/masking-talk-track.md`.
+
+> **For the governance and data-science joint moment (nb 05 and the ML session):**
+> `docs/UNITY_AI_GATEWAY_BRIEF.html` shows how the same Unity Catalog permissions, audit, and policies
+> extend to models, agents, and AI tools through Unity AI Gateway. It maps the exact ML-session
+> touchpoints (notebooks 04, 05, 08) where governance joins the conversation, so both teams present the
+> synergy together.
+
 ---
 
 ## 🧱 What's pre-built vs. what you build
@@ -163,6 +174,7 @@ governance-session-starter-kit/
   GENIE_CODE_PROMPTS.md ← ready-to-use Genie Code build prompts (free-form; starters, not a script)
   STRETCH.md            ← "make it your own" extension ideas
   notebooks/            ← facilitator backup scaffold (00 to 06): pre-built plumbing and your TODOs
+  docs/                 ← explainers: masking-and-downstream-impact.html (mask styles, downstream joins, type-per-function), UNITY_AI_GATEWAY_BRIEF.html (governance extends to AI)
   reference/            ← SA-ONLY answer key (mentor reveals only if a team is stuck)
   resources/            ← optional setup job (used on FEVM); the onsite governs the shared foundation directly
 ```

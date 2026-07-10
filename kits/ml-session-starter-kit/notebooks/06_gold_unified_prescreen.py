@@ -148,7 +148,7 @@
 # MAGIC -- FROM evaluated;
 # MAGIC --
 # MAGIC -- WHY generic: Trials A and B carry criteria identical to the old hardcoded rules, so this MUST
-# MAGIC -- reproduce Trial A = 140, Trial B = 56, +31 NLP-recovered. Trial C (triple-negative) is net-new.
+# MAGIC -- reproduce Trial A = 140, Trial B = 70, +31 NLP-recovered for A and +14 for B. Trial C (triple-negative) is net-new.
 
 # COMMAND ----------
 
@@ -247,10 +247,10 @@ Those <b>{nlp['a_nlp'] + nlp['b_nlp']} patients</b> are now in the unified cohor
 
 # COMMAND ----------
 
-# DBTITLE 1,Verify the validated numbers are preserved (PRE-BUILT: 140 / 56 / +31)
+# DBTITLE 1,Verify the validated numbers are preserved (PRE-BUILT: A 140 / B 70 / NLP +31 for A, +14 for B)
 # MAGIC %sql
 # MAGIC -- Trials A and B carry catalog criteria identical to the old hardcoded rules, so the generic join
-# MAGIC -- MUST reproduce Trial A = 140, Trial B = 56, +31 NLP-recovered. Trial C is net-new.
+# MAGIC -- MUST reproduce Trial A = 140, Trial B = 70, +31 NLP-recovered for A and +14 for B. Trial C is net-new.
 # MAGIC SELECT trial_id,
 # MAGIC        SUM(CASE WHEN eligible THEN 1 ELSE 0 END) AS eligible_patients,
 # MAGIC        SUM(CASE WHEN eligible AND biomarker_source = 'nlp' THEN 1 ELSE 0 END) AS nlp_recovered
@@ -299,7 +299,7 @@ Those <b>{nlp['a_nlp'] + nlp['b_nlp']} patients</b> are now in the unified cohor
 # MAGIC
 # MAGIC - `gold_trial_prescreen` is now **LONG** (one row per person per trial), computed by a single generic
 # MAGIC   join to `silver_trial_criteria`. Adding a trial is a data change in DE notebook 05.
-# MAGIC - Trials A and B reproduce the validated numbers (**A = 140**, **B = 56**, **+31 NLP-recovered**);
+# MAGIC - Trials A and B reproduce the validated numbers (**A = 140**, **B = 70**, **+31 NLP-recovered for A, +14 for B**);
 # MAGIC   Trial C (triple-negative) is net-new.
 # MAGIC - `gold_trial_prescreen_wide` keeps the old `trial_a_eligible` / `trial_b_eligible` shape.
 # MAGIC - `gold_patient_measurements` gives the app a per-patient test timeline for the drill-down.

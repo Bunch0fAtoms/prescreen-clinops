@@ -104,9 +104,10 @@
   },
 
   "biomarker_groups": {
-    "both_agree": {"person_ids": "1-180", "count": 180, "description": "Structured AND note biomarkers present. NLP ground truth for MLflow evaluation."},
-    "notes_only": {"person_ids": "181-240", "count": 60, "description": "Biomarker status in note_text ONLY — invisible to structured queries. The NLP value story."},
-    "structured_only": {"person_ids": "241-300", "count": 60, "description": "Structured measurement rows only; note_text has no biomarker phrasing."}
+    "both_agree": {"person_ids": "1-180", "count": 180, "description": "Structured AND note biomarkers present. NLP ground truth for MLflow evaluation. Includes the hard_cases sub-band below."},
+    "notes_only": {"person_ids": "181-240", "count": 60, "description": "Biomarker status in note_text ONLY — invisible to structured queries. The NLP value story. Notes are written clearly so recovery is reliable."},
+    "structured_only": {"person_ids": "241-300", "count": 60, "description": "Structured measurement rows only; note_text has no biomarker phrasing."},
+    "hard_cases": {"person_ids": "61-90", "count": 30, "description": "Sub-band of both_agree. Structured value is the definite gold label, but the pathology note is written equivocally (HER2 IHC 2+ with a reflex FISH ratio and no stated conclusion; ER-low-positive 1-8%; subtype line withheld). Purpose: give the MLflow / GenAI evaluation genuine contrast (a careful prompt or stronger model resolves these; a terse prompt slips to Unknown). Does NOT change any eligibility count because the gold layer takes the structured value. Controlled by HARD_CASE_IDS in generate_omop_data.py."}
   },
 
   "source_files": {

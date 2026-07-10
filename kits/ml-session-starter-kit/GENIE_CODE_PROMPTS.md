@@ -132,8 +132,8 @@ trial does not constrain that field." This is your eligibility contract. The pre
 > **"Build `gold_unified_biomarker_profile`: FULL OUTER JOIN the structured silver and `silver_nlp_biomarkers` (dedup NLP to one row per person via ROW_NUMBER on note_id) on person_id, `COALESCE` each biomarker, and add a `biomarker_source` audit column = both / structured / nlp. Then build `gold_trial_prescreen` by JOINING the unified profile, demographics, and prior therapy against MY OWN `trial_criteria` table (from 3a), a GENERIC eligibility match, NOT hardcoded Trial A/B. The rule: a patient qualifies for a trial when, for every non-NULL `req_*` criterion the patient's value matches, AND age BETWEEN `age_min` AND `age_max`. A NULL `req_*` means that trial does not constrain that field, so it passes. Sex match is case-insensitive (the data stores `FEMALE`). Emit one row per (patient, trial) with an eligible boolean and a plain-English reason. Show me the files before you run them."**
 
 *Good looks like:* unified profile by source = **both 180 / nlp 60 / structured 60**. The generic join
-reproduces the validated numbers with **no per-trial code**: **Trial A 140**, **Trial B 56**, and the
-**+31 NLP-recovered** patients preserved. **Schema facts to feed it:** `menopausal_status` and `ajcc_stage`
+reproduces the validated numbers with **no per-trial code**: **Trial A 140**, **Trial B 70**, and the
+**NLP-recovered patients preserved (+31 for Trial A, +14 for Trial B)**. **Schema facts to feed it:** `menopausal_status` and `ajcc_stage`
 live on the biomarker tables (not `silver_demographics`, which has only `gender`, `age_at_dx_years`);
 prior-therapy column is `prior_anti_her2`; join `trial_criteria`'s
 `req_sex`/`req_her2`/`req_er`/`req_pr`/`req_menopausal`/`req_no_prior_anti_her2` against the matching
@@ -168,9 +168,10 @@ drives the +31 home. This is the headline. Say these numbers, and show that char
 > **"Score the `ai_query` extraction against the structured biomarkers as ground truth. Compare two prompts (terse vs. careful) side by side, and show me each prompt's accuracy plus the rows where they disagree, all in SQL."**
 
 *Good looks like:* a small accuracy table Genie Code builds inline, one row per prompt, showing which
-prompt reads the notes better and where the misses cluster (HER2 IHC 2+ is the usual culprit). On the
-clean both-agree goldset both prompts may score ~100% (a tie). To get real contrast, seed a few
-**ambiguous notes** (IHC 2+, borderline ER) first.
+prompt reads the notes better and where the misses cluster (HER2 IHC 2+ is the usual culprit). The
+foundation plants a **hard-case band** (person 61-90) with equivocal-but-resolvable notes (HER2 IHC 2+
+with a reflex FISH ratio, ER-low-positive), so the careful prompt visibly beats the terse one and the
+disagreement rows are real. Point the accuracy check at those patients to make the contrast pop.
 
 > ⚙️ **Want the full logged MLflow experiment (runs, leaderboard, traces)?** That part is Python on
 > serverless, and it is heavier than the Genie Code chat authors reliably. For the live demonstration,

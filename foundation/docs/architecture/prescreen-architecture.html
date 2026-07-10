@@ -62,6 +62,16 @@
   .foot{margin-top:24px;font-family:"DM Mono",monospace;font-size:10px;
     letter-spacing:.05em;color:var(--muted);text-transform:uppercase;line-height:1.7}
   @media (max-width:640px){.wrap{padding:24px 18px 48px} .govband{flex-direction:column;align-items:flex-start;gap:6px}}
+  @media print{
+    @page{ size:A3 landscape; margin:12mm }
+    body{background:#fff}
+    .toolbar{display:none}
+    .wrap{max-width:none;padding:0}
+    .diagram{width:100% !important;left:auto !important;transform:none !important;
+      border:1px solid var(--line);overflow:visible;break-inside:avoid}
+    .diagram svg{max-width:100% !important;width:100% !important;height:auto !important}
+    .govband,.note{break-inside:avoid}
+  }
 </style>
 </head>
 <body>

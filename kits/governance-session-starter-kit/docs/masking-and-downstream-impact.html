@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="en" data-theme="warm">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Masking without breaking downstream · Governance</title>
+<meta name="description" content="How column-mask choices affect downstream joins and models, and how to classify PII at scale without the per-data-type friction.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F6F2EC; --paper:#FFFFFF; --ink:#0F1419; --ink-2:#38434B; --muted:#6B7780;
+    --line:#E2DCD2; --line-strong:#C9C0B2;
+    --db-red:#FF3621; --db-navy:#1B3139;
+    --db-coral:#FCE7DC; --db-mint:#DCEFE6; --db-sky:#DCE6F2; --db-sand:#F1EADC;
+    --amber:#C8870B; --amber-bg:#FBF1DC; --amber-line:#E8CF94;
+    --green:#1F8A5B;
+  }
+  html[data-theme="dark"]{
+    --bg:#14181B; --paper:#1C2227; --ink:#ECECEA; --ink-2:#B7BFC4; --muted:#8993A0;
+    --line:#2A323A; --line-strong:#404B55;
+    --db-coral:#3A1E15; --db-sand:#2A2620; --db-sky:#1E2A3A; --db-mint:#1E2E26;
+    --amber:#E0A22B; --amber-bg:#2C2517; --amber-line:#5A4A24; --green:#4CD08A;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:"DM Sans",system-ui,sans-serif;font-size:14px;line-height:1.6;
+    -webkit-font-smoothing:antialiased;transition:background .2s,color .2s}
+  .wrap{max-width:1180px;margin:0 auto;padding:40px 44px 72px}
+  .eyebrow{font-family:"DM Mono",monospace;font-size:10.5px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--muted);margin:0 0 8px}
+  h1{font-size:30px;font-weight:700;margin:0;letter-spacing:-.015em;line-height:1.15}
+  h1 em{font-style:normal;color:var(--green)}
+  .lede-top{color:var(--ink-2);margin:12px 0 0;max-width:76ch;font-size:15px}
+  header{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap}
+  .toolbar button{font-family:"DM Mono",monospace;font-size:11px;letter-spacing:.04em;
+    background:var(--paper);color:var(--ink-2);border:1px solid var(--line-strong);
+    border-radius:999px;padding:7px 14px;cursor:pointer;transition:all .15s}
+  .toolbar button:hover{border-color:var(--db-red);color:var(--db-red)}
+  .banner{margin:26px 0 22px;padding:16px 20px;border-radius:12px;
+    background:color-mix(in oklab, var(--db-sand) 55%, var(--paper));
+    border:1px solid var(--line-strong)}
+  .banner .k{font-family:"DM Mono",monospace;font-size:9.5px;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--db-red);margin:0 0 5px}
+  .banner p{margin:0;font-size:15px;color:var(--ink)}
+  .banner b{color:var(--green)}
+  .agenda{display:flex;flex-wrap:wrap;gap:9px;margin:0 0 34px}
+  .agenda a{display:inline-flex;align-items:center;gap:8px;text-decoration:none;
+    font-size:12px;color:var(--ink-2);background:var(--paper);
+    border:1px solid var(--line);border-radius:999px;padding:6px 13px 6px 7px;transition:all .15s}
+  .agenda a:hover{border-color:var(--db-red);color:var(--ink)}
+  .agenda .n{font-family:"DM Mono",monospace;font-size:10px;font-weight:500;
+    background:var(--db-sand);color:var(--ink-2);border-radius:999px;
+    width:19px;height:19px;display:inline-flex;align-items:center;justify-content:center}
+  .sec{scroll-margin-top:20px;margin:0 0 40px}
+  .kick{font-family:"DM Mono",monospace;font-size:10px;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--db-red);display:inline-flex;gap:9px;margin:0 0 8px}
+  .kick .n{color:var(--muted)}
+  h2{font-size:20px;font-weight:600;margin:0 0 6px;letter-spacing:-.01em}
+  .lede{color:var(--ink-2);margin:0 0 16px;max-width:80ch;font-size:14.5px}
+  p{max-width:80ch}
+  .card{background:var(--paper);border:1px solid var(--line);border-radius:12px;
+    padding:15px 17px;margin:14px 0}
+  code{font-family:"DM Mono",monospace;font-size:12.5px;
+    background:color-mix(in oklab, var(--db-sand) 60%, var(--paper));
+    padding:1px 5px;border-radius:4px}
+  pre{background:var(--db-navy);color:#E8EEF0;border-radius:10px;padding:14px 16px;
+    overflow-x:auto;margin:12px 0;font-size:12.5px;line-height:1.55}
+  pre code{background:none;padding:0;color:inherit;font-size:12.5px}
+  pre .c{color:#7F9AA5}
+  pre .r{color:#FF8A6B}
+  pre .g{color:#7FD3A6}
+  table{border-collapse:collapse;width:100%;margin:14px 0;font-size:12.5px}
+  th,td{text-align:left;padding:9px 11px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{font-family:"DM Mono",monospace;font-size:9.5px;letter-spacing:.07em;
+    text-transform:uppercase;color:var(--muted);font-weight:500;border-bottom:1px solid var(--line-strong)}
+  td b{color:var(--ink)}
+  .yes{color:var(--green);font-weight:600}
+  .no{color:var(--db-red);font-weight:600}
+  .amber-box{background:var(--amber-bg);border:1px solid var(--amber-line);
+    border-radius:12px;padding:14px 17px;margin:14px 0}
+  .amber-box .k{font-family:"DM Mono",monospace;font-size:9.5px;letter-spacing:.11em;
+    text-transform:uppercase;color:var(--amber);margin:0 0 5px}
+  .rec{background:color-mix(in oklab, var(--db-mint) 42%, var(--paper));
+    border:1px solid var(--line);border-left:3px solid var(--green);
+    border-radius:10px;padding:13px 16px;margin:14px 0}
+  .rec .k{font-family:"DM Mono",monospace;font-size:9.5px;letter-spacing:.11em;
+    text-transform:uppercase;color:var(--green);margin:0 0 5px}
+  ol.steps{margin:12px 0;padding-left:0;list-style:none;counter-reset:s}
+  ol.steps li{counter-increment:s;position:relative;padding:8px 0 8px 40px;
+    border-bottom:1px solid var(--line);max-width:82ch}
+  ol.steps li:last-child{border-bottom:none}
+  ol.steps li::before{content:counter(s);position:absolute;left:0;top:8px;
+    font-family:"DM Mono",monospace;font-size:11px;color:var(--db-red);
+    background:var(--db-sand);border-radius:999px;width:24px;height:24px;
+    display:flex;align-items:center;justify-content:center}
+  .foot{margin-top:40px;padding-top:18px;border-top:1px solid var(--line);
+    font-family:"DM Mono",monospace;font-size:10px;letter-spacing:.05em;
+    color:var(--muted);text-transform:uppercase;line-height:1.8}
+  .to-top{position:fixed;right:26px;bottom:26px;width:42px;height:42px;border-radius:999px;
+    background:var(--paper);border:1px solid var(--line-strong);color:var(--ink-2);
+    font-size:16px;cursor:pointer;opacity:0;pointer-events:none;transition:opacity .2s;
+    box-shadow:0 4px 14px rgba(0,0,0,.09)}
+  .to-top.show{opacity:1;pointer-events:auto}
+  .to-top:hover{border-color:var(--db-red);color:var(--db-red)}
+  @media print{
+    .toolbar,.to-top,.agenda{display:none}
+    body{background:#fff}
+    .wrap{max-width:none;padding:0}
+    pre{white-space:pre-wrap}
+    .sec{break-inside:avoid}
+  }
+  @media (max-width:640px){.wrap{padding:26px 18px 54px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <p class="eyebrow">Fred Hutch · Day 2 · Data Governance</p>
+      <h1>Masking without <em>breaking downstream</em></h1>
+      <p class="lede-top">A short field guide to how a column mask ripples into the joins and models other teams build. It explains what happened on Day 1, the trade-offs of each masking style, and how to classify protected data at scale without a separate function for every data type.</p>
+    </div>
+    <div class="toolbar"><button id="themeBtn" type="button">◐ Theme</button></div>
+  </header>
+
+  <div class="banner">
+    <p class="k">The one thing to remember</p>
+    <p>A mask applies everywhere the column is read, including join keys. Masking a shared join key like <code>person_id</code> to <b>NULL</b> silently breaks every join for anyone the policy covers. Choose the mask style by what downstream needs, not just by what to hide.</p>
+  </div>
+
+  <nav class="agenda">
+    <a href="#s1"><span class="n">1</span> What happened on Day 1</a>
+    <a href="#s2"><span class="n">2</span> Masking styles and their cost</a>
+    <a href="#s3"><span class="n">3</span> The rule for join keys</a>
+    <a href="#s4"><span class="n">4</span> Why one tag needed many functions</a>
+    <a href="#s5"><span class="n">5</span> A safe sequence for Day 2</a>
+  </nav>
+
+  <section class="sec" id="s1">
+    <p class="kick"><span class="n">01</span> What happened on Day 1</p>
+    <h2>The mask worked exactly as designed</h2>
+    <p class="lede">The governance team did the right things in the right order. They classified protected health information (PHI), tagged the columns, and bound a column mask that hides identifiers from the restricted research group. The behavior that stopped the ML team was the mask doing its job on a column that the whole pipeline depends on.</p>
+
+    <p>The kit's mask on the patient identifier returns <code>NULL</code> for members of the restricted group:</p>
+    <pre><code><span class="c">-- kit: notebooks/02_column_masks.py</span>
+CREATE OR REPLACE FUNCTION mask_person_id(pid BIGINT)
+  RETURN CASE WHEN is_account_group_member('&lt;OCDO_GROUP&gt;')
+              THEN <span class="r">NULL</span> ELSE pid END;
+
+ALTER TABLE person ALTER COLUMN person_id SET MASK mask_person_id;</code></pre>
+
+    <p><code>person_id</code> is the foreign key that joins all six OMOP tables (person, condition_occurrence, measurement, observation, drug_exposure, note). Once the ML identity fell under the policy, every <code>person_id</code> it read came back <code>NULL</code>. A join on <code>NULL</code> matches no rows, so the star-schema joins collapsed and the models had nothing to work with. Nothing errored loudly. The rows just quietly went to zero.</p>
+
+    <div class="amber-box">
+      <p class="k">Why it surprised the room</p>
+      <p style="margin:0">The mask is scoped to a column, and it fires for every reader the policy applies to, including the service identity running a scheduled job. So a governance change on the shared source reached into a pipeline that no one edited. This is expected Unity Catalog (UC) behavior, not a defect. The lesson is that masking a join key is a downstream event, and it needs to be sequenced and communicated like one.</p>
+    </div>
+  </section>
+
+  <section class="sec" id="s2">
+    <p class="kick"><span class="n">02</span> Masking styles and their cost</p>
+    <h2>Each style hides the value differently, and each has a different downstream cost</h2>
+    <p class="lede">A column mask is just a function that rewrites the value before a restricted user sees it. What you return decides whether joins, group-by, and model features still work. Here are the common styles, with what each does to the data other teams build on.</p>
+
+    <table>
+      <thead>
+        <tr><th>Style</th><th>What a restricted user sees</th><th>Joins on it</th><th>Group / count</th><th>Best for</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><b>Nullify</b><br><span style="color:var(--muted)">return NULL</span></td>
+          <td>Nothing. Every value becomes <code>NULL</code>.</td>
+          <td class="no">Break</td>
+          <td class="no">Collapse</td>
+          <td>Columns no downstream team joins or reads.</td>
+        </tr>
+        <tr>
+          <td><b>Constant redact</b><br><span style="color:var(--muted)">return '***'</span></td>
+          <td>One fixed placeholder for all rows.</td>
+          <td class="no">False matches</td>
+          <td class="no">One bucket</td>
+          <td>Free text you must hide fully, like a pathology note.</td>
+        </tr>
+        <tr>
+          <td><b>Partial</b><br><span style="color:var(--muted)">last 4 chars</span></td>
+          <td>A readable fragment, like the last four digits.</td>
+          <td class="no">Break exact</td>
+          <td class="no">Coarse</td>
+          <td>Human-readable display of an identifier.</td>
+        </tr>
+        <tr>
+          <td><b>Deterministic token</b><br><span style="color:var(--muted)">stable hash</span></td>
+          <td>A consistent stand-in id, never the real one.</td>
+          <td class="yes">Work</td>
+          <td class="yes">Work</td>
+          <td>Identifiers used as join keys.</td>
+        </tr>
+        <tr>
+          <td><b>Conditional</b><br><span style="color:var(--muted)">by group</span></td>
+          <td>Real value for allowed identities, masked for the rest.</td>
+          <td>Depends on branch</td>
+          <td>Depends on branch</td>
+          <td>Wrap any style above so pipelines and people differ.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p>The first three hide the value and lose the join. The last two are the tools that let you protect data and keep it usable at the same time. The Day 1 mask was the nullify style on a join key, which is the one combination that stops everything downstream.</p>
+  </section>
+
+  <section class="sec" id="s3">
+    <p class="kick"><span class="n">03</span> The rule for join keys</p>
+    <h2>Never nullify a key that another team joins on. Tokenize it instead.</h2>
+    <p class="lede">A patient identifier used as a join key needs to survive masking. Two patterns do that. Pick by whether the pipeline is allowed to see the real identifier.</p>
+
+    <div class="rec">
+      <p class="k">Pattern A · deterministic token (recommended for keys)</p>
+      <p style="margin:0 0 10px">Return a stable stand-in instead of NULL. The same real id always maps to the same token, so joins line up on both sides, and the real id is never revealed. The token stays a <code>BIGINT</code>, so it still matches the column type.</p>
+    </div>
+    <pre><code>CREATE OR REPLACE FUNCTION mask_person_id(pid BIGINT)
+  RETURN CASE WHEN is_account_group_member('&lt;OCDO_GROUP&gt;')
+              THEN <span class="g">xxhash64(CAST(pid AS STRING))</span>  <span class="c">-- stable BIGINT token</span>
+              ELSE pid END;</code></pre>
+    <p>Now a restricted researcher joins <code>person</code> to <code>measurement</code> on the token and gets the right rows, without ever seeing a real patient id. Privacy and joinability at once.</p>
+
+    <div class="rec">
+      <p class="k">Pattern B · except the pipeline identity</p>
+      <p style="margin:0">If the scheduled model job is allowed to read real identifiers, keep its service principal out of the restricted group, or list it in the policy's <code>EXCEPT</code> clause. Human researchers still see masked values. The pipeline reads raw and joins normally. Use this only when the pipeline is cleared to see the real id.</p>
+    </div>
+
+    <p>Pattern A is usually the better default here, because it holds even when you are not sure which identities will read the data later. It fails safe: joins keep working and nobody sees a real identifier.</p>
+  </section>
+
+  <section class="sec" id="s4">
+    <p class="kick"><span class="n">04</span> Why one tag needed many functions</p>
+    <h2>A mask function must return the column's type, so one tag can span several functions</h2>
+    <p class="lede">The governance team tagged the columns and then wanted one policy on the tag to mask them all. The friction they hit is real and expected. A mask function's return type must be castable to the type of the column it masks. Columns with the same tag can have different types, so one function cannot always cover them all.</p>
+
+    <p>In the kit, the <code>phi = other_identifier</code> tag sits on both a <code>BIGINT</code> column and a <code>STRING</code> column. That forces two functions:</p>
+    <pre><code><span class="c">-- BIGINT identifier</span>
+CREATE FUNCTION mask_person_id(pid BIGINT) RETURN ... ;      <span class="c">-- returns BIGINT</span>
+<span class="c">-- STRING free-text identifier</span>
+CREATE FUNCTION mask_note_text(txt STRING) RETURN ... ;      <span class="c">-- returns STRING</span></code></pre>
+
+    <p>An attribute-based access control (ABAC) policy binds one mask function to a tag. Because <code>mask_person_id</code> returns a <code>BIGINT</code>, a policy using it only fits the <code>BIGINT</code> columns that carry the tag. The <code>STRING</code> column with the same tag needs its own policy with the <code>STRING</code> function. So the count of policies follows the count of data types, not the count of tags.</p>
+
+    <pre><code><span class="c">-- one policy per type, matched by the shared tag</span>
+CREATE POLICY redact_id_bigint  ON CATALOG &lt;CATALOG&gt;
+  COLUMN MASK mask_person_id  TO `&lt;OCDO_GROUP&gt;`  FOR TABLES
+  MATCH COLUMNS hasTagValue('phi','other_identifier') AS c  ON COLUMN c;
+
+CREATE POLICY redact_id_string ON CATALOG &lt;CATALOG&gt;
+  COLUMN MASK mask_note_text  TO `&lt;OCDO_GROUP&gt;`  FOR TABLES
+  MATCH COLUMNS hasTagValue('phi','other_identifier') AS c  ON COLUMN c;</code></pre>
+
+    <div class="rec">
+      <p class="k">The scaling fix · a small typed function library</p>
+      <p style="margin:0 0 8px">You do not need a function per column. You need one per type family, written once and reused across the whole catalog:</p>
+      <ul style="margin:0;padding-left:20px;max-width:80ch">
+        <li>One <code>STRING</code> function for names, notes, and text identifiers.</li>
+        <li>One <code>VARIANT</code> function for the numeric family. A mask that accepts and returns <code>VARIANT</code> covers <code>INT</code>, <code>BIGINT</code>, <code>DECIMAL</code>, and <code>DOUBLE</code> in a single function, because those cast cleanly through <code>VARIANT</code>.</li>
+        <li>One function each for <code>DATE</code> and <code>TIMESTAMP</code> where you tag those.</li>
+      </ul>
+      <p style="margin:8px 0 0">Classify once, and the tag policy travels with the tag to every new table the DE and ML tracks create. That is the scale the team was reaching for. The typed function library is the piece that makes it click.</p>
+    </div>
+
+    <h3 style="font-size:15.5px;font-weight:600;margin:26px 0 6px">Worked example: two tags, four types, one function library</h3>
+    <p>Two governed tags, <code>phi = other_identifier</code> and <code>phi = quasi_identifier</code>. Each lands on a BIGINT column and a numeric column, and the second tag also carries a DATE and a TIMESTAMP so every function is in play. First the library, written once:</p>
+    <pre><code><span class="c">-- 1. BIGINT join keys -&gt; stable token: joins still work, real id never shown</span>
+CREATE OR REPLACE FUNCTION mask_id_bigint(id BIGINT)
+  RETURN <span class="g">xxhash64(CAST(id AS STRING))</span>;
+<span class="c">-- 2. any numeric (INT, BIGINT, DECIMAL, DOUBLE) -&gt; redacted, via VARIANT</span>
+CREATE OR REPLACE FUNCTION mask_num_variant(v VARIANT)
+  RETURN <span class="r">CAST(NULL AS VARIANT)</span>;
+<span class="c">-- 3. DATE -&gt; generalized to year only</span>
+CREATE OR REPLACE FUNCTION mask_date(d DATE)
+  RETURN make_date(year(d), 1, 1);
+<span class="c">-- 4. TIMESTAMP -&gt; truncated to the day</span>
+CREATE OR REPLACE FUNCTION mask_ts(ts TIMESTAMP)
+  RETURN date_trunc('DAY', ts);</code></pre>
+
+    <p>Classify the columns, then bind one policy per tag and type. Every policy reuses a library function, nothing is re-authored:</p>
+    <pre><code><span class="c">-- tag the columns</span>
+ALTER TABLE patient ALTER COLUMN patient_id          SET TAGS ('phi'='other_identifier'); <span class="c">-- BIGINT</span>
+ALTER TABLE patient ALTER COLUMN insurance_member_no SET TAGS ('phi'='other_identifier'); <span class="c">-- DECIMAL</span>
+ALTER TABLE patient ALTER COLUMN provider_id         SET TAGS ('phi'='quasi_identifier'); <span class="c">-- BIGINT</span>
+ALTER TABLE patient ALTER COLUMN household_income    SET TAGS ('phi'='quasi_identifier'); <span class="c">-- DOUBLE</span>
+ALTER TABLE patient ALTER COLUMN date_of_birth       SET TAGS ('phi'='quasi_identifier'); <span class="c">-- DATE</span>
+ALTER TABLE patient ALTER COLUMN last_visit_ts       SET TAGS ('phi'='quasi_identifier'); <span class="c">-- TIMESTAMP</span>
+
+<span class="c">-- one policy per (tag, type), all reusing the library</span>
+CREATE POLICY mask_a_ids  ON SCHEMA clin.omop COLUMN MASK mask_id_bigint   TO ocdo_researchers
+  FOR TABLES MATCH COLUMNS has_tag_value('phi','other_identifier') AS c ON COLUMN c;
+CREATE POLICY mask_a_nums ON SCHEMA clin.omop COLUMN MASK mask_num_variant TO ocdo_researchers
+  FOR TABLES MATCH COLUMNS has_tag_value('phi','other_identifier') AS c ON COLUMN c;
+CREATE POLICY mask_b_ids  ON SCHEMA clin.omop COLUMN MASK mask_id_bigint   TO ocdo_researchers
+  FOR TABLES MATCH COLUMNS has_tag_value('phi','quasi_identifier') AS c ON COLUMN c;
+CREATE POLICY mask_b_nums ON SCHEMA clin.omop COLUMN MASK mask_num_variant TO ocdo_researchers
+  FOR TABLES MATCH COLUMNS has_tag_value('phi','quasi_identifier') AS c ON COLUMN c;
+CREATE POLICY mask_b_date ON SCHEMA clin.omop COLUMN MASK mask_date        TO ocdo_researchers
+  FOR TABLES MATCH COLUMNS has_tag_value('phi','quasi_identifier') AS c ON COLUMN c;
+CREATE POLICY mask_b_ts   ON SCHEMA clin.omop COLUMN MASK mask_ts          TO ocdo_researchers
+  FOR TABLES MATCH COLUMNS has_tag_value('phi','quasi_identifier') AS c ON COLUMN c;</code></pre>
+
+    <table>
+      <thead><tr><th>Column</th><th>Type</th><th>Tag</th><th>Function</th><th>Researcher sees</th><th>Joins</th></tr></thead>
+      <tbody>
+        <tr><td><code>patient_id</code></td><td>BIGINT</td><td>other_identifier</td><td>mask_id_bigint</td><td>stable token</td><td class="yes">Work</td></tr>
+        <tr><td><code>insurance_member_no</code></td><td>DECIMAL</td><td>other_identifier</td><td>mask_num_variant</td><td><code>NULL</code></td><td style="color:var(--muted)">n/a</td></tr>
+        <tr><td><code>provider_id</code></td><td>BIGINT</td><td>quasi_identifier</td><td>mask_id_bigint</td><td>stable token</td><td class="yes">Work</td></tr>
+        <tr><td><code>household_income</code></td><td>DOUBLE</td><td>quasi_identifier</td><td>mask_num_variant</td><td><code>NULL</code></td><td style="color:var(--muted)">n/a</td></tr>
+        <tr><td><code>date_of_birth</code></td><td>DATE</td><td>quasi_identifier</td><td>mask_date</td><td>year only</td><td style="color:var(--muted)">n/a</td></tr>
+        <tr><td><code>last_visit_ts</code></td><td>TIMESTAMP</td><td>quasi_identifier</td><td>mask_ts</td><td>midnight of day</td><td style="color:var(--muted)">n/a</td></tr>
+      </tbody>
+    </table>
+    <p>The count that matters: <b>2 tags, 6 columns, 4 types, 4 functions, 6 policies.</b> Functions never multiply with tags. Only policies do, at one per tag and type actually present.</p>
+
+    <div class="amber-box">
+      <p class="k">One gotcha to plan for</p>
+      <p style="margin:0"><code>VARIANT</code> is a superset of the numeric types, so <code>mask_num_variant</code> is also type-compatible with your BIGINT keys. That means <code>patient_id</code> matches both the tokenizer and the redactor. A column takes at most one mask, resolved by <b>policy precedence</b>, so give the BIGINT tokenizer policies the higher precedence, or a key you meant to keep joinable gets nulled, which is the Day 1 failure again. For zero ambiguity, give join keys their own tag value, for example <code>phi = joinable_id</code>, so the tokenizer matches only keys and the redactor never touches them.</p>
+    </div>
+    <p style="font-size:12px;color:var(--muted)">Note: tag-based ABAC policies are generally available in Unity Catalog, but may be feature-gated on a given workspace. The kit wraps the <code>CREATE POLICY</code> step in a try/except so the build stays green, and falls back to the per-table masks, which already deliver the same protection. The policy pattern is what to adopt as the workspace enables it.</p>
+  </section>
+
+  <section class="sec" id="s5">
+    <p class="kick"><span class="n">05</span> A safe sequence for Day 2</p>
+    <h2>Classify, protect, and prove, in an order that does not stall the other tracks</h2>
+    <p class="lede">The same governance goal, sequenced so downstream teams keep moving. Five steps.</p>
+
+    <ol class="steps">
+      <li><b>Decide per column: does anyone downstream join or read it?</b> If it is an identifier used as a key, plan a deterministic token, not NULL. If it is free text to hide fully, redact is fine.</li>
+      <li><b>Separate people from pipelines.</b> Keep DE and ML service principals out of the restricted group, or list them in <code>EXCEPT</code>, so scheduled jobs read what they need while human researchers see masked values.</li>
+      <li><b>Apply, then prove with a downstream join.</b> After binding a mask, run one real join as the restricted identity and confirm rows still flow. The kit's verification cells and <code>information_schema.column_masks</code> show the mask is bound; a join proves it did not break the pipeline.</li>
+      <li><b>Announce changes to the shared source.</b> Masks and filters inherit to every reader. A one-line heads-up before a policy lands on shared tables saves an afternoon of silent zero-row results.</li>
+      <li><b>Move to tag policies with the typed function library.</b> Classify once, and new tables inherit masking automatically. This is the pattern to carry past the workshop.</li>
+    </ol>
+  </section>
+
+  <p class="foot">
+    kits/governance-session-starter-kit/docs/masking-and-downstream-impact.html · reflects the mask and tag functions in notebooks/02_column_masks.py and 03_row_filters_abac.py<br>
+    OCDO = Office of the Chief Data Officer group · PHI = protected health information · ABAC = attribute-based access control · UC = Unity Catalog
+  </p>
+</div>
+
+<button class="to-top" id="toTop" title="Back to top" aria-label="Back to top">↑</button>
+<script>
+  const btn=document.getElementById('themeBtn');
+  btn.addEventListener('click',()=>{const h=document.documentElement;
+    h.setAttribute('data-theme',h.getAttribute('data-theme')==='dark'?'warm':'dark');});
+  const top=document.getElementById('toTop');
+  addEventListener('scroll',()=>{top.classList.toggle('show',scrollY>360);});
+  top.addEventListener('click',()=>scrollTo({top:0,behavior:'smooth'}));
+</script>
+</body>
+</html>

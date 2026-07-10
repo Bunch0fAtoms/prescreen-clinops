@@ -143,7 +143,7 @@ number: SQL → Genie Code; Python on serverless → a notebook you run.
   **`gold_trial_prescreen_wide` VIEW** preserves the old one-row-per-person A/B/C shape.
 - **🚩 Checkpoint 6, Audited, data-driven cohort exists.** `gold_trial_prescreen` (LONG) built; the
   source-split cell shows non-zero `'nlp'` eligible counts. The cohort grew because of the NLP step.
-  Numbers preserved: **Trial A 140 / Trial B 56 / +31 NLP-recovered**, plus **net-new Trial C (53)**
+  Numbers preserved: **Trial A 140 / Trial B 70 / NLP-recovered +31 for A, +14 for B**, plus **net-new Trial C (53)**
   that screened **with no code change** because it came in via the join. **This is the end-to-end
   payoff; make the team say what the audit column buys them in a clinical setting, and that adding
   Trial C was a DE file drop, not an ML edit.**
@@ -206,7 +206,7 @@ number: SQL → Genie Code; Python on serverless → a notebook you run.
 | 3 | The gap is named | team states "~60 invisible to SQL" |
 | 4 | Notes-only recovered | `silver_nlp_biomarkers` = 240, ~60 recovered |
 | 5 | (opt) Model in UC | `clinicalbert_note_embedder` registered, embeddings written |
-| 6 | Audited, data-driven cohort | LONG `gold_trial_prescreen` joins `silver_trial_criteria`; A 140 / B 56 / +31 NLP; Trial C 53 with no code change; `_wide` view present |
+| 6 | Audited, data-driven cohort | LONG `gold_trial_prescreen` joins `silver_trial_criteria`; A 140 / B 70 / NLP +31 for A, +14 for B; Trial C 53 with no code change; `_wide` view present |
 | 7 | Four runs in MLflow | 2×2 leaderboard + error patterns |
 | 8 | Genie headline | NLP-recovery count matches verify SQL |
 

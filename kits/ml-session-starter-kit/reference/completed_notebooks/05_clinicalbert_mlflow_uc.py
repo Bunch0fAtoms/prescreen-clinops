@@ -1,58 +1,47 @@
 # Databricks notebook source
 # MAGIC %md-sandbox
 # MAGIC <div style="background:linear-gradient(90deg,#C8102E 0%,#7A0019 100%); color:white; padding:22px 28px; border-radius:8px">
-# MAGIC   <div style="font-size:0.9em; letter-spacing:2px; opacity:0.85">NOTEBOOK 05 · CLINICALBERT + MLFLOW · ✅ PRE-BUILT, OPTIONAL</div>
-# MAGIC   <div style="font-size:2.0em; font-weight:700; margin-top:4px">🧬 Bring your own model: ClinicalBERT note embeddings, governed by Unity Catalog</div>
+# MAGIC   <div style="font-size:0.9em; letter-spacing:2px; opacity:0.85">NOTEBOOK 05 · CLINICALBERT + MLFLOW + SERVING · COMPLETED</div>
+# MAGIC   <div style="font-size:2.0em; font-weight:700; margin-top:4px">🧬 Bring your own model: ClinicalBERT, governed by Unity Catalog, served on an endpoint</div>
 # MAGIC   <div style="font-size:1.1em; margin-top:8px; max-width:880px; opacity:0.95">
 # MAGIC     Register a domain HuggingFace encoder to Unity Catalog with MLflow, turn every pathology note
-# MAGIC     into a meaningful vector at scale in Spark, and prove the embeddings find semantically similar
-# MAGIC     reports, no data ever leaves the platform.
+# MAGIC     into a meaningful vector at scale in Spark, deploy it to a Model Serving endpoint, and prove
+# MAGIC     the embeddings find semantically similar reports. No data ever leaves the platform.
 # MAGIC   </div>
 # MAGIC </div>
 
 # COMMAND ----------
 
 # MAGIC %md-sandbox
-# MAGIC <div style="background:#FFF8E1; border-left:6px solid #F2A900; padding:16px 20px; border-radius:4px">
-# MAGIC <div style="font-size:1.15em; font-weight:700; color:#7A4F00">✅ This notebook is PRE-BUILT. Running it is OPTIONAL.</div>
-# MAGIC <div style="margin-top:8px">
-# MAGIC The <code>ai_query</code> path you built in nb 04 is what the rest of the build needs. It produced
-# MAGIC <code>silver_nlp_biomarkers</code>, the table nb 06 fuses into the gold view. <b>This notebook is a
-# MAGIC separate value story</b>, not on the critical path: <i>"we have our OWN model / fine-tune, can we
-# MAGIC run it on governed Databricks?"</i> It shows the <b>register-to-UC + score-in-Spark</b> mechanics
-# MAGIC using ClinicalBERT for what it is genuinely good at, <b>embeddings</b> (not classification), and
-# MAGIC closes with a similarity-search demo. The code is written for you; read it for the governance
-# MAGIC story, and <b>run it only if</b> your workspace has HuggingFace egress.<br><br>
-# MAGIC <b>Fallback:</b> if ClinicalBERT can't download or serve in your workspace, that's fine. Skip to
-# MAGIC nb 06. Nothing downstream depends on the embeddings; they are an additive cohort-discovery primitive.
-# MAGIC </div>
+# MAGIC ## 🎯 The lesson, up front
+# MAGIC <div style="background:#E8F5E9; border-left:6px solid #2E7D32; padding:14px 18px; border-radius:4px">
+# MAGIC <b>Fred Hutch can run its own model on governed Databricks, at scale, with full lineage, and never
+# MAGIC move a byte of data off the platform.</b> We take a clinical HuggingFace model, register it to Unity
+# MAGIC Catalog like a table, score every note in Spark, and serve it on an endpoint.
+# MAGIC <br><br>
+# MAGIC <b>What the model actually does:</b> it turns <i>one</i> pathology note into <i>one</i> 768-number
+# MAGIC vector (an <b>embedding</b>). It does <b>not</b> compare notes. Finding similar patients is a
+# MAGIC separate step that runs on the vectors afterward. <b>Embed first, compare second.</b>
 # MAGIC </div>
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## What is this notebook for?
+# MAGIC ## The five moves
 # MAGIC
-# MAGIC **ClinicalBERT** (`emilyalsentzer/Bio_ClinicalBERT`) is a BERT model pre-trained on clinical text
-# MAGIC (the MIMIC-III ICU notes), so it "speaks" the language of pathology reports far better than a
-# MAGIC general-purpose BERT. It is a great example of a **domain model a research team might already own**.
-# MAGIC
-# MAGIC This notebook tells the **bring-your-own-model + governance** story in four moves:
-# MAGIC 1. **Wrap** ClinicalBERT's base encoder as an MLflow `pyfunc` that turns a note into a 768-dim
-# MAGIC    **embedding** (mean-pooled over the tokens).
-# MAGIC 2. **Register** it to **Unity Catalog**: versioned, permissioned, lineage-tracked just like a table.
-# MAGIC 3. **Score** every pathology note **in Spark** via `mlflow.pyfunc.spark_udf`: distributed, no
-# MAGIC    `toPandas()` round-trip, full UC lineage from `note` → `silver_clinicalbert_note_embeddings`.
-# MAGIC 4. **Demo the value**: cosine-similarity search over the embeddings surfaces the most similar
-# MAGIC    pathology reports, the building block for cohort discovery and retrieval.
+# MAGIC **ClinicalBERT** (`emilyalsentzer/Bio_ClinicalBERT`) is pre-trained on clinical text (MIMIC-III ICU
+# MAGIC notes), so it reads pathology reports better than a general-purpose BERT. It stands in for a
+# MAGIC **domain model a research team already owns**. We:
+# MAGIC 1. **Wrap** its encoder as an MLflow `pyfunc` that turns a note into a 768-dim embedding.
+# MAGIC 2. **Register** it to **Unity Catalog**: versioned, permissioned, lineage-tracked like a table.
+# MAGIC 3. **Score** every note **in Spark** via `spark_udf`: distributed, no `toPandas()`, full UC lineage.
+# MAGIC 4. **Deploy** it to a **Model Serving endpoint** so it is reachable online and from SQL via `ai_query`.
+# MAGIC 5. **Show the value**: cosine-similarity search over the embeddings finds similar reports.
 # MAGIC
 # MAGIC <div style="background:#FFF8E1; border-left:6px solid #F2A900; padding:12px 16px; border-radius:4px">
-# MAGIC <b>How this relates to notebook 04.</b> The <code>ai_query</code> path in nb 04 is the
-# MAGIC <b>managed-model extraction path</b>: one SQL function over a Foundation Model endpoint that
-# MAGIC <i>accurately pulls HER2 / ER / PR</i> from the notes. ClinicalBERT here is the
-# MAGIC <b>bring-your-own-model</b> path: it answers <i>"we have our own model, can we run it on governed
-# MAGIC Databricks?"</i> We use ClinicalBERT for what it is genuinely good at, <b>embeddings</b>, not
-# MAGIC classification, and register + score it with full UC governance and lineage.
+# MAGIC <b>Contrast with notebook 04.</b> nb 04's <code>ai_query</code> is the <b>managed-model</b> path: a
+# MAGIC Foundation Model that <i>extracts</i> HER2/ER/PR. This notebook is the <b>bring-your-own-model</b>
+# MAGIC path: your own model, governed and served the same way any custom model would be.
 # MAGIC </div>
 
 # COMMAND ----------
@@ -63,9 +52,8 @@
 # MAGIC <div style="background:#E3F2FD; border-left:6px solid #1565C0; padding:12px 16px; border-radius:4px">
 # MAGIC This notebook <b>downloads model weights from HuggingFace</b>, so it needs <b>serverless</b> or a
 # MAGIC cluster <b>with outbound internet access</b>. The model is small (~110M params, ~440&nbsp;MB) and runs
-# MAGIC fine on CPU. Each note is <b>one forward pass</b>, so embedding all the reports is fast. If your
-# MAGIC workspace blocks public internet, mirror the model into a UC Volume first and point
-# MAGIC <code>from_pretrained</code> at that path.
+# MAGIC fine on CPU. Each note is <b>one forward pass</b>. If your workspace blocks public internet, mirror
+# MAGIC the model into a UC Volume first and point <code>from_pretrained</code> at that path.
 # MAGIC </div>
 
 # COMMAND ----------
@@ -85,13 +73,8 @@ dbutils.library.restartPython()
 # COMMAND ----------
 
 # DBTITLE 1,Set the working context: read OMOP from the source schema
-# This notebook READS the read-only OMOP `note` table, which lives in your SOURCE schema
-# (e.g. clinops_foundation), and WRITES its embeddings to your OWN schema. `_config` set the
-# default catalog/schema to your write schema; here we point the default at the SOURCE so the
-# `note` reads resolve by bare name (same pattern as notebook 01). Everything this notebook
-# CREATES is written fully-qualified through fqn(), so it still lands in your write schema
-# regardless of the default. The two schemas are usually different, so one default cannot
-# cover both; reads follow the default, writes are pinned by fqn().
+# This notebook READS the read-only OMOP `note` table, which lives in your SOURCE schema, and WRITES
+# its embeddings to your OWN schema. Reads follow the default catalog/schema; writes are pinned by fqn().
 spark.sql(f"USE CATALOG {SOURCE_CATALOG}")
 spark.sql(f"USE SCHEMA {SOURCE_SCHEMA}")
 print(f"Reading OMOP source from {SOURCE_CATALOG}.{SOURCE_SCHEMA}")
@@ -102,11 +85,9 @@ print(f"Writing tables to {CATALOG}.{SCHEMA} (via fqn())")
 # DBTITLE 1,Point MLflow at Unity Catalog as the model registry
 import mlflow
 
-# Register models into UC (three-level namespace) rather than the legacy workspace registry.
 mlflow.set_registry_uri("databricks-uc")
 
-# The model's governed name: catalog.schema.model, lives right beside our tables.
-MODEL_NAME = fqn("clinicalbert_note_embedder")
+MODEL_NAME = fqn("clinicalbert_note_embedder")   # catalog.schema.model
 HF_MODEL   = "emilyalsentzer/Bio_ClinicalBERT"
 
 print(f"Registry  : databricks-uc")
@@ -120,17 +101,16 @@ print(f"Source    : {HF_MODEL}")
 # MAGIC
 # MAGIC We load the **base encoder** (`AutoModel`, not the masked-LM head) and, for each note, run **one
 # MAGIC forward pass** then **mean-pool** the final hidden states over the attention mask. That collapses a
-# MAGIC variable-length note into a single fixed **768-dim vector** that captures what the report is about.
+# MAGIC variable-length note into a single fixed **768-dim vector**.
 # MAGIC
 # MAGIC <div style="background:#E8F5E9; border-left:6px solid #2E7D32; padding:12px 16px; border-radius:4px">
-# MAGIC <b>Why embeddings, not a classifier?</b> Bio_ClinicalBERT was never fine-tuned to call HER2/ER/PR, so
-# MAGIC asking it to classify is unreliable. <code>ai_query</code> (nb 04) owns accurate extraction. What a
-# MAGIC pre-trained clinical encoder <i>is</i> excellent at is producing <b>meaningful representations</b> of
-# MAGIC clinical text. Those power similarity search, clustering, cohort discovery and retrieval, and they
-# MAGIC let us tell the governance story cleanly with a model doing what it's actually good at.
+# MAGIC <b>Why embeddings, not a classifier?</b> Bio_ClinicalBERT was never fine-tuned to call HER2/ER/PR.
+# MAGIC <code>ai_query</code> (nb 04) owns accurate extraction. A pre-trained clinical encoder is excellent
+# MAGIC at producing <b>meaningful representations</b> of clinical text, which power similarity search,
+# MAGIC clustering, cohort discovery, and retrieval.
 # MAGIC <br><br><b>Embeds, does not compare.</b> <code>predict()</code> takes one note and returns its
 # MAGIC vector. It never sees two notes at once, so it cannot compare them. Comparison runs later, on the
-# MAGIC stored vectors (the similarity-search step). Embed once, reuse the vectors for many comparisons.
+# MAGIC stored vectors (step 6). Embed once, reuse the vectors for many comparisons.
 # MAGIC </div>
 
 # COMMAND ----------
@@ -143,7 +123,7 @@ class ClinicalBertEmbedder(mlflow.pyfunc.PythonModel):
     """Mean-pooled sentence embeddings from Bio_ClinicalBERT's base encoder.
 
     This model EMBEDS a single note (text in, one 768-dim vector out). It does NOT
-    compare notes; comparison happens downstream on the stored vectors.
+    compare notes; comparison happens downstream on the stored vectors (step 6).
 
     For each note we run ONE forward pass through the encoder (AutoModel, not
     MaskedLM), then mean-pool the last_hidden_state over the attention mask to
@@ -201,12 +181,10 @@ print("✅ ClinicalBertEmbedder pyfunc defined.")
 # COMMAND ----------
 
 # DBTITLE 1,Download the HF weights once into a local artifact dir
-# Pull the encoder + tokenizer to a local path so we can package them AS MLflow
-# artifacts. This makes the registered model self-contained: scoring nodes load
-# weights from UC, not from the public internet.
-# NOTE: save_pretrained(safe_serialization=False) writes pytorch_model.bin.
-# safetensors triggered an executor-side "SafetensorError: header too large" on
-# spark_udf load.
+# Pull the encoder + tokenizer to a local path so we can package them AS MLflow artifacts. This makes
+# the registered model self-contained: scoring nodes load weights from UC, not the public internet.
+# NOTE: save_pretrained(safe_serialization=False) writes pytorch_model.bin. safetensors triggered an
+# executor-side "SafetensorError: header too large" on spark_udf load.
 import tempfile, os
 from transformers import AutoTokenizer, AutoModel
 
@@ -222,8 +200,7 @@ print(f"   files: {os.listdir(local_dir)}")
 # MAGIC ## 3️⃣ Log + register to Unity Catalog
 # MAGIC
 # MAGIC One `log_model` call captures the wrapper code, packages the weights as artifacts, pins the Python
-# MAGIC dependencies, and records an `input_example`. We then `register_model` into our UC namespace. From
-# MAGIC here it is governed: grant `EXECUTE` to a team, see it in Catalog Explorer, track its lineage.
+# MAGIC dependencies, and records an `input_example`. We then `register_model` into our UC namespace.
 
 # COMMAND ----------
 
@@ -232,12 +209,9 @@ import numpy as np
 import pandas as pd
 from mlflow.models.signature import infer_signature
 
-# A tiny, representative input/output example for the model signature.
 input_example = pd.DataFrame(
     {"note_text": ["IHC shows HER2 3+ with strong complete membrane staining; ER negative."]}
 )
-# Output is a (1, 768) float32 array -> the signature infers an array output, which
-# is exactly what spark_udf result_type="array<float>" expects.
 output_example = np.zeros((1, 768), dtype=np.float32)
 signature = infer_signature(input_example, output_example)
 
@@ -252,7 +226,6 @@ with mlflow.start_run(run_name="clinicalbert_note_embedder") as run:
     )
     run_id = run.info.run_id
 
-# Register the logged model into Unity Catalog and capture the version.
 mv = mlflow.register_model(
     model_uri=f"runs:/{run_id}/clinicalbert_note_embedder",
     name=MODEL_NAME,
@@ -265,18 +238,14 @@ print(f"✅ Registered {MODEL_NAME} version {version}")
 # MAGIC %md-sandbox
 # MAGIC ## 4️⃣ Score every pathology note, in Spark, no round-trip
 # MAGIC
-# MAGIC `mlflow.pyfunc.spark_udf` loads the UC model onto **every executor** and returns a Spark UDF. We
-# MAGIC apply it to a Spark DataFrame of notes and write the result straight back to a UC table. The note
-# MAGIC text is **never collected to the driver**. This is the same pattern you would use on 10 million
+# MAGIC `mlflow.pyfunc.spark_udf` loads the UC model onto **every executor** and returns a Spark UDF. The
+# MAGIC note text is **never collected to the driver**. This is the same pattern you would use on 10 million
 # MAGIC notes, not 240.
 # MAGIC
 # MAGIC <div style="background:#E8F5E9; border-left:6px solid #2E7D32; padding:12px 16px; border-radius:4px">
-# MAGIC <b>Why this matters for governance:</b> because the read (<code>note</code>), the model
-# MAGIC (<code>clinicalbert_note_embedder</code>), and the write
-# MAGIC (<code>silver_clinicalbert_note_embeddings</code>) are all UC objects, Databricks records the
-# MAGIC <b>lineage</b> automatically. No <code>toPandas()</code>, no data leaving Spark, nothing to explain
-# MAGIC to your compliance team. We <code>repartition</code> the notes so the forward passes parallelize
-# MAGIC across executors.
+# MAGIC <b>Why this matters for governance:</b> the read (<code>note</code>), the model, and the write
+# MAGIC (<code>silver_clinicalbert_note_embeddings</code>) are all UC objects, so Databricks records the
+# MAGIC <b>lineage</b> automatically. No <code>toPandas()</code>, no data leaving Spark.
 # MAGIC </div>
 
 # COMMAND ----------
@@ -297,8 +266,6 @@ _sample = spark.sql("""
 
 _v0, _v1 = _sample[0]["embedding"], _sample[1]["embedding"]
 print(f"embedding dim : {len(_v0)}")
-print(f"v0[:5]        : {_v0[:5]}")
-print(f"v1[:5]        : {_v1[:5]}")
 print(f"degenerate?   : {_v0 == _v1}  (distinct notes should give distinct vectors)")
 
 # COMMAND ----------
@@ -312,13 +279,8 @@ notes_df = spark.sql("""
 
 scored = (
     notes_df
-    .withColumn("embedding", embed_udf(F.col("note_text")))   # one 768-d vector per note, on executors
-    .select(
-        "person_id",
-        "note_id",
-        "embedding",
-        F.lit("clinicalbert").alias("model_source"),
-    )
+    .withColumn("embedding", embed_udf(F.col("note_text")))
+    .select("person_id", "note_id", "embedding", F.lit("clinicalbert").alias("model_source"))
 )
 
 (
@@ -327,29 +289,117 @@ scored = (
     .option("overwriteSchema", "true")
     .saveAsTable(fqn("silver_clinicalbert_note_embeddings"))
 )
-
 print(f"✅ Wrote {fqn('silver_clinicalbert_note_embeddings')}")
 
 # COMMAND ----------
 
-# DBTITLE 1,Peek at the embeddings table
-# The default schema points at the SOURCE, so we read our write-schema table via fqn().
-display(spark.sql(f"""
-    SELECT person_id, note_id, size(embedding) AS embedding_dim, model_source
-    FROM {fqn('silver_clinicalbert_note_embeddings')}
-    ORDER BY person_id
-    LIMIT 10
-"""))
+# MAGIC %md-sandbox
+# MAGIC ## 5️⃣ Deploy the model to a Model Serving endpoint 🌐 (COMPLETED)
+# MAGIC
+# MAGIC `spark_udf` is the right tool for **batch** scoring. But sometimes you want the model reachable
+# MAGIC **online**: from a SQL query via `ai_query`, from a Genie space, from an app, or from any REST
+# MAGIC client, one note at a time, low latency. That is what a **Model Serving endpoint** is for.
+# MAGIC
+# MAGIC <div style="background:#E3F2FD; border-left:6px solid #1565C0; padding:12px 16px; border-radius:4px">
+# MAGIC <b>Why this is the key distinction to show Fred Hutch.</b> A UC-registered model is not, by itself,
+# MAGIC callable from SQL. <code>ai_query</code> invokes a <b>serving endpoint</b> by name. The Foundation
+# MAGIC Models in nb 04 work from SQL because they are <b>pre-provisioned endpoints</b>. Your own model
+# MAGIC needs an endpoint created first. Below we create one from the UC model version. It provisions in a
+# MAGIC few minutes and, with <code>scale_to_zero_enabled</code>, costs nothing while idle.
+# MAGIC </div>
+
+# COMMAND ----------
+
+# DBTITLE 1,Create (or update) a serving endpoint from the UC model version (COMPLETED)
+from mlflow.deployments import get_deploy_client
+
+deploy_client = get_deploy_client("databricks")
+ENDPOINT_NAME = "clinicalbert_note_embedder"   # workspace-level endpoint name
+
+endpoint_config = {
+    "served_entities": [
+        {
+            "name": "clinicalbert",
+            "entity_name": MODEL_NAME,      # the UC model: catalog.schema.model
+            "entity_version": str(version),
+            "workload_size": "Small",       # smallest CPU workload; fine for a ~110M encoder
+            "scale_to_zero_enabled": True,  # no cost while idle
+        }
+    ]
+}
+
+# Create the endpoint, or update it if a previous run already made it. Provisioning (container build
+# with transformers + torch) takes several minutes; the cell returns immediately and the endpoint
+# reports NOT_READY until the build finishes.
+try:
+    ep = deploy_client.create_endpoint(name=ENDPOINT_NAME, config=endpoint_config)
+    print(f"🚀 Creating endpoint '{ENDPOINT_NAME}' from {MODEL_NAME} v{version} (provisioning...)")
+except Exception as e:
+    if "already exists" in str(e).lower() or "resource_conflict" in str(e).lower():
+        deploy_client.update_endpoint(endpoint=ENDPOINT_NAME, config=endpoint_config)
+        print(f"🔁 Endpoint '{ENDPOINT_NAME}' exists, updated to v{version} (provisioning...)")
+    else:
+        raise
+
+print("Watch it come up under Serving in the left nav. Wait for state READY before the query below.")
+
+# COMMAND ----------
+
+# DBTITLE 1,Wait for the endpoint to be READY (optional, polls for a few minutes)
+import time
+
+def endpoint_ready(name, timeout_s=1200, poll_s=20):
+    """Poll until the endpoint's served model is READY, or time out."""
+    waited = 0
+    while waited < timeout_s:
+        ep = deploy_client.get_endpoint(name)
+        state = (ep.get("state") or {})
+        ready = state.get("ready")
+        cfg_update = state.get("config_update")
+        print(f"  [{waited:>4}s] ready={ready} config_update={cfg_update}")
+        if ready == "READY":
+            return True
+        time.sleep(poll_s)
+        waited += poll_s
+    return False
+
+# Uncomment to block until ready (endpoint container builds can take 5-15 min the first time):
+# endpoint_ready(ENDPOINT_NAME)
+
+# COMMAND ----------
+
+# DBTITLE 1,Query the serving endpoint on a single note (COMPLETED, run once READY)
+# The online path: send one note, get its 768-dim embedding back over REST. This is what an app or a
+# SQL ai_query call hits. Requires the endpoint state to be READY (see the poller above).
+sample_note = spark.sql("""
+    SELECT note_text FROM note WHERE note_source_value = 'PATHOLOGY_REPORT' LIMIT 1
+""").first()["note_text"]
+
+response = deploy_client.predict(
+    endpoint=ENDPOINT_NAME,
+    inputs={"dataframe_records": [{"note_text": sample_note}]},
+)
+vec = response["predictions"][0]
+print(f"Endpoint returned an embedding of length {len(vec)}; first 5 dims: {vec[:5]}")
 
 # COMMAND ----------
 
 # MAGIC %md-sandbox
-# MAGIC ## 5️⃣ The value: semantic similarity search over the embeddings
+# MAGIC <div style="background:#E8F5E9; border-left:6px solid #2E7D32; padding:12px 16px; border-radius:4px">
+# MAGIC <b>Now it is callable from SQL too.</b> With the endpoint READY, the same model answers from a SQL
+# MAGIC cell via <code>ai_query('clinicalbert_note_embedder', note_text)</code>, the identical mechanism
+# MAGIC nb 04 used for the Foundation Model. Batch (<code>spark_udf</code>) and online (endpoint) are two
+# MAGIC front doors to <b>one governed model version</b> in Unity Catalog.
+# MAGIC </div>
+
+# COMMAND ----------
+
+# MAGIC %md-sandbox
+# MAGIC ## 6️⃣ The value: semantic similarity search over the embeddings
 # MAGIC
-# MAGIC Embeddings are only useful if "close in vector space" means "clinically similar". Here we take one
+# MAGIC Embeddings are only useful if "close in vector space" means "clinically similar". We take one
 # MAGIC pathology note, compute its **cosine similarity** to every other note, and surface the **top-3 most
-# MAGIC similar** reports. This is the primitive behind cohort discovery ("find patients like this one"),
-# MAGIC de-duplication, and retrieval-augmented search over the clinical corpus.
+# MAGIC similar** reports. This is the primitive behind cohort discovery ("find patients like this one").
 
 # COMMAND ----------
 
@@ -393,14 +443,12 @@ display(spark.sql(f"""
 
 # MAGIC %md
 # MAGIC <div style="background:#E8F5E9; border-left:6px solid #2E7D32; padding:12px 16px; border-radius:4px">
-# MAGIC <b>What you just did:</b> took a HuggingFace clinical encoder, registered it to <b>Unity Catalog</b>
-# MAGIC as a versioned, permissioned asset, and embedded every pathology note <b>at scale in Spark</b> with
-# MAGIC full lineage (no data round-trips, no ungoverned model files), then showed the embeddings are
-# MAGIC <b>semantically meaningful</b> via similarity search. That is the "bring your own model onto governed
-# MAGIC Databricks" story end-to-end.<br><br>
-# MAGIC The <code>ai_query</code> path (nb 04) stays the managed-model extraction path for HER2/ER/PR;
-# MAGIC ClinicalBERT proves the platform governs and runs a team's own model just as cleanly, and the same
-# MAGIC log → register → <code>spark_udf</code> flow is exactly what you'd use for any custom model.
+# MAGIC <b>What we just did:</b> took a HuggingFace clinical encoder, registered it to <b>Unity Catalog</b>
+# MAGIC as a versioned, permissioned asset, embedded every pathology note <b>at scale in Spark</b> with full
+# MAGIC lineage, <b>deployed it to a Model Serving endpoint</b> so it is reachable online and from SQL, and
+# MAGIC showed the embeddings are semantically meaningful. That is the "bring your own model onto governed
+# MAGIC Databricks" story end to end. The same log → register → <code>spark_udf</code> → serve flow is what
+# MAGIC you would use for any custom model.
 # MAGIC </div>
 # MAGIC
 # MAGIC ## ▶️ Next step

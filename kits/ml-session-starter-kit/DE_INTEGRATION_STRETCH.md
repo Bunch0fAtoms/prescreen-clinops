@@ -114,7 +114,7 @@ all_trials AS (
 
 ## How to test if it worked
 
-1. Check that Trial A and B still return the same counts (140 and 56 eligible)
+1. Check that Trial A and B still return the same counts (140 and 70 eligible)
 2. Look for Trial C in your results:
    ```sql
    SELECT trial_id, COUNT(*) as eligible_count

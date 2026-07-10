@@ -1,7 +1,7 @@
 # Databricks notebook source
 # MAGIC %md-sandbox
 # MAGIC <div style="background:linear-gradient(90deg,#C8102E 0%,#7A0019 100%); color:white; padding:28px 32px; border-radius:8px">
-# MAGIC   <div style="font-size:0.95em; letter-spacing:2px; opacity:0.85">FRED HUTCHINSON CANCER CENTER · ML SESSION · STARTER KIT</div>
+# MAGIC   <div style="font-size:0.95em; letter-spacing:2px; opacity:0.85">FRED HUTCHINSON CANCER CENTER · ML SESSION · COMPLETED REFERENCE</div>
 # MAGIC   <div style="font-size:2.3em; font-weight:700; margin-top:6px">🧬 Clinical Trial Patient Pre-Screening on OMOP</div>
 # MAGIC   <div style="font-size:1.15em; margin-top:10px; max-width:880px; opacity:0.95">
 # MAGIC     Find every patient who might qualify for a breast-cancer trial, including the ones
@@ -13,15 +13,31 @@
 # COMMAND ----------
 
 # MAGIC %md-sandbox
-# MAGIC ## 👋 This is a starter kit: you build the core
+# MAGIC <div style="background:#E8F5E9; border-left:6px solid #2E7D32; padding:14px 18px; border-radius:4px">
+# MAGIC <b>📖 This is the COMPLETED reference set.</b> Every <code>TODO</code> from the starter kit is
+# MAGIC filled in and runnable, in presentation order. Use it to walk Fred Hutch through the solution and
+# MAGIC to see the whole build end to end. The starter-kit skeletons (the ones the team builds during the
+# MAGIC session) live one folder up in <code>notebooks/</code>; the intended answers are in
+# MAGIC <code>reference/ANSWER_KEY.md</code>.
+# MAGIC <br><br>
+# MAGIC <b>The teaching arc:</b> <code>ai_query</code> over free text (nb 04) · a HuggingFace model
+# MAGIC registered to Unity Catalog and served on an endpoint (nb 05) · MLflow evaluation with traces,
+# MAGIC an LLM-as-judge, and a custom metric (nb 07) · Genie self-serve (nb 08) · the coordinator app
+# MAGIC (<code>app/</code>).
+# MAGIC </div>
+
+# COMMAND ----------
+
+# MAGIC %md-sandbox
+# MAGIC ## 👋 A starter kit: the team builds the core
 # MAGIC
 # MAGIC <div style="background:#FFF8E1; border-left:6px solid #F2A900; padding:14px 18px; border-radius:4px">
 # MAGIC The <b>plumbing is wired for you</b>: the 6 OMOP tables (from the shared foundation), the
 # MAGIC pipeline skeleton, Unity Catalog
-# MAGIC governance, all the boilerplate. <b>You</b> write the learnable logic: the eligibility SQL, the
-# MAGIC biomarker pivot, the <code>ai_query</code> NLP extraction, and the MLflow evaluation.<br><br>
-# MAGIC Look for <b><code>&#35; TODO (you build this)</code></b> markers, that's your work. Hooks marked
-# MAGIC <b><code>&#35; EXTENSION (optional)</code></b> are stretch goals (see <code>STRETCH.md</code>).
+# MAGIC governance, all the boilerplate. <b>The team</b> writes the learnable logic: the eligibility SQL,
+# MAGIC the biomarker pivot, the <code>ai_query</code> NLP extraction, and the MLflow evaluation.<br><br>
+# MAGIC In the starter kit, look for <b><code>&#35; TODO (you build this)</code></b> markers. In this
+# MAGIC completed set those are all filled in.
 # MAGIC </div>
 
 # COMMAND ----------
@@ -108,7 +124,7 @@
 # MAGIC   ┌─────────────┐   ┌──────────────┐
 # MAGIC   │ MLflow eval │   │ Genie space  │  nb 07 🧠 / nb 08
 # MAGIC   │ (nb 07)     │   │ self-serve   │
-# MAGIC   └─────────────┘   └──────────────┘            App → nb 09 (STRETCH)
+# MAGIC   └─────────────┘   └──────────────┘            App → app/ (Sita's ask)
 # MAGIC ```
 
 # COMMAND ----------
@@ -118,17 +134,17 @@
 # MAGIC
 # MAGIC Run them in order. Each one is self-contained and starts by `%run ./_config`.
 # MAGIC
-# MAGIC | # | Notebook | What it builds | Your job? |
+# MAGIC | # | Notebook | What it builds | Teaching moment |
 # MAGIC |---|---|---|---|
-# MAGIC | 01 | `01_data_foundation_omop` | Confirm & profile the 6 OMOP tables from the shared foundation | ✅ run + light TODO |
-# MAGIC | 02 | `02_silver_feature_pipeline` | **Silver feature views** (HER2/ER/PR pivot, therapy, demographics) | 🛠️ build the pivots |
-# MAGIC | 03 | `03_exploratory_data_analysis` | EDA, quantify & visualize the notes-only gap | 🛠️ light TODO |
-# MAGIC | 04 | `04_nlp_biomarker_extraction` | `ai_query` + Foundation Models over `note_text` | 🧠 the GenAI core |
-# MAGIC | 05 | `05_clinicalbert_mlflow_uc` | ClinicalBERT registered to Unity Catalog via MLflow | ✅ pre-built, optional |
-# MAGIC | 06 | `06_gold_unified_prescreen` | Gold unified profile + Trial A/B pre-screen | 🛠️ build the fusion |
-# MAGIC | 07 | `07_mlflow_evaluation_runs` | MLflow eval: prompt × model vs. ground truth | 🧠 build the eval |
-# MAGIC | 08 | `08_genie_space_setup` | A Genie space for self-serve cohort questions | ✅ guided setup |
-# MAGIC | 09 | `09_app_TODO` | Coordinator app (stretch) | 🚀 stretch |
+# MAGIC | 01 | `01_data_foundation_omop` | Confirm & profile the 6 OMOP tables from the shared foundation | the planted cohorts + the notes-only gap |
+# MAGIC | 02 | `02_silver_feature_pipeline` | **Silver feature views** (HER2/ER/PR pivot, therapy, demographics) | declarative SQL pipeline |
+# MAGIC | 03 | `03_exploratory_data_analysis` | EDA, quantify & visualize the notes-only gap | the gap that justifies NLP |
+# MAGIC | 04 | `04_nlp_biomarker_extraction` | `ai_query` + Foundation Models over `note_text` | 🧠 **ai_query** the GenAI core |
+# MAGIC | 05 | `05_clinicalbert_mlflow_uc` | ClinicalBERT → Unity Catalog via MLflow, then a serving endpoint | 🧠 **HuggingFace + model serving** |
+# MAGIC | 06 | `06_gold_unified_prescreen` | Gold unified profile + generic, catalog-driven pre-screen | fuse + audit + trials-as-data |
+# MAGIC | 07 | `07_mlflow_evaluation_runs` | MLflow eval + `mlflow.genai.evaluate` traces, LLM-judge, custom metric | 🧠 **evaluation, traces, judges** |
+# MAGIC | 08 | `08_genie_space_setup` | A Genie space for self-serve cohort questions | natural-language self-serve |
+# MAGIC | app | `app/` | Coordinator pre-screening app (Sita's ask) | the last mile |
 
 # COMMAND ----------
 
@@ -156,4 +172,4 @@
 # MAGIC %md
 # MAGIC ## ▶️ Next step
 # MAGIC
-# MAGIC ### → Open **[01_data_foundation_omop]($./01_data_foundation_omop)** to generate the synthetic OMOP data.
+# MAGIC ### → Open **[01_data_foundation_omop]($./01_data_foundation_omop)** to confirm and profile the OMOP data.
