@@ -1,16 +1,37 @@
 # Completed reference notebooks
 
 This folder is the **filled-in, runnable** version of the starter kit in `../../notebooks/`. Every
-`TODO (you build this)` is completed and the notebooks are internally consistent so the whole arc
-runs top to bottom. Use it to present the solution and as the known-good reference copy.
+`TODO (you build this)` is completed and the notebooks are internally consistent, so the whole arc
+runs top to bottom.
+
+These are saved as `.ipynb` **with their outputs**, so they do two jobs at once:
+
+- **Read them as-is.** GitHub renders them inline, and so does the workspace after import, so you can
+  review the whole build, tables, charts, model registration, and evaluation results, without running
+  anything first.
+- **Run them yourself.** Import the folder, set the widgets on `00_START_HERE` (they surface from
+  `_config`, so you do not edit any file), and Run All. The build re-runs against your own workspace.
 
 The starter-kit skeletons the team builds during the session stay in `../../notebooks/`. The worked
 reference solution, per notebook, is in `../ANSWER_KEY.md`. The run-of-show for the review session is
 `../../PRESENTATION_WALKTHROUGH.md`.
 
-To read the same notebooks **already run, with their outputs** (tables, charts, model registration,
-evaluation results), see [`../executed_notebooks/`](../executed_notebooks/). GitHub renders those
-inline, so you can review the whole build without running anything first.
+## Setting your workspace values (no config file to edit)
+
+`_config` defines five widgets. Open `00_START_HERE`, run its first cell (`%run ./_config`), and the
+widgets appear at the top of the notebook. Fill in the two placeholders and the rest have sensible
+defaults:
+
+| Widget | Default | What to set |
+|---|---|---|
+| `catalog` | `<your_catalog>` | your Unity Catalog catalog |
+| `schema` | `clinops_ml` | the schema you write to (features, model, gold) |
+| `warehouse_id` | `<your_wh_id>` | your SQL warehouse ID |
+| `source_schema` | `clinops_foundation` | the schema holding the six read-only OMOP tables |
+| `source_catalog` | *(blank)* | leave blank for synthetic; set it to point at your real OMOP catalog |
+
+The outputs saved in these notebooks are from one example run, so they show an example catalog name.
+Yours will show your own values once you run them.
 
 ## What runs where
 

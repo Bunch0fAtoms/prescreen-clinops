@@ -6,7 +6,7 @@
 > these are the intended approaches + the gotchas so you can unblock without hunting.
 
 The full solution notebooks (the finished build this kit was decomposed from) live in
-`reference/completed_notebooks/` (`00_START_HERE.py` through `08_genie_space_setup.py`). Point there for the complete solution.
+`reference/completed_notebooks/` (`00_START_HERE.ipynb` through `08_genie_space_setup.ipynb`), pre-run with their outputs. Point there for the complete solution.
 
 ---
 
