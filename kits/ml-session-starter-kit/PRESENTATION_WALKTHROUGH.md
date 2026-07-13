@@ -3,7 +3,7 @@
 **Goal.** Walk your stakeholders through the clinical-trial pre-screening solution, so they see
 how it was planned and leave understanding the moving parts they can reuse. This is a teaching
 review, not a live build. Open the completed notebooks in
-`reference/completed_notebooks/` and narrate. It walks the finished arc and the ideas behind it.
+`completed_notebooks/` and narrate. It walks the finished arc and the ideas behind it.
 
 **The story in one line.** A structured SQL query misses the patients whose biomarker status was only
 ever written into a free-text pathology note. We recover those patients with a Foundation Model,
@@ -11,7 +11,7 @@ fuse the two sources with a full audit trail, measure the extraction the way you
 model, and hand a coordinator a plain-English app. The headline: **structured SQL found 109 Trial A
 patients; adding NLP found 140, a gain of 31 real patients** who would otherwise be invisible.
 
-**What to have open.** The completed notebooks in `reference/completed_notebooks/`, the app in
+**What to have open.** The completed notebooks in `completed_notebooks/`, the app in
 `app/`, and a browser tab on the workspace so you can show the MLflow Experiments and Traces tabs and
 the Serving page.
 

@@ -1,6 +1,6 @@
 # Completed reference notebooks
 
-This folder is the **filled-in, runnable** version of the starter kit in `../../notebooks/`. Every
+This folder is the **filled-in, runnable** version of the starter kit in `../notebooks/`. Every
 `TODO (you build this)` is completed and the notebooks are internally consistent, so the whole arc
 runs top to bottom.
 
@@ -12,9 +12,9 @@ These are saved as `.ipynb` **with their outputs**, so they do two jobs at once:
 - **Run them yourself.** Import the folder, set the widgets on `00_START_HERE` (they surface from
   `_config`, so you do not edit any file), and Run All. The build re-runs against your own workspace.
 
-The starter-kit skeletons the team builds during the session stay in `../../notebooks/`. The worked
-reference solution, per notebook, is in `../ANSWER_KEY.md`. The run-of-show for the review session is
-`../../PRESENTATION_WALKTHROUGH.md`.
+The starter-kit skeletons the team builds during the session stay in `../notebooks/`. The worked
+reference solution, per notebook, is in `../reference/ANSWER_KEY.md`. The run-of-show for the review session is
+`../PRESENTATION_WALKTHROUGH.md`.
 
 ## Setting your workspace values (no config file to edit)
 
@@ -47,7 +47,7 @@ Yours will show your own values once you run them.
 | `07_mlflow_evaluation_runs` | filled, plus genai | **MLflow eval, traces, LLM-as-judge, custom metrics** |
 | `08_genie_space_setup` | filled | natural-language self-serve |
 
-The coordinator app is in `../../app/`.
+The coordinator app is in `../app/`.
 
 ## Two reconciliations baked into this set (so it runs standalone)
 

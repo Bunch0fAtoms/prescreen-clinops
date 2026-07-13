@@ -252,9 +252,10 @@ ml-session-starter-kit/
   RUNBOOK.md           ← build-level reference (checkpoints, failure modes)
   GENIE_CODE_PROMPTS.md ← ready-to-use Genie Code build prompts (free-form; the validated set)
   STRETCH.md           ← "make it your own" extension ideas
-  notebooks/           ← reference scaffold (00-09); the build is Genie Code, 05 is the one you run
+  notebooks/           ← build-along skeletons (00-08); the build is Genie Code, 05 is the one you run
+  completed_notebooks/ ← the finished notebooks, pre-run with outputs (read on GitHub, or import and re-run)
   genie/               ← Genie space definition (instructions, prompts, trusted SQL)
-  reference/           ← worked reference solution (fall back to it if a team is stuck)
+  reference/           ← ANSWER_KEY.md, the worked solution notes (fall back if a team is stuck)
   src/data_generation/ ← the synthetic OMOP generator (used by the foundation; do not edit)
   resources/           ← optional bundle job (the foundation already lands the data)
 ```
