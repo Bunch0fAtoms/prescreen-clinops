@@ -8,6 +8,10 @@ The starter-kit skeletons the team builds during the session stay in `../../note
 reference solution, per notebook, is in `../ANSWER_KEY.md`. The run-of-show for the review session is
 `../../PRESENTATION_WALKTHROUGH.md`.
 
+To read the same notebooks **already run, with their outputs** (tables, charts, model registration,
+evaluation results), see [`../executed_notebooks/`](../executed_notebooks/). GitHub renders those
+inline, so you can review the whole build without running anything first.
+
 ## What runs where
 
 | Notebook | State | Teaching moment |
