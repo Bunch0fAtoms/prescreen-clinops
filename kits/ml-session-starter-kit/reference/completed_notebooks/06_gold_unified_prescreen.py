@@ -47,11 +47,9 @@
 # MAGIC data change, not a code change. We seed a small catalog here so this notebook is self-contained.
 # MAGIC
 # MAGIC <div style="background:#E3F2FD; border-left:6px solid #1565C0; padding:12px 16px; border-radius:4px">
-# MAGIC <b>Cross-team stretch (see <code>DE_INTEGRATION_STRETCH.md</code>):</b> the Data Engineering group
-# MAGIC builds this exact table from a live streaming feed as <code>silver_trial_criteria</code> in their
-# MAGIC schema. If they finish in time, repoint the join below from our own table to
-# MAGIC <code>&lt;their_catalog&gt;.clinops_de.silver_trial_criteria</code> and new trials flow through with
-# MAGIC zero code changes. Neither team waits on the other.
+# MAGIC <b>Trials are data:</b> because the join is generic, adding a trial is inserting a row into
+# MAGIC <code>silver_trial_criteria</code>, not changing SQL. Trial C (triple-negative) is one of those
+# MAGIC rows, screened by the same rule with zero code changes.
 # MAGIC </div>
 
 # COMMAND ----------
@@ -310,7 +308,7 @@ Those <b>{nlp['a_nlp'] + nlp['b_nlp']} patients</b> are now in the unified cohor
 # MAGIC %md
 # MAGIC ## 5️⃣ `gold_patient_measurements`: a per-patient test timeline for the app (PRE-BUILT)
 # MAGIC
-# MAGIC Sita's app interrogates one patient: "what tests did this patient have, and when?" This
+# MAGIC The coordinator app interrogates one patient: "what tests did this patient have, and when?" This
 # MAGIC longitudinal view is built straight from the raw OMOP `measurement` table, one row per result.
 
 # COMMAND ----------

@@ -3,3 +3,11 @@ __pycache__/
 *.pyc
 .anthropic_token
 .claude/settings.local.json
+
+# Local-only / internal, never push to the public repo.
+# Version backups (house rule keeps a "(v1 backup)" copy; keep those local).
+*(v1 backup)*
+# Internal variants of a doc: name them <base>_local.<ext> to keep an
+# internal-only copy local while a generic copy ships.
+*_local.*
+*.local.*

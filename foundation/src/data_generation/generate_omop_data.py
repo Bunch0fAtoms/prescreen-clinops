@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Fred Hutch Clinical Trial Pre-Screening — OMOP Synthetic Data Generator
+Clinical Trial Pre-Screening, OMOP Synthetic Data Generator
 
 Generates 300 breast-cancer patients across 3 biomarker-source groups plus
 planted cohorts for two clinical trials. Run via:
@@ -317,8 +317,8 @@ def generate_pathology_note(pid: int, er: str, pr: str, her2: str,
     """
     random.seed(pid * 1000 + 99)
 
-    acc_no = f"FH-PATH-{random.randint(100000, 999999)}"
-    mrn = f"FH-MRN-{pid:06d}"
+    acc_no = f"PATH-{random.randint(100000, 999999)}"
+    mrn = f"MRN-{pid:06d}"
     grade = random.choice([2, 2, 2, 3, 1])  # grade 2 most common
     tumor_size = round(random.uniform(0.8, 4.2), 1)
     ki67 = random.randint(12, 65)
@@ -358,7 +358,7 @@ def generate_pathology_note(pid: int, er: str, pr: str, her2: str,
 
     if struct == 0:
         # ── Structure 0: Formal section-based surgical pathology report ──────
-        note = f"""FRED HUTCHINSON CANCER CENTER
+        note = f"""MERIDIAN CANCER CENTER
 DEPARTMENT OF PATHOLOGY — SURGICAL PATHOLOGY REPORT
 
 Accession No.: {acc_no}
@@ -431,13 +431,13 @@ COMMENT:
   diagnosis; final staging will require complete excision and axillary
   lymph node evaluation.
 
-Pathologist: {provider}, M.D.  |  Fred Hutchinson Cancer Center
+Pathologist: {provider}, M.D.  |  Meridian Cancer Center
 """
 
     else:
         # ── Structure 2: Consultation / outside institution report ─────────────
         note = f"""CONSULTATION SURGICAL PATHOLOGY
-Fred Hutchinson Cancer Center — Department of Pathology
+Meridian Cancer Center — Department of Pathology
 
 Accession: {acc_no}
 Outside MRN: {mrn}
@@ -472,7 +472,7 @@ def generate_generic_note(pid: int, dx_date: date) -> str:
     """Return a clinical progress note with NO biomarker mention (structured-only patients)."""
     random.seed(pid * 1000 + 77)
     note_date = dx_date + timedelta(days=random.randint(30, 120))
-    mrn = f"FH-MRN-{pid:06d}"
+    mrn = f"MRN-{pid:06d}"
     provider = f"{fake.first_name()} {fake.last_name()}"
     cycles = random.randint(2, 6)
     chemo = random.choice(["AC-T (doxorubicin/cyclophosphamide followed by paclitaxel)",
@@ -502,7 +502,7 @@ ASSESSMENT / PLAN:
   4. Return in 3 weeks for next cycle.
 
 {provider}, MD — Breast Oncology
-Fred Hutchinson Cancer Center
+Meridian Cancer Center
 """.strip()
 
 
@@ -661,8 +661,9 @@ def make_patient_profiles() -> pd.DataFrame:
         name = fake.name_female()
 
         # ── High-profile / VIP flag ─────────────────────────────────────────
-        # A fixed, deterministic set of patients flagged as high-profile (VIP),
-        # mirroring Fred Hutch's real celebrity/VIP indicator. Deliberately
+        # A fixed, deterministic set of patients flagged as high-profile (VIP).
+        # This is a synthetic high-profile / VIP flag added as a target for the
+        # governance row-filter demo. Deliberately
         # overlaps BOTH trial-eligible cohorts (Trial A = ids 1–20, Trial B =
         # ids 31–50) plus a couple of general patients, so a governance
         # row-filter/ABAC policy visibly removes eligible patients from the
@@ -683,7 +684,7 @@ def make_patient_profiles() -> pd.DataFrame:
             "location_id":                None,
             "provider_id":                None,
             "care_site_id":               None,
-            "person_source_value":        f"FH-{pid:06d}",
+            "person_source_value":        f"PT-{pid:06d}",
             "gender_source_value":        "FEMALE",
             "gender_source_concept_id":   GENDER_FEMALE,
             "race_source_value":          race_sv,
@@ -1073,11 +1074,11 @@ def build_note(profiles: pd.DataFrame) -> pd.DataFrame:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# FULL FH SCHEMAS — every column, exact types, exact nullability.
+# OMOP CDM SCHEMAS — every column, exact types, exact nullability.
 # Parquet files written by write_table() match these schemas 1-for-1, which
 # is required both to avoid the "Cannot find column index" Delta read error
-# and to satisfy the synth→real toggle (real curated_omop.omop tables have
-# this exact shape).
+# and to satisfy the synth→real toggle: the tables follow the OMOP Common Data
+# Model (a public open standard), so any OMOP-conformant source has this shape.
 # ─────────────────────────────────────────────────────────────────────────────
 
 TABLE_SCHEMAS: dict[str, StructType] = {
@@ -1227,7 +1228,7 @@ TABLE_SCHEMAS: dict[str, StructType] = {
 # ─────────────────────────────────────────────────────────────────────────────
 
 def write_table(df: pd.DataFrame, table_name: str) -> None:
-    """Drop the target table, then write with the exact full FH schema.
+    """Drop the target table, then write with the exact full OMOP schema.
 
     Using an explicit StructType + overwriteSchema=true guarantees that the
     parquet column set exactly equals the declared Delta schema, fixing the
@@ -1262,14 +1263,13 @@ def write_table(df: pd.DataFrame, table_name: str) -> None:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def main():
-    print(f"\n🏥  Fred Hutch OMOP Synthetic Data Generator")
+    print(f"\n🏥  Clinical Trial Pre-Screening OMOP Synthetic Data Generator")
     print(f"    Target: {CATALOG}.{SCHEMA}\n")
 
     if SYNTHETIC in ("no", "false", "0"):
         print("⏭️  run_with_synthetic_data=no — skipping synthetic OMOP generation.")
-        print("    Downstream tracks read the 6 OMOP tables from your real source")
-        print("    (source_catalog.source_schema, e.g. curated_omop.omop). Nothing to generate here.")
-        print("    (The trials feed is separate and still runs — it is net-new synthetic data.)")
+        print("    The ML notebooks read the 6 OMOP tables from your real source")
+        print("    (source_catalog.source_schema, your own OMOP source). Nothing to generate here.")
         return
 
     spark.sql(f"CREATE SCHEMA IF NOT EXISTS {CATALOG}.{SCHEMA}")

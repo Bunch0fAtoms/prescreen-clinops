@@ -15,7 +15,7 @@
 # MAGIC %md-sandbox
 # MAGIC ## 🎯 The lesson, up front
 # MAGIC <div style="background:#E8F5E9; border-left:6px solid #2E7D32; padding:14px 18px; border-radius:4px">
-# MAGIC <b>Fred Hutch can run its own model on governed Databricks, at scale, with full lineage, and never
+# MAGIC <b>Your team can run its own model on governed Databricks, at scale, with full lineage, and never
 # MAGIC move a byte of data off the platform.</b> We take a clinical HuggingFace model, register it to Unity
 # MAGIC Catalog like a table, score every note in Spark, and serve it on an endpoint.
 # MAGIC <br><br>
@@ -236,52 +236,60 @@ print(f"✅ Registered {MODEL_NAME} version {version}")
 # COMMAND ----------
 
 # MAGIC %md-sandbox
-# MAGIC ## 4️⃣ Score every pathology note, in Spark, no round-trip
+# MAGIC ## 4️⃣ Score every pathology note with the governed model
 # MAGIC
-# MAGIC `mlflow.pyfunc.spark_udf` loads the UC model onto **every executor** and returns a Spark UDF. The
-# MAGIC note text is **never collected to the driver**. This is the same pattern you would use on 10 million
-# MAGIC notes, not 240.
+# MAGIC We load the registered Unity Catalog model and embed every pathology note. The encoder is small
+# MAGIC (~110M params) and runs on CPU, so the note set scores quickly. On very large note volumes you
+# MAGIC would push the forward passes onto Spark executors; here the governed model and the governed
+# MAGIC write are the point.
 # MAGIC
 # MAGIC <div style="background:#E8F5E9; border-left:6px solid #2E7D32; padding:12px 16px; border-radius:4px">
 # MAGIC <b>Why this matters for governance:</b> the read (<code>note</code>), the model, and the write
-# MAGIC (<code>silver_clinicalbert_note_embeddings</code>) are all UC objects, so Databricks records the
-# MAGIC <b>lineage</b> automatically. No <code>toPandas()</code>, no data leaving Spark.
+# MAGIC (<code>silver_clinicalbert_note_embeddings</code>) are all Unity Catalog objects, so Databricks
+# MAGIC records the <b>lineage</b> automatically, model included.
 # MAGIC </div>
 
 # COMMAND ----------
 
-# DBTITLE 1,Quick check, embeddings on a 10-note sample
+# DBTITLE 1,Load the governed UC model and embed every note
+import pandas as pd
 from pyspark.sql import functions as F
 
 model_uri = f"models:/{MODEL_NAME}/{version}"
-embed_udf = mlflow.pyfunc.spark_udf(spark, model_uri=model_uri, result_type="array<float>")
-print(f"✅ spark_udf ready from {model_uri}")
+model = mlflow.pyfunc.load_model(model_uri)   # load the governed model straight from Unity Catalog
+print(f"✅ Loaded governed model {model_uri}")
 
-_sample = spark.sql("""
-    SELECT person_id, note_id, note_text
-    FROM note
-    WHERE note_source_value = 'PATHOLOGY_REPORT'
-    LIMIT 10
-""").withColumn("embedding", embed_udf(F.col("note_text"))).collect()
+# Read the pathology notes and embed them with the model. The read is from the read-only OMOP source.
+notes_pdf = (
+    spark.table(src("note"))
+         .where("note_source_value = 'PATHOLOGY_REPORT'")
+         .select("person_id", "note_id", "note_text")
+         .toPandas()
+)
+emb = model.predict(pd.DataFrame({"note_text": notes_pdf["note_text"].tolist()}))
+notes_pdf["embedding"] = [list(map(float, row)) for row in emb]
 
-_v0, _v1 = _sample[0]["embedding"], _sample[1]["embedding"]
-print(f"embedding dim : {len(_v0)}")
-print(f"degenerate?   : {_v0 == _v1}  (distinct notes should give distinct vectors)")
+print(f"scored notes  : {len(notes_pdf)}")
+print(f"embedding dim : {len(notes_pdf['embedding'].iloc[0])}")
+print(f"degenerate?   : {notes_pdf['embedding'].iloc[0] == notes_pdf['embedding'].iloc[1]}  (distinct notes should give distinct vectors)")
 
 # COMMAND ----------
 
-# DBTITLE 1,Embed all pathology notes and write the silver table
-notes_df = spark.sql("""
-    SELECT person_id, note_id, note_text
-    FROM note
-    WHERE note_source_value = 'PATHOLOGY_REPORT'
-""").repartition(8)   # parallelize the forward passes across executors
+# DBTITLE 1,Write the note embeddings back to Unity Catalog
+from pyspark.sql import types as T
 
-scored = (
-    notes_df
-    .withColumn("embedding", embed_udf(F.col("note_text")))
-    .select("person_id", "note_id", "embedding", F.lit("clinicalbert").alias("model_source"))
-)
+notes_pdf["model_source"] = "clinicalbert"
+_schema = T.StructType([
+    T.StructField("person_id",    T.LongType()),
+    T.StructField("note_id",      T.LongType()),
+    T.StructField("embedding",    T.ArrayType(T.FloatType())),
+    T.StructField("model_source", T.StringType()),
+])
+_rows = [
+    (int(r.person_id), int(r.note_id), [float(x) for x in r.embedding], r.model_source)
+    for r in notes_pdf.itertuples(index=False)
+]
+scored = spark.createDataFrame(_rows, _schema)
 
 (
     scored.write
@@ -301,7 +309,7 @@ print(f"✅ Wrote {fqn('silver_clinicalbert_note_embeddings')}")
 # MAGIC client, one note at a time, low latency. That is what a **Model Serving endpoint** is for.
 # MAGIC
 # MAGIC <div style="background:#E3F2FD; border-left:6px solid #1565C0; padding:12px 16px; border-radius:4px">
-# MAGIC <b>Why this is the key distinction to show Fred Hutch.</b> A UC-registered model is not, by itself,
+# MAGIC <b>Why this is the key distinction to show your stakeholders.</b> A UC-registered model is not, by itself,
 # MAGIC callable from SQL. <code>ai_query</code> invokes a <b>serving endpoint</b> by name. The Foundation
 # MAGIC Models in nb 04 work from SQL because they are <b>pre-provisioned endpoints</b>. Your own model
 # MAGIC needs an endpoint created first. Below we create one from the UC model version. It provisions in a
@@ -368,19 +376,23 @@ def endpoint_ready(name, timeout_s=1200, poll_s=20):
 
 # COMMAND ----------
 
-# DBTITLE 1,Query the serving endpoint on a single note (COMPLETED, run once READY)
+# DBTITLE 1,Query the serving endpoint on a single note (COMPLETED, waits for READY)
 # The online path: send one note, get its 768-dim embedding back over REST. This is what an app or a
-# SQL ai_query call hits. Requires the endpoint state to be READY (see the poller above).
-sample_note = spark.sql("""
-    SELECT note_text FROM note WHERE note_source_value = 'PATHOLOGY_REPORT' LIMIT 1
-""").first()["note_text"]
+# SQL ai_query call hits. Endpoints provision asynchronously (first container build can take 5-15 min),
+# so we wait for READY, then query. If it is still building, re-run this cell once it reports READY.
+if endpoint_ready(ENDPOINT_NAME, timeout_s=600, poll_s=20):
+    sample_note = spark.sql("""
+        SELECT note_text FROM note WHERE note_source_value = 'PATHOLOGY_REPORT' LIMIT 1
+    """).first()["note_text"]
 
-response = deploy_client.predict(
-    endpoint=ENDPOINT_NAME,
-    inputs={"dataframe_records": [{"note_text": sample_note}]},
-)
-vec = response["predictions"][0]
-print(f"Endpoint returned an embedding of length {len(vec)}; first 5 dims: {vec[:5]}")
+    response = deploy_client.predict(
+        endpoint=ENDPOINT_NAME,
+        inputs={"dataframe_records": [{"note_text": sample_note}]},
+    )
+    vec = response["predictions"][0]
+    print(f"Endpoint returned an embedding of length {len(vec)}; first 5 dims: {vec[:5]}")
+else:
+    print("⏳ Endpoint still provisioning. Re-run this cell once it reports READY under Serving in the left nav.")
 
 # COMMAND ----------
 

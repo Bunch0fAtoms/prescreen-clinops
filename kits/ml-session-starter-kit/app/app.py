@@ -1,15 +1,15 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# Fred Hutch Clinical Trial Pre-Screening — Coordinator App (Streamlit)
+# Clinical Trial Pre-Screening: Coordinator App (Streamlit)
 #
-# Audience: a research coordinator (stakeholder: Sita). Pick a breast-cancer
+# Audience: a research coordinator. Pick a breast-cancer
 # trial, see which patients are eligible and WHY, and see a data-provenance
 # badge on every patient. The provenance badge is the whole story: some patients
 # are eligible only because natural language processing (NLP) recovered a
 # biomarker from a clinical note that structured data alone would have missed.
 #
 # Reads two Unity Catalog (UC) gold tables built by the notebooks:
-#   1. gold_trial_prescreen_wide   — one row per patient, eligibility per trial
-#   2. gold_patient_measurements   — a per-patient test timeline (drill-down)
+#   1. gold_trial_prescreen_wide:  one row per patient, eligibility per trial
+#   2. gold_patient_measurements:  a per-patient test timeline (drill-down)
 #
 # Auth + config: see app.yaml. Runs as the app service principal in Databricks
 # Apps, or locally with a personal access token (PAT) in DATABRICKS_TOKEN.
@@ -229,7 +229,7 @@ def render_trial_criteria(crit: dict) -> None:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Page setup + Fred Hutch-ish header (red/navy, no external assets or CDNs).
+# Page setup + branded header (red/navy, no external assets or CDNs).
 # ─────────────────────────────────────────────────────────────────────────────
 st.set_page_config(page_title="Trial Pre-Screening — Coordinator", page_icon="🔬", layout="wide")
 
@@ -278,7 +278,7 @@ with st.sidebar:
     # The selected trial's eligibility rules, straight from the trials catalog.
     try:
         _criteria_map = load_criteria()
-    except Exception:  # noqa: BLE001 — criteria card is best-effort, never blocks the app
+    except Exception:  # noqa: BLE001, criteria card is best-effort, never blocks the app
         _criteria_map = {}
     render_trial_criteria(_criteria_map.get(trial_key))
     st.divider()
@@ -295,7 +295,7 @@ reason_col = trial["reason"]
 # ── Load data. Fail gracefully with a readable message. ──────────────────────
 try:
     df = load_prescreen()
-except Exception as exc:  # noqa: BLE001 — surface any connection/query error to the user
+except Exception as exc:  # noqa: BLE001, surface any connection/query error to the user
     st.error(f"Could not read {PRESCREEN_TABLE}.\n\n{exc}")
     st.stop()
 
@@ -325,7 +325,7 @@ def decision_badge_html(person_id) -> str:
             'border-radius:999px;padding:2px 10px;font-size:12px;font-weight:600;">👎 Rejected</span>')
 
 # Patients eligible for the selected trial.
-eligible = df[df[elig_col] == True].copy()  # noqa: E712 — explicit boolean match
+eligible = df[df[elig_col] == True].copy()  # noqa: E712, explicit boolean match
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Header KPIs: total eligible, NLP-recovered count, and the structured baseline

@@ -1,23 +1,19 @@
-# 🧱 Foundation, stand this up first, on Day 1
+# 🧱 Foundation, stand this up first
 
-**Goal: create the one shared foundation every group builds on.** Run this once, in the
-whole-room block at the start, before the groups split. It produces two things:
+**Goal: create the data foundation the ML pre-screen builds on.** Run this once. It produces the
+six synthetic OMOP Common Data Model (CDM) tables, 300 breast-cancer patients across `person`,
+`condition_occurrence`, `measurement`, `observation`, `drug_exposure`, and `note`. These are clean,
+read-only, and shared. The ML notebooks read them and build on top.
 
-1. **Six synthetic OMOP CDM tables**, 300 breast-cancer patients across `person`,
-   `condition_occurrence`, `measurement`, `observation`, `drug_exposure`, and `note`. These are
-   clean, read-only, and shared. Both the Data Engineering and the Applied AI groups start from
-   the same six tables.
-2. **A clinical-trials JSON feed** landed into a `trial_landing` Volume. This is the net-new feed
-   the Data Engineering group ingests during their section.
+The six tables follow the OMOP Common Data Model (OMOP CDM), a public open standard, so moving from
+synthetic to real data later is a configuration change, not a rewrite. Because the tables are
+OMOP-conformant, the same queries run unchanged against any OMOP source you point them at.
 
-The six tables match the column names and types of Fred Hutch's real `curated_omop.omop` schema,
-so moving from synthetic to real data later is a configuration change, not a rewrite.
-
-One column is an exception. The `person` table includes a synthetic-only `is_high_profile` (VIP)
-flag, added so the Governance track has a real row-filter target. Fred Hutch's real
-`curated_omop.omop.person` does not have this column. When you switch to real data, the adaptation
-skill removes references to it from the downstream code it adapts, so nothing breaks. If Fred Hutch
-has its own high-profile indicator, the skill can point the row filter at that instead.
+One column is an exception. The `person` table includes a synthetic high-profile / VIP flag,
+`is_high_profile`, added as a target for the governance row-filter demo. A standard OMOP source
+does not have this column. When you switch to real data, the adaptation skill removes references to
+it from the downstream code it adapts, so nothing breaks. If your OMOP source has its own
+high-profile indicator, the skill can point the row filter at that instead.
 
 ## How to stand it up
 
@@ -46,57 +42,27 @@ databricks bundle deploy --target client
 databricks bundle run foundation_setup_job --target client
 ```
 
-The job has two tasks. `generate_omop_data` builds the six tables. `land_trial_feed` drops the
-trials JSON into the Volume. Both are reproducible: a fixed random seed means every run produces
-the same 300 patients.
+The job has one task, `generate_omop_data`, which builds the six tables. It is reproducible: a
+fixed random seed (42) means every run produces the same 300 patients.
 
-**One shared home for everything: `/Workspace/fh-onsite/prescreen`.** Two things live under this one
-folder so all four groups find them in the same place: the **repo** (as a Git folder, where each group
-opens its kit) and the **deployed foundation** (the shared data). Set both up once, before the groups
-split.
+**Deploy to a shared team folder.** Deploy the foundation to a folder the ML team shares, so
+everyone reads the same tables. The `client` target deploys the bundle under a shared path (a
+sibling of any Git folder, not the deployer's personal home). One person runs this setup once, and
+the team reads the result. The deployed code and files sit under that target's `files/` folder.
 
-**Step A, import the repo as a Git folder (do this first).** So every group opens its kit from one
-shared copy:
-
-1. In the workspace, click **Workspace** in the left sidebar. Navigate to `/Workspace`, and if
-   `fh-onsite` isn't there yet, create it (**Create → Folder**, name it `fh-onsite`). Inside it, create
-   a `prescreen` folder the same way. You need write access to `/Workspace/fh-onsite`.
-2. Open `/Workspace/fh-onsite/prescreen`, click **Create → Git folder**, paste this repo's URL, and set
-   the folder name to `repo`. It clones to `/Workspace/fh-onsite/prescreen/repo`, so each kit lives at
-   `/Workspace/fh-onsite/prescreen/repo/kits/<kit-name>/`.
-3. Grant the four groups **CAN_READ** on `/Workspace/fh-onsite` once, so everyone can open the kits.
-
-   > CLI alternative:
-   > ```bash
-   > databricks repos create <this-repo-url> gitHub --path /Workspace/fh-onsite/prescreen/repo
-   > ```
-
-**Step B, deploy the foundation.** The `client` target deploys the foundation bundle to
-`/Workspace/fh-onsite/prescreen/client` (a sibling of the Git folder, not the deployer's personal home).
-One person runs this setup once on Day 1, and all four groups read the result. Whoever runs it (a
-governance-group member is the plan) needs write access to `/Workspace/fh-onsite`. The deployed code and
-files sit under `/Workspace/fh-onsite/prescreen/client/files/`.
-
-**This deploy also stages the Admin session's SQL.** The Admin (Genie One) session reads billing
-system tables, not the clinical tables, so it needs no data from this job. It does need its two
-trusted SQL files in the workspace, so this bundle carries them along on deploy. That way the Admin
-group never clones a repo or runs a second bundle. After deploy the files are at
-`/Workspace/fh-onsite/prescreen/client/files/kits/admin-session-starter-kit/sql/`. See the Admin
-kit's README for how it uses them.
-
-**Install the adaptation skill so Genie Code builds well.** The `fred-hutch-onsite-adaptation` skill
+**Install the adaptation skill so Genie Code builds well.** The `prescreen-clinops-adaptation` skill
 (in `.assistant/skills/`) is not a value-filler. It gives Genie Code the context to set up and run the
 foundation cleanly the first time, and when you are ready to switch from synthetic to real OMOP data
 (the `run_with_synthetic_data: no` toggle), it tells Genie Code exactly how to adapt. A workspace admin
 installs it once, for everyone, separate from deploying the bundle:
 
 Run this once in a **workspace web terminal** (it authenticates as you, nothing to edit); point it at
-the shared Git folder from Step A:
+your imported copy of the repo:
 
 ```bash
 databricks workspace import-dir \
-  /Workspace/fh-onsite/prescreen/repo/.assistant/skills/fred-hutch-onsite-adaptation \
-  /Workspace/.assistant/skills/fred-hutch-onsite-adaptation
+  .assistant/skills/prescreen-clinops-adaptation \
+  /Workspace/.assistant/skills/prescreen-clinops-adaptation
 ```
 
 Then open Genie Code and ask: **"set up and run the foundation in my workspace."** See the repo
@@ -113,27 +79,25 @@ databricks repos create https://github.com/sean-zhang-dbx/prompt-to-genie.git gi
 
 ## Synthetic today, real tomorrow
 
-`databricks.yml` has a `run_with_synthetic_data` switch. Leave it `yes` for the onsite. Set it to
-`no` and point `source_catalog` / `source_schema` at your real OMOP tables when you are ready. The
-six table names are identical either way, so nothing downstream changes.
+`databricks.yml` has a `run_with_synthetic_data` switch. Leave it `yes` to run on synthetic data.
+Set it to `no` and point `source_catalog` / `source_schema` at your real OMOP tables when you are
+ready. The six table names are identical either way, so nothing downstream changes.
 
 ## Then: discovery, before building
 
-Once the foundation is up, both groups run the discovery step in `DISCOVERY.md`: interrogate the
-six tables with Genie Code and, optionally, stand up a discovery Genie space (`genie/`) so anyone,
-including a non-SQL clinical researcher, can question the data. Understand the foundation first,
-then build on it.
+Once the foundation is up, run the discovery step in `DISCOVERY.md`: interrogate the six tables with
+Genie Code and, optionally, stand up a discovery Genie space (`genie/`) so anyone, including a
+non-SQL clinical researcher, can question the data. Understand the foundation first, then build on it.
 
 ## What's here
 
 | Path | What it is |
 |---|---|
 | `databricks.yml` | The bundle. Set your catalog, schema, and warehouse here. |
-| `resources/foundation_job.yml` | The two-task setup job (OMOP tables and trials feed). |
+| `resources/foundation_job.yml` | The one-task setup job (generates the six OMOP tables). |
 | `src/data_generation/generate_omop_data.py` | Builds the 6 OMOP CDM tables. |
-| `src/data_generation/generate_trial_feed.py` | Lands the trials JSON feed into the Volume. |
-| `DISCOVERY.md` | Shared data-discovery prompts both groups run first. |
+| `DISCOVERY.md` | Data-discovery prompts the team runs first. |
 | `genie/genie_space.md` | How to stand up a discovery Genie space over the 6 tables. |
 | `PLANTED_COHORTS.md` | Which synthetic patients are clearly eligible or ineligible, and why. |
 
-Everything here is synthetic and Unity Catalog scoped. No PHI.
+Everything here is synthetic and Unity Catalog scoped. No patient health information.

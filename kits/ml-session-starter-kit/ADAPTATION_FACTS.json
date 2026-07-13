@@ -1,7 +1,7 @@
 {
   "skill_version": "1.0.0",
-  "demo_slug": "fred-hutch-clinical-trial-prescreening",
-  "demo_name": "Fred Hutch Clinical Trial Pre-Screening",
+  "demo_slug": "prescreen-clinops-ml-session",
+  "demo_name": "Clinical Trial Pre-Screening",
 
   "name_vars": {
     "catalog_var": "client_catalog",
@@ -20,9 +20,9 @@
     "source_schema_var": "source_schema",
     "synthetic_source_catalog": "<same as client_catalog>",
     "synthetic_source_schema": "clinops_foundation",
-    "real_source_catalog": "curated_omop",
-    "real_source_schema": "omop",
-    "note": "There is no data-generation toggle in this kit; the foundation owns generating the synthetic tables. The synthetic-to-real switch is purely a source repoint: change source_catalog/source_schema from the foundation to real OMOP. All 6 OMOP table names are identical in both modes, so no query changes are required. Real OMOP lives in a DIFFERENT catalog (curated_omop), so both source_catalog AND source_schema must be set. Setting source_schema alone is not enough."
+    "real_source_catalog": "<your_omop_catalog>",
+    "real_source_schema": "<your_omop_schema>",
+    "note": "There is no data-generation toggle in this kit; the foundation owns generating the synthetic tables. The synthetic-to-real switch is purely a source repoint: change source_catalog/source_schema from the foundation to your own OMOP source. Because both follow the OMOP Common Data Model (a public open standard), all 6 OMOP table names are identical in both modes, so no query changes are required. Your OMOP source typically lives in a DIFFERENT catalog, so both source_catalog AND source_schema must be set. Setting source_schema alone is not enough."
   },
 
   "widget_config": {
@@ -34,11 +34,11 @@
       "source_schema": "source_schema",
       "source_catalog": "source_catalog"
     },
-    "note": "The backup notebooks read from these dbutils.widgets. At setup the skill rewrites each widget's DEFAULT (the 2nd argument of dbutils.widgets.text) to the chosen value: catalog<-client_catalog, schema<-client_schema, source_schema<-source_schema, source_catalog<-source_catalog (leave source_catalog default blank for synthetic, blank falls back to catalog; set it to curated_omop for real). Rewriting a widget DEFAULT is a setup action, not a rename. It is allowed and is how the synth/real source repoint reaches the backup notebooks. The primary build is Genie-Code-driven, where the source is conveyed in the prompt."
+    "note": "The backup notebooks read from these dbutils.widgets. At setup the skill rewrites each widget's DEFAULT (the 2nd argument of dbutils.widgets.text) to the chosen value: catalog<-client_catalog, schema<-client_schema, source_schema<-source_schema, source_catalog<-source_catalog (leave source_catalog default blank for synthetic, blank falls back to catalog; set it to your OMOP catalog for real). Rewriting a widget DEFAULT is a setup action, not a rename. It is allowed and is how the synth/real source repoint reaches the backup notebooks. The primary build is Genie-Code-driven, where the source is conveyed in the prompt."
   },
 
   "real_mode": {
-    "how": "Repoint the reads at real OMOP: set source_catalog=curated_omop and source_schema=omop. The foundation already provides the tables, so there is nothing to generate. With Genie Code (the primary path), tell it to read the 6 OMOP tables FROM curated_omop.omop. For the backup notebooks, set the source_catalog/source_schema widget defaults (widget_config); if the silver pipeline is used, set its Configuration keys source_catalog/source_schema (the pipeline reads config, not widgets).",
+    "how": "Repoint the reads at your own OMOP source: set source_catalog=<your_omop_catalog> and source_schema=<your_omop_schema>. The foundation already provides the tables, so there is nothing to generate. With Genie Code (the primary path), tell it to read the 6 OMOP tables FROM your OMOP catalog and schema. For the backup notebooks, set the source_catalog/source_schema widget defaults (widget_config); if the silver pipeline is used, set its Configuration keys source_catalog/source_schema (the pipeline reads config, not widgets).",
     "read_paths_note": "The kit reads OMOP source three ways, all of which honor source_catalog+source_schema when set correctly: (a) nb 01 profiling and Python via src()=source_catalog.source_schema; (b) the silver PIPELINE (nb 02 Option A) via ${source_catalog}.${source_schema}.<table>. But nb 02 Option B (the interactive 'no pipeline' %sql cells) reads BARE table names that resolve to the current USE'd schema. That assumes the source lives in the same schema you write to (true only in the synthetic single-schema case). For REAL OMOP (a different catalog), use the PIPELINE path (Option A) rather than the interactive Option B bare-name cells.",
     "rebuild_assets": "Real mode is more than a var flip. Every workshop-built asset (silver features, NLP output, gold pre-screen, the UC model, the Genie space, the app) reads from source. Any already materialized from synthetic must be REBUILT: after repointing, re-run the silver pipeline + the NLP/gold notebooks, re-register the model, refresh the Genie space, and restart the app so they read real data. Nothing that reads source may be left materialized from synthetic."
   },
@@ -219,8 +219,8 @@
     },
     {
       "source_type": "real_omop",
-      "locator": "curated_omop.omop",
-      "description": "Customer's real OMOP CDM tables. Identical schema to the synthetic tables (exact FH curated_omop.omop column names and types). Point source_catalog+source_schema here to read real data.",
+      "locator": "${source_catalog}.${source_schema}",
+      "description": "Your own OMOP CDM tables. Because both the synthetic tables and your source follow the OMOP Common Data Model (a public open standard), the same queries run unchanged. Point source_catalog+source_schema here to read real data.",
       "active_when": "source repointed to real"
     }
   ],

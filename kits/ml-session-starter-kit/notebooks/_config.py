@@ -20,8 +20,8 @@
 # `schema` is YOUR writable schema (silver features, NLP output, gold pre-screen, the model,
 #   the Genie space). `source_catalog` / `source_schema` point at the 6 read-only OMOP tables.
 #   Synthetic (workshop): leave source_catalog blank (defaults to your own catalog) and
-#   source_schema = clinops_foundation. Real: set source_catalog = curated_omop,
-#   source_schema = omop. The 6 table names are identical either way, no query changes.
+#   source_schema = clinops_foundation. Real: set source_catalog / source_schema to your
+#   own OMOP catalog and schema. The 6 table names are identical either way, no query changes.
 dbutils.widgets.text("catalog",        "<your_catalog>",     "1 · Catalog")
 dbutils.widgets.text("schema",         "clinops_ml",         "2 · Schema (you write here)")
 dbutils.widgets.text("warehouse_id",   "<your_wh_id>",       "3 · SQL Warehouse ID")
@@ -32,7 +32,7 @@ CATALOG        = dbutils.widgets.get("catalog")
 SCHEMA         = dbutils.widgets.get("schema")
 WAREHOUSE_ID   = dbutils.widgets.get("warehouse_id")
 SOURCE_SCHEMA  = dbutils.widgets.get("source_schema")
-# Synthetic reads from your own catalog; real OMOP (curated_omop) sits in a different catalog.
+# Synthetic reads from your own catalog; your own OMOP source typically sits in a different catalog.
 SOURCE_CATALOG = dbutils.widgets.get("source_catalog").strip() or CATALOG
 
 # COMMAND ----------
@@ -48,6 +48,16 @@ except Exception as e:
 spark.sql(f"CREATE SCHEMA IF NOT EXISTS {CATALOG}.{SCHEMA}")
 spark.sql(f"USE CATALOG {CATALOG}")
 spark.sql(f"USE SCHEMA {SCHEMA}")
+
+# When the read-only OMOP source lives in a different schema (or catalog) than the schema you
+# write to, expose the 6 source tables by their standard names inside your schema as thin
+# read-only views. No data is copied. This lets every notebook reference `person`, `measurement`,
+# etc. by name while your derived tables stay in your own writable schema. Notebooks may also read
+# the source directly with the src() helper below; both resolve to the same read-only data.
+OMOP_TABLES = ["person", "condition_occurrence", "measurement", "observation", "drug_exposure", "note"]
+if (SOURCE_CATALOG, SOURCE_SCHEMA) != (CATALOG, SCHEMA):
+    for _t in OMOP_TABLES:
+        spark.sql(f"CREATE OR REPLACE VIEW {CATALOG}.{SCHEMA}.{_t} AS SELECT * FROM {SOURCE_CATALOG}.{SOURCE_SCHEMA}.{_t}")
 
 print(f"✅ Writing to {CATALOG}.{SCHEMA}")
 print(f"   Reading read-only OMOP source from {SOURCE_CATALOG}.{SOURCE_SCHEMA}")

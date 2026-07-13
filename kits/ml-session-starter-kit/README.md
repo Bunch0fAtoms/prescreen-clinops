@@ -1,13 +1,13 @@
-# 🧬 Applied AI Feature Extraction and Trial Pre-Screening: Session Starter Kit
+# 🧬 Applied AI Feature Extraction and Trial Pre-Screening: ML Reference Kit
 
-**Fred Hutch onsite · Applied AI session · Genie Code (one Hugging Face notebook)**
+**ML team · Applied AI · Genie Code (one Hugging Face notebook)**
 
-> ### What this session is, and what it is not
-> This is not a model-training session. There is no classifier to fit or tune. The work is
+> ### What this build is, and what it is not
+> This is not a model-training build. There is no classifier to fit or tune. The work is
 > **applied AI feature extraction**. You use a language model to pull biomarker facts out of
 > free-text pathology notes, then feed those facts to a transparent, rules-based eligibility screen.
 >
-> | This session **is** | This session is **not** |
+> | This build **is** | This build is **not** |
 > |---|---|
 > | Applied AI feature extraction. `ai_query` reads notes to pull HER2, ER, and PR status, and a Hugging Face model (ClinicalBERT) embeds the notes for similarity matching. | Training a predictive classifier. |
 > | Rigorous evaluation. MLflow scores the extraction against a ground-truth set. | Hyperparameter tuning or feature engineering a model. |
@@ -19,22 +19,22 @@
 > coordinator can defend, not a score they cannot explain. Want a real trained model? That lands as a
 > patient-prioritization ranker in `STRETCH.md`, on top of the rules, never inside them.
 
-This is a **starter build kit**, not a finished solution. The foundation is already in
+This is a **build kit**, not a finished solution. The foundation is already in
 place for you: synthetic OMOP data, the pipeline skeleton, Unity Catalog governance,
 and the boilerplate. That frees you to build the learnable core: the eligibility SQL, the
 biomarker pivot, the `ai_query` NLP extraction, and the MLflow evaluation. Look for
 `# TODO (you build this)` markers. That is your work.
 
 > Scaffold, don't hand-hold. The notebooks tell you *what* to build and *why*; you
-> write the logic. If a team gets truly stuck, the mentor has an answer key (see
-> `reference/`) and the full working notebooks to fall back on.
+> write the logic. If you get stuck, the worked reference solution (see `reference/`) and the full working
+> notebooks are there to fall back on.
 
-> 🛟 **Backup / reference build (empowerment model).** At the onsite the ML **group builds
-> their own** pre-screen on the governed foundation and presents it. This kit's `notebooks/` and
-> `reference/ANSWER_KEY.md` are the **safety net**, not the script. Reveal them if a group stalls,
-> and lead with what the group builds. See this kit's `RUNBOOK.md` for the clean step-by-step guide.
+> 🛟 **These notebooks are the reference build.** The `notebooks/` and `reference/ANSWER_KEY.md`
+> are the worked reference for the pre-screen on the governed foundation. Build with Genie Code
+> and lean on the reference when you want the mechanism spelled out. See this kit's `RUNBOOK.md`
+> for the clean step-by-step guide.
 
-> 🖥️ **Genie Code is what you demonstrate.** The whole build is driven from Genie Code. The one step
+> 🖥️ **Genie Code drives the build.** The whole build is driven from Genie Code. The one step
 > Genie Code cannot do is registering the Hugging Face model to Unity Catalog, which is a pre-built
 > notebook you run. Everything else, including the Python EDA charts, is Genie Code.
 
@@ -42,16 +42,12 @@ biomarker pivot, the `ai_query` NLP extraction, and the MLflow evaluation. Look 
 
 ## 🎯 The outcome you are shipping
 
-**These are the questions your team submitted.** This session is built around them, in your own words.
-
-| The Fred Hutch ask (verbatim) | Where it lands |
-|---|---|
-| *"I want to know how to build apps using Mosaic AI with HuggingFace models (e.g. ClinicalBERT), so I can have a user-friendly tool to pre-screen patients for clinical trials."* (Emma) | The whole build: ClinicalBERT registered to UC, the pre-screen, and the coordinator app |
-| *"I want to know how to register a HuggingFace model to read-only schemas so I can test out ideas on our reference schemas."* (Emma) | The ClinicalBERT → MLflow → Unity Catalog step (the one pre-built notebook) |
-| *"I'd like to provide context to Genie (team docs, data background, example queries) so answers are more accurate and it does better EDA."* (Monica) | The Genie space step, with instructions and trusted SQL |
-| *"I want to know how to use Databricks Apps, so teams can review outputs, interact with dashboards, or provide feedback without working in notebooks."* (Sita) | The coordinator/researcher app, built as the inspiration demo |
-| *"I want to know how to use, register, or call an external/non-Databricks model within Databricks, preserving governance, reproducibility, and traceability."* (Sita) | The model-registration and Mosaic AI Gateway steps |
-| *"I want to know how to set up evaluation runs for AI/LLM workflows, so we can compare prompts, models, outputs, and error patterns across versions."* (Sita) | The MLflow evaluation step (prompt × model) |
+This kit covers an end-to-end applied AI build. You build an app that uses a Hugging Face model
+(ClinicalBERT) to pre-screen patients for clinical trials, and you register that model to Unity Catalog
+so it stays governed and reproducible. You give Genie the context it needs (team docs, data background,
+example queries) to answer accurately and do better exploratory data analysis. You set up MLflow
+evaluation runs to compare prompts and models against ground truth. The build closes with a coordinator
+app that lets a non-technical user review and act on the results.
 
 ### 🎯 The trials you are screening for, build to satisfy these
 
@@ -63,7 +59,7 @@ qualifies for a trial only when **all** of its conditions are met.
 |---|---|
 | **Trial A** (HER2-Positive Advanced Breast Cancer) | Breast cancer diagnosis · **HER2 Positive** · **Female** · age **18-75** · **no** prior anti-HER2 therapy (no Trastuzumab or Pertuzumab) |
 | **Trial B** (ER+ / HER2− Postmenopausal) | Breast cancer diagnosis · **ER Positive** · **HER2 Negative** · **Postmenopausal** · **Female** · age **18-75** |
-| **Trial C** (STRETCH, from the DE trials catalog) | A trial the Data Engineering group lands as a file. If you consume their live catalog, it screens on your side with **no code change**, because your pre-screen is data-driven. |
+| **Trial C** (triple-negative) | Breast cancer diagnosis · **HER2 Negative** · **ER Negative** · **PR Negative** · **Female** · age **18-75**. Another row in your own `silver_trial_criteria` table, screened by the same one rule with **no code change**. |
 
 The synthetic data is planted so you can check your work: persons **1 to 20** are eligible for Trial A
 (21 to 30 are HER2+ controls who fail on prior anti-HER2 therapy), and persons **31 to 50** are eligible
@@ -71,19 +67,19 @@ for Trial B (51 to 60 are controls who fail on menopausal or ER status). Full sp
 `../../foundation/PLANTED_COHORTS.md`.
 
 📋 **Canonical eligibility card:** every trial's `req_*` fields, the eligible counts (Trial A 140, Trial
-B 70), and the one matching rule live in one place, the card in `../../SHARED_FOUNDATION.md`. That is the
-single source of truth; this table summarizes it. Read the card rather than re-deriving criteria.
+B 70, Trial C 53), and the one matching rule live in one place, the card in `../../SHARED_FOUNDATION.md`.
+That is the single source of truth; this table summarizes it. Read the card rather than re-deriving
+criteria.
 
-> 🔗 **Trials are data, not hardcoded rules.** Do not hardcode the Trial A/B conditions above.
-> Build a small `trial_criteria` table (one row per trial, a `req_*` column per condition) and have
-> your pre-screen **join it** with one generic rule: a patient qualifies when **each non-NULL `req_*`
-> matches and age is in range** (a NULL requirement means the trial does not constrain that field).
-> This keeps your build **independent of any other team** and gets you to the 109→140 hero number on
-> your own. **Stretch, only if the DE group finishes:** repoint (or union) that join to their live
-> `silver_trial_criteria` catalog, and Trial C flows in with **no code change**. See
-> `DE_INTEGRATION_STRETCH.md`.
+> 🔗 **Trials are data, not hardcoded rules.** Do not hardcode the Trial A/B/C conditions above.
+> Build a small `silver_trial_criteria` table (one row per trial, a `req_*` column per condition) and
+> have your pre-screen **join it** with one generic rule: a patient qualifies when **each non-NULL
+> `req_*` matches and age is in range** (a NULL requirement means the trial does not constrain that
+> field). This gets you to the 109→140 hero number, and it means **adding a trial is adding a row, not
+> writing code.** Trial C (triple-negative) is simply another row in that same table, screened by the
+> same rule.
 
-**The catch, and the whole point of the session:** biomarker status is not always in
+**The catch, and the whole point of this build:** biomarker status is not always in
 the structured tables. For ~60 of our 300 synthetic patients, HER2/ER/PR status was
 only ever written into a **free-text pathology note**. A SQL query over `measurement`
 alone **silently misses them**. You will recover them with a Foundation Model
@@ -97,14 +93,14 @@ By the end you will have built:
 - the **gap analysis** surfacing the ~60 notes-only patients structured SQL silently misses,
 - ⭐ an **`ai_query`** NLP step that reads biomarkers out of the unstructured pathology notes (the hero),
 - a **gold** unified cohort with a `biomarker_source` audit column,
-- a **data-driven pre-screen** that joins a `trial_criteria` table (your own; **stretch**: repoint to the
-  DE group's live `silver_trial_criteria`), one LONG `gold_trial_prescreen` (row per person × trial)
-  plus a backward-compat `gold_trial_prescreen_wide` view,
+- a **data-driven pre-screen** that joins your own `silver_trial_criteria` table, one LONG
+  `gold_trial_prescreen` (row per person × trial) plus a backward-compat `gold_trial_prescreen_wide`
+  view,
 - an **MLflow evaluation** comparing prompts × models against ground truth,
-- a **Hugging Face model (ClinicalBERT) registered to Unity Catalog** (a direct FH ask), whose note
+- a **Hugging Face model (ClinicalBERT) registered to Unity Catalog** (a common ML-team ask), whose note
   embeddings drive **similarity matching** for cohort discovery (`gold_similar_patients`),
 - a **Genie space** so a non-technical coordinator can self-serve the cohort,
-- a **coordinator/researcher app** (Sita's ask): patient timeline drill-down, an override write-back,
+- a **coordinator/researcher app**: patient timeline drill-down, an override write-back,
   and an in-app lightweight agent.
 
 ---
@@ -119,13 +115,13 @@ By the end you will have built:
 | Gap analysis: classify patients by evidence location (both / structured-only / notes-only) | 🛠️ **You build** (notebook 03) |
 | EDA visuals in Python (charts of the cohort, and the gap) | 🛠️ **You build** (Genie Code writes them into a serverless notebook) |
 | Eligibility cohort and gold unified prescreen logic (COALESCE with a `biomarker_source` audit column) | 🛠️ **You build** |
-| Data-driven pre-screen: join DE's `silver_trial_criteria`, LONG `gold_trial_prescreen` plus a `_wide` view | 🛠️ **You build** (generic join, no hardcoded rules) |
+| Data-driven pre-screen: join your own `silver_trial_criteria`, LONG `gold_trial_prescreen` plus a `_wide` view | 🛠️ **You build** (generic join, no hardcoded rules) |
 | `gold_patient_measurements`: per-patient longitudinal test timeline (feeds the app) | 🛠️ **You build** |
 | `ai_query` NLP biomarker extraction from `note_text` | 🧠 **You build** (heavily signposted) |
 | MLflow evaluation run (prompt × model) | 🧠 **You build** (heavily signposted) |
-| Hugging Face model (ClinicalBERT) registered to UC (a direct FH ask) | ✅ **Pre-built notebook**, the one step Genie Code can't author; run it if HF egress allows |
+| Hugging Face model (ClinicalBERT) registered to UC (a common ML-team ask) | ✅ **Pre-built notebook**, the one step Genie Code can't author; run it if HF egress allows |
 | Similarity matching over the embeddings, `gold_similar_patients` cohort discovery | 🛠️ **You build** (Genie Code, in SQL) |
-| Coordinator/researcher app (timeline, override, in-app agent, Sita's ask) | 🖥️ **Built**, inspiration demo at `app/` (see below) |
+| Coordinator/researcher app (timeline, override, in-app agent) | 🖥️ **Included**, reference demo at `app/` (see below) |
 | More trials, advanced evals, real-data toggle | 🚀 **Stretch**, see `STRETCH.md` |
 
 ---
@@ -133,21 +129,21 @@ By the end you will have built:
 ## 🚀 How to start
 
 **There is no bundle to deploy and no data to generate for this kit.** The shared **foundation** already
-stood up the six OMOP tables (300 patients, planted cohorts) that this session reads. You build the
-pre-screen with **Genie Code**; the pre-built notebooks are the facilitator's backup. Exactly **one**
+stood up the six OMOP tables (300 patients, planted cohorts) that this build reads. You build the
+pre-screen with **Genie Code**; the pre-built notebooks are the reference. Exactly **one**
 notebook is meant to run as-is, the ClinicalBERT registration Genie Code can't author. Everything else,
 including the Python EDA, is Genie Code.
 
 ### The adaptation skill helps Genie Code build well
-The workspace-level **`fred-hutch-onsite-adaptation`** skill is not a value-filler. It gives Genie Code
+The workspace-level **`prescreen-clinops-adaptation`** skill is not a value-filler. It gives Genie Code
 the context to build the pre-screen cleanly (the shared-foundation table names, the FM endpoints, the
-build order), and when your team is ready to point at real `curated_omop` data, it tells Genie Code
+build order), and when your team is ready to point at your own OMOP data, it tells Genie Code
 exactly how to adapt. A workspace admin installs it once, for everyone:
 
 ```bash
 databricks workspace import-dir \
-  /Workspace/fh-onsite/prescreen/repo/.assistant/skills/fred-hutch-onsite-adaptation \
-  /Workspace/.assistant/skills/fred-hutch-onsite-adaptation
+  /Workspace/prescreen-clinops/prescreen/repo/.assistant/skills/prescreen-clinops-adaptation \
+  /Workspace/.assistant/skills/prescreen-clinops-adaptation
 ```
 
 Then open Genie Code in a fresh chat in this kit's folder (hard-refresh first, skills cache per tab)
@@ -190,16 +186,17 @@ API-created spaces, enable it in the UI after creation.
 
 ## 🔄 The synth to real toggle
 
-The whole session runs on **synthetic data by default** (no PHI, this is a security-first customer).
-When Fred Hutch is ready to point it at real `curated_omop.omop` data, you do not rewrite queries. The
-6 OMOP table names are **identical** in synthetic and real modes, so every silver / gold / NLP query you
-build runs unchanged against the real thing.
+The whole build runs on **synthetic data by default** (no PHI, security-first by design).
+The synthetic tables follow the OMOP Common Data Model (OMOP CDM), a public open standard. When you
+are ready to point it at your own OMOP data, you do not rewrite queries. The 6 OMOP table names are
+**identical** in synthetic and real modes, so every silver / gold / NLP query you build runs
+unchanged against any OMOP-conformant source you point it at.
 
-To switch, ask Genie Code (with the `fred-hutch-onsite-adaptation` skill installed) to repoint the reads
-from the shared foundation schema to your real OMOP catalog and schema:
+To switch, ask Genie Code (with the `prescreen-clinops-adaptation` skill installed) to repoint the reads
+from the shared foundation schema to your own OMOP catalog and schema:
 
-- source catalog → `curated_omop`
-- source schema  → `omop`
+- source catalog → `<your_omop_catalog>`
+- source schema  → `<your_omop_schema>`
 
 The skill walks Genie Code through the repoint and the re-runs it implies (anything already built on
 synthetic gets rebuilt so it reflects real data). Trying the toggle is a stretch exercise, see
@@ -207,12 +204,12 @@ synthetic gets rebuilt so it reflects real data). Trying the toggle is a stretch
 
 ---
 
-## 🖥️ The coordinator/researcher app (Sita's ask)
+## 🖥️ The coordinator/researcher app
 
-Sita asked for a researcher-facing app on top of the pre-screen. **We built it as this kit's app
-deliverable** and demo it onsite. Fred Hutch has not yet approved Databricks Apps, so this is our
-**inspiration demo**, a working thing that shows the value, not a required build. It lives at
-`onsite_july2026/app/`. Three capabilities:
+This kit includes a researcher-facing app on top of the pre-screen, provided as the kit's app
+deliverable. It is a **reference demo**, a working thing that shows the value, not a required
+build. It lives in this kit's `app/` folder.
+Three capabilities:
 
 - **Patient timeline drill-down.** A coordinator picks a patient and sees their tests over time.
   Reads `gold_patient_measurements` (the per-patient longitudinal test timeline).
@@ -232,7 +229,7 @@ The similarity table `gold_similar_patients`, built in the applied AI step with 
 
 ---
 
-## 🔒 Ground rules (security-first customer)
+## 🔒 Ground rules (security-first by design)
 
 - **Everything is Unity-Catalog-scoped**: catalog/schema come from notebook widgets.
   No `hive_metastore`, ever.
@@ -252,12 +249,12 @@ The similarity table `gold_similar_patients`, built in the applied AI step with 
 ml-session-starter-kit/
   README.md            ← you are here
   databricks.yml       ← optional bundle config (the foundation provides the data; not run per team)
-  RUNBOOK.md           ← MENTOR build-level facilitation (checkpoints, failure modes)
-  GENIE_CODE_PROMPTS.md ← ready-to-use Genie Code build prompts (free-form; the proven dry-run set)
+  RUNBOOK.md           ← build-level reference (checkpoints, failure modes)
+  GENIE_CODE_PROMPTS.md ← ready-to-use Genie Code build prompts (free-form; the validated set)
   STRETCH.md           ← "make it your own" extension ideas
-  notebooks/           ← facilitator backup scaffold (00-09); the build is Genie Code, 05 is the one you run
+  notebooks/           ← reference scaffold (00-09); the build is Genie Code, 05 is the one you run
   genie/               ← Genie space definition (instructions, prompts, trusted SQL)
-  reference/           ← SA-ONLY answer key (mentor reveals only if a team is stuck)
+  reference/           ← worked reference solution (fall back to it if a team is stuck)
   src/data_generation/ ← the synthetic OMOP generator (used by the foundation; do not edit)
   resources/           ← optional bundle job (the foundation already lands the data)
 ```
@@ -276,5 +273,5 @@ ml-session-starter-kit/
 | 06 | `06_gold_unified_prescreen` | gold unified and data-driven prescreen (joins `silver_trial_criteria`; LONG plus `_wide` view) plus `gold_patient_measurements` | 🛠️ build the fusion and the generic join |
 | 07 | `07_mlflow_evaluation_runs` | MLflow eval: prompt × model | 🧠 build the eval |
 | 08 | `08_genie_space_setup` | self-serve Genie space | ✅ guided setup |
-| 09 | `09_app` | coordinator/researcher app: timeline drill-down, override write-back, in-app agent (Sita's ask) | 🚀 inspiration demo (we built it; `app/`) |
+| 09 | `09_app` | coordinator/researcher app: timeline drill-down, override write-back, in-app agent | 🚀 reference demo (included; `app/`) |
 ```

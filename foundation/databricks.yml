@@ -1,31 +1,15 @@
 bundle:
-  name: fred-hutch-prescreen-foundation
+  name: prescreen-clinops-foundation
 
 include:
   - resources/*.yml
-
-# ── Sync the Admin session's cost SQL alongside the foundation ──────────────────
-# The Admin (Genie One) session does not use the foundation's clinical data. It
-# reads system.billing. But it still needs its two trusted SQL files in the
-# workspace. Rather than have admins clone the repo or run a second bundle, we
-# carry those files along with this one foundation deploy. After deploy they land
-# at: <workspace files root>/kits/admin-session-starter-kit/sql/*.sql
-# (the files root is shown by `databricks bundle validate`; by default it is
-#  /Workspace/Users/<deployer>/.bundle/fred-hutch-prescreen-foundation/client/files).
-# Adding a path outside foundation/ moves the sync root up to the repo, so the
-# foundation's own files nest under files/foundation/. The CLI rewrites every
-# internal reference, so the job still resolves; only the deployed path changes.
-sync:
-  paths:
-    - .
-    - ../kits/admin-session-starter-kit/sql
 
 variables:
   # ── Synth / real toggle ─────────────────────────────────────────────────────
   # Set run_with_synthetic_data=yes  → run the generation job; downstream tools
   #   read from client_catalog.client_schema (synthetic OMOP data).
   # Set run_with_synthetic_data=no   → skip generation; downstream tools read
-  #   from source_catalog.source_schema (your real curated_omop.omop tables).
+  #   from source_catalog.source_schema (your own OMOP source tables).
   # The 6 table names are identical in both cases — no query changes required.
   run_with_synthetic_data:
     description: >
@@ -35,15 +19,15 @@ variables:
 
   source_catalog:
     description: >
-      Source catalog for your real OMOP data.
-      Only used when run_with_synthetic_data=no. Default: curated_omop.
-    default: "curated_omop"
+      Source catalog for your own OMOP data.
+      Only used when run_with_synthetic_data=no. Set to your OMOP catalog.
+    default: "<your_omop_catalog>"
 
   source_schema:
     description: >
-      Source schema for your real OMOP data.
-      Only used when run_with_synthetic_data=no. Default: omop.
-    default: "omop"
+      Source schema for your own OMOP data.
+      Only used when run_with_synthetic_data=no. Set to your OMOP schema.
+    default: "<your_omop_schema>"
 
   # ── Client catalog / schema (where demo tables are created) ─────────────────
   client_catalog:
@@ -63,8 +47,8 @@ targets:
   #   databricks bundle deploy --target client
   #   databricks bundle run foundation_setup_job --target client
   #
-  # Genie Code can auto-detect these via the `fred-hutch-onsite-adaptation` skill —
-  # open Genie Code and ask: "run in my workspace"
+  # Genie Code can auto-detect these via the `prescreen-clinops-adaptation` skill.
+  # Open Genie Code and ask: "run in my workspace".
   client:
     default: true
     # Omit `mode:` — DAB defaults to production behavior (no dev_<username>_ prefixing).
@@ -72,14 +56,11 @@ targets:
     # --target client -p <profile>), so there's no host to mismatch. Add one only if you
     # deploy without a profile.
     workspace:
-      # Deploy to a SHARED workspace folder, not the deployer's personal home.
-      # One person (e.g. a governance-group member) runs this setup once on Day 1, and
-      # all four groups need to reach the deployed assets, including the Admin SQL synced
-      # above. Without this, everything would land under
-      # /Workspace/Users/<deployer>/.bundle/... where other groups may not have read
-      # access. Requirement: the deployer can write to /Workspace/fh-onsite (creating the
-      # folder is enough), then grants the four groups CAN_READ on it once.
-      root_path: /Workspace/fh-onsite/prescreen/${bundle.target}
+      # Deploy to a shared workspace folder so the whole ML team can reach the deployed
+      # foundation assets, rather than the deployer's personal home. The deployer needs
+      # write access to /Workspace/prescreen-clinops (creating the folder is enough), then
+      # grants the team CAN_READ on it once. You can also change this to your own home path.
+      root_path: /Workspace/prescreen-clinops/foundation/${bundle.target}
     #
     # Fill in your own workspace values before deploying. Two ways:
     #   1. Edit the variable `default:`s above (client_catalog, warehouse_id), or

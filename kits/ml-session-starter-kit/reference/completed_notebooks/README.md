@@ -1,11 +1,11 @@
-# Completed reference notebooks (SA / presenter use)
+# Completed reference notebooks
 
 This folder is the **filled-in, runnable** version of the starter kit in `../../notebooks/`. Every
 `TODO (you build this)` is completed and the notebooks are internally consistent so the whole arc
-runs top to bottom. Use it to present the solution to Fred Hutch and as the mentor's known-good copy.
+runs top to bottom. Use it to present the solution and as the known-good reference copy.
 
-The starter-kit skeletons the team builds during the session stay in `../../notebooks/`. The intended
-answers, per notebook, are in `../ANSWER_KEY.md`. The run-of-show for the review session is
+The starter-kit skeletons the team builds during the session stay in `../../notebooks/`. The worked
+reference solution, per notebook, is in `../ANSWER_KEY.md`. The run-of-show for the review session is
 `../../PRESENTATION_WALKTHROUGH.md`.
 
 ## What runs where
@@ -22,15 +22,14 @@ answers, per notebook, are in `../ANSWER_KEY.md`. The run-of-show for the review
 | `07_mlflow_evaluation_runs` | filled, plus genai | **MLflow eval, traces, LLM-as-judge, custom metrics** |
 | `08_genie_space_setup` | filled | natural-language self-serve |
 
-The coordinator app (Sita's ask) is in `../../app/`.
+The coordinator app is in `../../app/`.
 
 ## Two reconciliations baked into this set (so it runs standalone)
 
 1. **`silver_trial_criteria` is seeded inside notebook 06.** The pre-screen joins a trials catalog
-   (trials-as-data). The Data Engineering team builds that same table from a live feed in their own
-   schema. So the Applied AI section does not have to wait on them, notebook 06 seeds its own copy
-   (Trials A, B, C). Repointing the join to the Data Engineering team's `silver_trial_criteria` is the
-   documented cross-team stretch (`../../DE_INTEGRATION_STRETCH.md`).
+   (trials-as-data): one row per trial, one `req_*` column per criterion, NULL meaning unconstrained.
+   Notebook 06 seeds its own copy (Trials A, B, C), so the notebook runs standalone. Adding a trial
+   is inserting a row, not changing code. Trial C (triple-negative) is simply one of those rows.
 
 2. **The patient join in notebook 06 sources fields from the right silver views.** `menopausal_status`,
    `ajcc_stage`, and `gender` come from `silver_demographics`; `prior_anti_her2` comes from

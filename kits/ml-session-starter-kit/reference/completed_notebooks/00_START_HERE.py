@@ -1,7 +1,7 @@
 # Databricks notebook source
 # MAGIC %md-sandbox
 # MAGIC <div style="background:linear-gradient(90deg,#C8102E 0%,#7A0019 100%); color:white; padding:28px 32px; border-radius:8px">
-# MAGIC   <div style="font-size:0.95em; letter-spacing:2px; opacity:0.85">FRED HUTCHINSON CANCER CENTER · ML SESSION · COMPLETED REFERENCE</div>
+# MAGIC   <div style="font-size:0.95em; letter-spacing:2px; opacity:0.85">CLINICAL TRIAL PRE-SCREENING · ML SESSION · COMPLETED REFERENCE</div>
 # MAGIC   <div style="font-size:2.3em; font-weight:700; margin-top:6px">🧬 Clinical Trial Patient Pre-Screening on OMOP</div>
 # MAGIC   <div style="font-size:1.15em; margin-top:10px; max-width:880px; opacity:0.95">
 # MAGIC     Find every patient who might qualify for a breast-cancer trial, including the ones
@@ -15,7 +15,7 @@
 # MAGIC %md-sandbox
 # MAGIC <div style="background:#E8F5E9; border-left:6px solid #2E7D32; padding:14px 18px; border-radius:4px">
 # MAGIC <b>📖 This is the COMPLETED reference set.</b> Every <code>TODO</code> from the starter kit is
-# MAGIC filled in and runnable, in presentation order. Use it to walk Fred Hutch through the solution and
+# MAGIC filled in and runnable, in presentation order. Use it to walk stakeholders through the solution and
 # MAGIC to see the whole build end to end. The starter-kit skeletons (the ones the team builds during the
 # MAGIC session) live one folder up in <code>notebooks/</code>; the intended answers are in
 # MAGIC <code>reference/ANSWER_KEY.md</code>.
@@ -124,7 +124,7 @@
 # MAGIC   ┌─────────────┐   ┌──────────────┐
 # MAGIC   │ MLflow eval │   │ Genie space  │  nb 07 🧠 / nb 08
 # MAGIC   │ (nb 07)     │   │ self-serve   │
-# MAGIC   └─────────────┘   └──────────────┘            App → app/ (Sita's ask)
+# MAGIC   └─────────────┘   └──────────────┘            App → app/
 # MAGIC ```
 
 # COMMAND ----------
@@ -144,7 +144,7 @@
 # MAGIC | 06 | `06_gold_unified_prescreen` | Gold unified profile + generic, catalog-driven pre-screen | fuse + audit + trials-as-data |
 # MAGIC | 07 | `07_mlflow_evaluation_runs` | MLflow eval + `mlflow.genai.evaluate` traces, LLM-judge, custom metric | 🧠 **evaluation, traces, judges** |
 # MAGIC | 08 | `08_genie_space_setup` | A Genie space for self-serve cohort questions | natural-language self-serve |
-# MAGIC | app | `app/` | Coordinator pre-screening app (Sita's ask) | the last mile |
+# MAGIC | app | `app/` | Coordinator pre-screening app | the last mile |
 
 # COMMAND ----------
 

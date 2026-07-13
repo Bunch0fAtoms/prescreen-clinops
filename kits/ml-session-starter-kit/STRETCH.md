@@ -2,7 +2,7 @@
 
 Finished the core build (notebooks 01 to 08, all the `# TODO (you build this)` markers)? Pick an
 extension. These map to the `# EXTENSION (optional)` hooks scattered through the notebooks. None are
-required. They're for teams who want to push further or have a real FH use case in mind.
+required. They're for teams who want to push further or have a real use case of their own in mind.
 
 Ground rules still apply: **Unity-Catalog-scoped, synthetic data only, no hardcoded secrets, no
 hive_metastore.**
@@ -72,9 +72,9 @@ real cohort-retrieval endpoint.
 
 ## 5. Exercise the synthetic → real toggle
 
-The whole kit runs on synthetic data. Prove the toggle works the way FH will use it:
+The whole kit runs on synthetic data. Prove the toggle works the way you would use it in production:
 - In `databricks.yml`, set `run_with_synthetic_data: "no"` and point `source_catalog` /
-  `source_schema` at a *second synthetic schema* (stand in for `curated_omop.omop`).
+  `source_schema` at a *second synthetic schema* (stand in for your own OMOP source).
 - Re-deploy and confirm every silver/gold/NLP query runs **unchanged**. The 6 OMOP table names are
   identical in both modes. This is the security-first payoff: nothing breaks if real PHI is gated.
 - **Never** point it at real PHI in the workshop; the toggle exists so you don't have to.

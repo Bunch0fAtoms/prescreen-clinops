@@ -1,13 +1,12 @@
-# 🔑 Answer Key, SA / MENTOR ONLY
+# 🔑 Worked Reference Solution
 
-> **For the mentor. Reveal a snippet only if a team is genuinely stuck** (after the nudge → hint →
-> pair ladder in `RUNBOOK.md`). Per `13-mentor-brief.md`, reveal late and push creative extension,
-> *except* on plumbing or anything PHI/security-sensitive, where you reveal early. The **complete,
-> runnable solution** is the original working notebook series (referenced per item below); these are
-> the intended approaches + the gotchas so you can unblock without hunting.
+> **The worked reference solution.** Fall back to a snippet if a team is genuinely stuck. Lean on it
+> late for the learnable core, and early for plumbing or anything PHI/security-sensitive. The
+> **complete, runnable solution** is the original working notebook series (referenced per item below);
+> these are the intended approaches + the gotchas so you can unblock without hunting.
 
-The full solution notebooks (the finished build this kit was decomposed from) live at:
-`onsite_july2026/notebooks/00_START_HERE.py … 09_app_TODO.py`. Point there for a complete reveal.
+The full solution notebooks (the finished build this kit was decomposed from) live in
+`reference/completed_notebooks/` (`00_START_HERE.py` through `08_genie_space_setup.py`). Point there for the complete solution.
 
 ---
 
@@ -79,7 +78,7 @@ Then `CREATE OR REPLACE TABLE silver_nlp_biomarkers AS …` (same call, no LIMIT
   `from_json` parses the flat keys. This is the bug the original build hit. Give teams the two
   response shapes (they're already in the nb cheat-sheet) and let them write the prompt.
 - **Expected:** silver_nlp_biomarkers = 240 rows, all 60 notes-only (181 to 240) recovered, ~100% fill.
-- **Mentor note:** this is the team's learnable "aha". Don't reveal the prompt wording; do reveal the
+- **Note:** this is the team's learnable "aha". Don't reveal the prompt wording; do reveal the
   `responseFormat` mechanic if they're stuck (it's plumbing).
 
 ## NB 05: ClinicalBERT note embeddings → UC (PRE-BUILT, optional)
@@ -97,7 +96,7 @@ so classifying with it is unreliable AND slow (the earlier masked-LM cloze appro
 **Nothing downstream depends on this notebook.** nb 06 fuses `silver_biomarker_profile` (nb 02) +
 `silver_nlp_biomarkers` (nb 04). If HF download/egress fails or serving isn't approved by the hard stop,
 **skip to nb 06**. The gold path is unaffected; the embeddings are an additive cohort-discovery primitive.
-Mentor gotchas: needs serverless / outbound internet for the HF pull; `save_pretrained(safe_serialization=False)`
+Gotchas: needs serverless / outbound internet for the HF pull; `save_pretrained(safe_serialization=False)`
 (pytorch_model.bin) avoids the executor-side "SafetensorError: header too large" on `spark_udf` load;
 `predict()` returns a 2-D float32 ndarray so `result_type="array<float>"` coerces cleanly.
 
@@ -157,4 +156,4 @@ equivocal ⇒ Unknown. Full text in nb 07 source.
 
 ## NB 09: coordinator app (STRETCH)
 
-No answer key, open-ended. Point teams at the `databricks-apps` skill and `STRETCH.md`.
+No reference solution, open-ended. Point teams at the `databricks-apps` skill and `STRETCH.md`.

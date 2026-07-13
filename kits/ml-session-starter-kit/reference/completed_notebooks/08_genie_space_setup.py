@@ -141,4 +141,4 @@ show_md(f"""
 # MAGIC </div>
 # MAGIC
 # MAGIC ## ▶️ Next step
-# MAGIC ### → Open the **[coordinator app]($../../app/README)** (`app/`) for the point-and-click pre-screening UI (Sita's ask).
+# MAGIC ### → Open the **[coordinator app]($../../app/README)** (`app/`) for the point-and-click pre-screening UI.

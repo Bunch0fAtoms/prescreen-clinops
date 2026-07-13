@@ -1,10 +1,9 @@
 # Applied AI review: presenter run-of-show
 
-**Goal.** Walk Fred Hutch through the clinical-trial pre-screening solution we prepared, so they see
+**Goal.** Walk your stakeholders through the clinical-trial pre-screening solution, so they see
 how it was planned and leave understanding the moving parts they can reuse. This is a teaching
 review, not a live build. Open the completed notebooks in
-`reference/completed_notebooks/` and narrate. The team already did the hard build on Day 1; today we
-show the finished arc and the ideas behind it.
+`reference/completed_notebooks/` and narrate. It walks the finished arc and the ideas behind it.
 
 **The story in one line.** A structured SQL query misses the patients whose biomarker status was only
 ever written into a free-text pathology note. We recover those patients with a Foundation Model,
@@ -24,13 +23,13 @@ Open `00_START_HERE`. Show the three biomarker-source groups: 180 patients whose
 both the structured tables and the notes, 60 whose biomarkers live **only** in a note, and 60
 structured-only. Say the plain sentence: "The 60 notes-only patients are real, potentially eligible
 people. A query over the `measurement` table returns zero of them." That is the whole reason the rest
-of the session exists.
+of this build exists.
 
 ## Segment 2: the data and the gap (notebooks 01 and 03, 3 minutes)
 
 Open `01_data_foundation_omop`. Point out it reads the 6 OMOP tables read-only from the shared
-foundation, the same shape as Fred Hutch's real `curated_omop.omop`. Run the planted-cohort counts so
-the room sees the trial cohorts are really there.
+foundation, following the OMOP Common Data Model (a public open standard). Run the planted-cohort counts so
+you can see the trial cohorts are really there.
 
 Jump to `03_exploratory_data_analysis`, the classification cell. Land the number: about 60 patients
 have a pathology note but no structured biomarker row. Then show the peek at a notes-only note so the
@@ -47,7 +46,7 @@ This is the first big teaching beat. Open `04_nlp_biomarker_extraction`.
   No model hosting, no Python serving code, and the call runs inside Unity Catalog with full lineage.
 - Explain the one real gotcha, the `responseFormat` argument. Without it the model wraps its answer in
   markdown code fences and `from_json` returns NULL for every row. With it, you get clean typed columns.
-  This is the kind of practical detail Fred Hutch will hit, so it is worth 30 seconds.
+  This is the kind of practical detail teams will hit, so it is worth 30 seconds.
 - Run the recovery-count cell. Say: "We just recovered the ~60 patients structured SQL could never see,
   in one SQL function."
 
@@ -78,17 +77,16 @@ Open `06_gold_unified_prescreen`. Two ideas to land:
   record which one we used in `biomarker_source`. The model never silently overwrites a lab result,
   and every note-derived decision is flagged for a human to confirm. That is what makes this defensible
   in a clinical setting.
-- **Trials are data, not code.** The pre-screen joins a trials catalog, one row per trial, one column
-  per criterion, NULL meaning "unconstrained". Adding a trial is a data change, not a code change. Note
-  that the Data Engineering team builds this same catalog from a live feed; repointing to their table
-  is the cross-team stretch.
+- **Trials are data, not code.** The pre-screen joins a `silver_trial_criteria` table, one row per
+  trial, one column per criterion, NULL meaning "unconstrained". Adding a trial is a data change, not a
+  code change. Trial C (triple-negative) is simply one more row in that table, screened by the same rule.
 
-Run the payoff cell. Land the numbers again: Trial A = 140, Trial B = 70, and, for Trial A, 31 patients
-recovered only from the notes (14 more for Trial B).
+Run the payoff cell. Land the numbers again: Trial A = 140, Trial B = 70, Trial C = 53, and, for Trial A,
+31 patients recovered only from the notes (14 more for Trial B, 13 for Trial C).
 
 ## Segment 6: evaluation, traces, judges, custom metrics (notebook 07, 7 minutes) 🧠📊
 
-This is the third big beat, and the one Fred Hutch cares about given their test-before-expand posture
+This is the third big beat, and the one that resonates with a test-before-expand posture
 on AI. Open `07_mlflow_evaluation_runs`.
 
 The contrast comes from a **hard-case band** the foundation plants (person 61-90): both-agree patients
@@ -106,7 +104,7 @@ NLP +31 for A, +14 for B all hold), because the structured value still wins in t
   LLM-as-judge, and the custom metrics live. The eval runs on the hard-case band, once for the terse
   prompt and once for the careful prompt. Run both, then open the workspace:
   - **The contrast**: the careful prompt scores higher on `her2_exact_match` and `biomarker_agreement`.
-    Same model, same notes, only the instruction changed. That is the point Sita wants to see.
+    Same model, same notes, only the instruction changed. That is the point to demonstrate.
   - **Traces tab**: open the terse run, find a HER2 IHC 2+ patient (reflex FISH ratio near 2.1). Show
     that the model answered "Unknown" because it stopped at "equivocal". Open the same patient in the
     careful run: it resolved to the correct call. That side-by-side is the audit trail.
@@ -125,7 +123,7 @@ Open `08_genie_space_setup`. Show the table comments (Genie's main accuracy sign
 queries. If a Genie space is already built, ask it the headline question live: "How many patients are
 eligible for Trial A, and how many were found only in the notes?" Confirm it returns 140 and 31.
 
-## Segment 8: the coordinator app (Sita's ask, 4 minutes) 🚀
+## Segment 8: the coordinator app (4 minutes) 🚀
 
 Open the deployed app (or run `app/` locally). Walk it as a coordinator would:
 
@@ -139,7 +137,7 @@ Open the deployed app (or run `app/` locally). Walk it as a coordinator would:
 
 ## Closing and the governance thread
 
-Tie it back to what Fred Hutch asked for. Every step ran inside Unity Catalog: the model calls, the
+Tie it back to what the team set out to build. Every step ran inside Unity Catalog: the model calls, the
 embeddings, the gold tables, the app. Nothing left the platform, lineage is automatic, and every
 AI-derived biomarker is flagged for human review. The solution recovered real patients a structured
 pipeline would miss, and we can prove the extraction quality with a test set, traces, and an LLM judge.

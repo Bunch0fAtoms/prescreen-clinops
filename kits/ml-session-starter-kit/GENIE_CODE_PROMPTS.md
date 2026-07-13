@@ -1,12 +1,12 @@
 # 💬 Genie Code: starter prompts (ML / clinical-trial pre-screening)
 
-**Fred Hutch onsite · ML session · Genie Code over the governed OMOP foundation**
+**ML session · Genie Code over the governed OMOP foundation**
 
 The build is **free-form**. The foundation is already up. The 6 OMOP tables are present and read-only.
 From here **you design the pre-screening solution your team wants to build.** You start from those 6
 tables and **build the structured silver features yourself** (that is part of your build, notebook 02),
 then move to the notes-only gap and the `ai_query` recovery. These are **starter prompts**, the same
-ones proven end-to-end in the dry run, but they're a starting line, not a script. Change them, combine
+ones validated end-to-end, but they're a starting line, not a script. Change them, combine
 them, or ask your own.
 
 > **Genie Code is what you demonstrate here.** Drive the whole build from the Genie Code chat: paste one
@@ -43,14 +43,14 @@ self-contained on those 6 tables; you never depend on another group's output.
 ### 1. Explore the cohort with Python visuals, then name the gap  *(nb 01 / 03)*
 Spend real time here. A team that can see its data asks better questions of it. This is also a teaching
 moment. Databricks notebooks run Python, and Python draws clear, labeled charts with `matplotlib`,
-`seaborn`, and `plotly`, not just R. If the room believes charts are an R-only job, this is where that
-belief changes. The pattern is simple: aggregate in SQL or Spark first, then pull the small result back
+`seaborn`, and `plotly`, not just R. If you think of charts as an R-only job, this is where that
+changes. The pattern is simple: aggregate in SQL or Spark first, then pull the small result back
 with `.toPandas()` and plot it. The cohort is tiny (300 patients), so the round-trip costs nothing.
 
 > ⚙️ **Still Genie Code.** Charts are Python, and the Genie Code chat runs SQL inline, so Genie Code
 > writes the charts into a serverless notebook it creates and runs for you. You are driving Genie Code
-> the whole time, not hand-building a notebook. This is the moment to show the room that Python, right
-> here through Genie Code, draws these visuals, not only R.
+> the whole time, not hand-building a notebook. Python, right here through Genie Code, draws these
+> visuals, not only R.
 
 #### 1a. Profile the tables (quick first look)
 > **"Profile the 6 OMOP tables: row counts, column names and types, and null rates on the key columns. Show me one sample row per table so I can see the shape of the data."**
@@ -61,8 +61,8 @@ with `.toPandas()` and plot it. The cohort is tiny (300 patients), so the round-
 > **"Create a serverless notebook that builds a small set of labeled Python charts so I can understand the cohort. Aggregate each one in SQL or Spark first, then `.toPandas()` and plot with matplotlib or seaborn. Title every chart and label the axes. Build four: (1) a histogram of age at diagnosis; (2) a bar chart of AJCC stage mix, Stage I through Stage IV; (3) a bar chart of menopausal status; (4) a grouped bar of HER2, ER, and PR showing Positive vs Negative counts. Add a one-line takeaway under each chart."**
 
 *Good looks like:* four clean, titled Python charts in the notebook. The team can read the cohort at a
-glance: the age skew, the stage mix, the menopausal split, and the biomarker balance. State it plainly in
-the room: Python drew these, in the same notebook as the SQL, with no R required.
+glance: the age skew, the stage mix, the menopausal split, and the biomarker balance. State it plainly:
+Python drew these, in the same notebook as the SQL, with no R required.
 
 #### 1c. Name the gap, and chart it (the punchline)
 > **"Classify every patient by where their biomarker evidence lives: `both` (a structured measurement and a pathology note), `structured-only`, or `notes-only` (a note but no structured measurement). Count patients per bucket, then plot the three buckets as a bar chart. Tell me the notes-only number, that is the gap we are about to close."**
@@ -74,15 +74,15 @@ chart is the motivation for everything that follows. Make sure it lands before m
 ---
 
 ### 🔐 Governance checkpoint (right after EDA): create a Genie space and watch the controls flow  *(uses the `prompt-to-genie` skill)*
-Do this early, right after the EDA, while the Governance group is in the room. Have Genie Code stand up a
+Do this early, right after the EDA. Have Genie Code stand up a
 Genie space now, over the OMOP foundation tables and any structured silver you have built. The value is
-not the space itself. It is that Governance gets to watch how Unity Catalog (UC) permissions reach the
+not the space itself. It is that you get to watch how Unity Catalog (UC) permissions reach the
 end user through it.
 
-**The lesson for Governance:** a Genie space does not add a new place to secure. It inherits the
-permissions of the tables it sits on, which Governance already set. When a user asks a question, Genie
+**The governance lesson:** a Genie space does not add a new place to secure. It inherits the
+permissions of the tables it sits on, which you already set. When a user asks a question, Genie
 generates SQL and runs it as that user. UC then applies that user's grants, column masks, and row
-filters at query time. So each person sees only what Governance already allowed on the source tables.
+filters at query time. So each person sees only what the source tables already allow.
 Keep two controls straight:
 - **Who can open the space** is space-level sharing, a Genie setting.
 - **What data they see inside it** is inherited from the source tables and validated at runtime by UC, on
@@ -90,17 +90,17 @@ Keep two controls straight:
 
 > **"Read and follow the `prompt-to-genie` skill, then create a Genie space over my OMOP foundation tables (and the structured silver, if built) so a non-technical user can ask questions in plain language. Add a few sample questions about the cohort. Keep it read-only and Unity-Catalog-scoped."**
 
-> 🔎 **What Governance should look for at runtime.** Ask the space a question, then confirm the query ran
+> 🔎 **What to look for at runtime.** Ask the space a question, then confirm the query ran
 > with the asking user's identity, and that a column mask or row filter set on a source table still
-> applies inside the space. If Governance later tightens a grant or adds a mask on a source table, the
+> applies inside the space. If you later tighten a grant or add a mask on a source table, the
 > space reflects it on the next question, with no change to the space. That is the whole idea: govern the
 > tables, and every consumer, Genie included, follows.
 
-*Good looks like:* a working Genie space the room can query, and a Governance takeaway said out loud:
+*Good looks like:* a working Genie space you can query, and a takeaway said out loud:
 "Genie spaces are not a separate governance burden. They inherit the source permissions we already set,
 enforced at runtime by the caller's credentials." This is the same skill you use in section 7 to build
-the polished coordinator space over the final gold cohort. Building one now lets Governance study the
-access model early, while the rest of the team moves on to the `ai_query` work.
+the polished coordinator space over the final gold cohort. Building one now lets you study the
+access model early, before the `ai_query` work.
 
 ---
 
@@ -138,18 +138,18 @@ live on the biomarker tables (not `silver_demographics`, which has only `gender`
 prior-therapy column is `prior_anti_her2`; join `trial_criteria`'s
 `req_sex`/`req_her2`/`req_er`/`req_pr`/`req_menopausal`/`req_no_prior_anti_her2` against the matching
 patient columns. Use `CREATE OR REFRESH MATERIALIZED VIEW`. If Genie Code reaches for `CASE WHEN trial_id
-= 'A' …`, that's **the redirect**. The whole point is that the catalog drives eligibility, so adding a
-trial is a new row in `trial_criteria`, not new SQL. (Consuming the DE group's live trials catalog is a
-stretch, see the end of this doc.)
+= 'A' …`, that's **the redirect**. The whole point is that the criteria table drives eligibility, so
+adding a trial is a new row in `trial_criteria`, not new SQL. Trial C (triple-negative) is exactly that,
+one more row screened by the same rule.
 
 ---
 
-### 3c. Build the per-patient test timeline the app drills into  *(nb 06 · feeds Sita's app)*
+### 3c. Build the per-patient test timeline the app drills into  *(nb 06 · feeds the coordinator app)*
 > **"Build `gold_patient_measurements`: a per-patient longitudinal test timeline from the OMOP `measurement` table. One row per (person_id, test, date) with the measured value and unit, ordered by date, so a coordinator can open a patient and see their tests over time to verify eligibility. Use the human-readable `measurement_source_value` for the test name and `measurement_date` for the timeline. Show me the file before you run it."**
 
 *Good looks like:* one tidy longitudinal table keyed by `person_id`, sortable by `measurement_date`, with
 test name, value, and unit per row. The coordinator app opens a patient and renders their HER2 / ER / PR
-tests as a dated timeline. This is Sita's "interrogate a patient" ask (#10): the app drills into THIS
+tests as a dated timeline. This is the "interrogate a patient" capability: the app drills into THIS
 table. Confirm `measurement` has usable dates in the synthetic data; if a patient has no dated rows the
 timeline is simply empty, not an error. Use `CREATE OR REFRESH MATERIALIZED VIEW`.
 
@@ -160,7 +160,7 @@ timeline is simply empty, not an error. Use `CREATE OR REFRESH MATERIALIZED VIEW
 
 *Good looks like:* **109 eligible without NLP → 140 with NLP = +31 patients (+28.4%)**, of which
 `biomarker_source = 'nlp'` are invisible to structured-only screening, plus a two-bar Python chart that
-drives the +31 home. This is the headline. Say these numbers, and show that chart, in the room.
+drives the +31 home. This is the headline. Say these numbers, and show that chart.
 
 ---
 
@@ -182,8 +182,8 @@ disagreement rows are real. Point the accuracy check at those patients to make t
 
 ---
 
-### 6. Bring your own Hugging Face model to Unity Catalog, then use it for similarity matching  *(a direct FH ask · notebook 05, then Genie Code)*
-Fred Hutch asked to run their own models from Hugging Face, so this is a first-class part of the build,
+### 6. Bring your own Hugging Face model to Unity Catalog, then use it for similarity matching  *(a common ML-team ask · notebook 05, then Genie Code)*
+Running your own models from Hugging Face is a first-class part of the build,
 not a side trip. The teaching moment has two halves. First, a language model from Hugging Face becomes a
 **governed Unity Catalog asset**, versioned, permissioned, and lineage-tracked like a table. Second, its
 output does real work: the team uses the model's embeddings for **similarity matching**, to find patients
@@ -201,7 +201,7 @@ and no note text left the platform to produce it.
 > ⚙️ **UI or notebook? Use the notebook, not Genie Code.** This registration is the one step Genie Code
 > cannot do. Because the chat runs on a SQL warehouse, it **cannot import a Hugging Face model and
 > register it to Unity Catalog as an MLflow model**. That flow needs Python on serverless with
-> `%pip install transformers torch` and a `restartPython`, validated in the dry run: Genie Code will not
+> `%pip install transformers torch` and a `restartPython`, as validated: Genie Code will not
 > build it. So open the pre-built **`05_clinicalbert_mlflow_uc`** notebook, attach **serverless**, and
 > **Run All** (or run it as a job). **Run it only if your workspace has Hugging Face egress and model
 > serving.** If egress is blocked, you lose the similarity-matching enrichment in 6b, but not the core
@@ -232,12 +232,12 @@ SQL and confirm the table/column comments ran (comments are Genie's main signal)
 ### 🧩 Now design your own (the open part)
 You have an audited, self-serve pre-screen. Take it further:
 
-- ⭐ **Cross-team stretch, only if the DE group shipped their trials catalog in time (see `DE_INTEGRATION_STRETCH.md`).**
-  Your pre-screen already joins your **own** `trial_criteria` table; now consume the DE group's live one.
-  Repoint the join from your `trial_criteria` to `<catalog>.clinops_de.silver_trial_criteria` (or UNION
-  the two so you keep yours and add theirs). Because the join is generic, any net-new trial DE landed,
-  like a triple-negative Trial C, screens with **zero code change**. One group produces the catalog,
-  another consumes it, and **neither waits on the other.** Your core build never depended on DE, this only enriches it.
+- ⭐ **Point the whole build at your own OMOP data.** With the `prescreen-clinops-adaptation` skill
+  installed, ask Genie Code to flip the reads from the synthetic foundation schema to your own OMOP
+  catalog and schema. The tables follow the OMOP Common Data Model (a public open standard), so the
+  6 table names are identical and the silver/gold/NLP queries run unchanged; the skill also strips
+  the synthetic-only `person.is_high_profile` references. See
+  `STRETCH.md`.
 - *"Add another trial by inserting a row into my `trial_criteria` (e.g. triple-negative: ER−/PR−/HER2−), then re-run the pre-screen and watch the cohort update with no SQL change."*
 - *"Seed ambiguous pathology notes and rerun the MLflow eval so the prompt/model contrast is real."*
 - *"Build a coordinator app (or an agent) over `gold_trial_prescreen` that shows the eligible list with a provenance badge per patient: structured / both / NLP-recovered."* (See `09_app_TODO.py` + `STRETCH.md`.)

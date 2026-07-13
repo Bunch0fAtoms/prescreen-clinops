@@ -481,7 +481,7 @@ display(head_to_head)
 
 # MAGIC %md
 # MAGIC <div style="background:#E8F5E9; border-left:6px solid #2E7D32; padding:16px 20px; border-radius:6px">
-# MAGIC <b>What to show Fred Hutch here:</b>
+# MAGIC <b>What to show your stakeholders here:</b>
 # MAGIC <ol>
 # MAGIC <li><b>The contrast</b>: the careful prompt beats the terse one on <code>her2_exact_match</code>
 # MAGIC     and <code>biomarker_agreement</code>. Same model, same notes; only the instruction changed.</li>

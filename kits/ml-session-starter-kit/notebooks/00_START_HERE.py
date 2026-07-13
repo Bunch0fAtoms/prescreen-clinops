@@ -1,7 +1,7 @@
 # Databricks notebook source
 # MAGIC %md-sandbox
 # MAGIC <div style="background:linear-gradient(90deg,#C8102E 0%,#7A0019 100%); color:white; padding:28px 32px; border-radius:8px">
-# MAGIC   <div style="font-size:0.95em; letter-spacing:2px; opacity:0.85">FRED HUTCHINSON CANCER CENTER · ML SESSION · STARTER KIT</div>
+# MAGIC   <div style="font-size:0.95em; letter-spacing:2px; opacity:0.85">CLINICAL TRIAL PRE-SCREENING · ML SESSION · STARTER KIT</div>
 # MAGIC   <div style="font-size:2.3em; font-weight:700; margin-top:6px">🧬 Clinical Trial Patient Pre-Screening on OMOP</div>
 # MAGIC   <div style="font-size:1.15em; margin-top:10px; max-width:880px; opacity:0.95">
 # MAGIC     Find every patient who might qualify for a breast-cancer trial, including the ones

@@ -261,7 +261,7 @@ Those <b>{nlp['a_nlp'] + nlp['b_nlp']} patients</b> are now in the unified cohor
 # MAGIC %md
 # MAGIC ## 5️⃣ `gold_patient_measurements`: a per-patient test timeline for the app (PRE-BUILT)
 # MAGIC
-# MAGIC Sita's app interrogates one patient: "what tests did this patient have, and when?" This longitudinal
+# MAGIC The coordinator app interrogates one patient: "what tests did this patient have, and when?" This longitudinal
 # MAGIC view is built straight from the raw OMOP `measurement` table, one row per result, ordered by date,
 # MAGIC so the app can render a timeline. `test_name` comes from `measurement_source_value`, `value` from
 # MAGIC `value_source_value` (falling back to `value_as_number` for numeric labs). `measurement_date` is

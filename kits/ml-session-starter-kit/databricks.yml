@@ -1,5 +1,5 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# Databricks Asset Bundle, Fred Hutch Clinical Trial Pre-Screening (ML session)
+# Databricks Asset Bundle, Clinical Trial Pre-Screening (ML session)
 #
 # This bundle is PRE-BUILT for you. It is Unity-Catalog-scoped (catalog/schema are
 # variables, no hive_metastore, no hardcoded workspace) and per-team. It reads the
@@ -10,24 +10,24 @@
 #   3. Open notebooks/00_START_HERE, set the widgets, and work the notebooks.
 # ─────────────────────────────────────────────────────────────────────────────
 bundle:
-  name: fred-hutch-prescreen-ml-session
+  name: prescreen-clinops-ml-session
 
 variables:
   # ── Source (read-only) OMOP tables you read FROM ─────────────────────────────
   # The 6 OMOP tables (person, condition_occurrence, measurement, observation,
   # drug_exposure, note) are stood up ONCE by the shared foundation and are
   # READ-ONLY. You never modify this schema.
-  #   Synthetic (recommended for the workshop): source_schema = clinops_foundation,
+  #   Synthetic (recommended to start): source_schema = clinops_foundation,
   #     in the same catalog as your team.
-  #   Real: point source_catalog / source_schema at your real OMOP, e.g.
-  #     source_catalog = curated_omop, source_schema = omop.
+  #   Real: point source_catalog / source_schema at your own OMOP tables, e.g.
+  #     source_catalog = <your_omop_catalog>, source_schema = <your_omop_schema>.
   # The 6 OMOP table names are identical in both cases, no query changes required.
   source_catalog:
-    description: "Catalog holding the read-only OMOP source tables. Defaults to your team catalog (synthetic); set to curated_omop for real."
+    description: "Catalog holding the read-only OMOP source tables. Defaults to your team catalog (synthetic); set to <your_omop_catalog> for real."
     default: "<your_catalog>"
 
   source_schema:
-    description: "Read-only schema holding the 6 OMOP source tables. Synthetic default clinops_foundation; set to omop for the real curated_omop.omop tables."
+    description: "Read-only schema holding the 6 OMOP source tables. Synthetic default clinops_foundation; set to <your_omop_schema> for your own OMOP tables."
     default: "clinops_foundation"
 
   # ── Client (per-team) catalog / schema, where YOU write ─────────────────────

@@ -1,17 +1,15 @@
-# 🧭 RUNBOOK: Applied AI Feature Extraction & Trial Pre-Screening (build-level facilitation)
+# 🧭 RUNBOOK: Applied AI Feature Extraction & Trial Pre-Screening (build-level reference)
 
-**Mentor-facing. Build-level only.** Event-level facilitation (agenda, room dynamics, escalation
-ladder, the security-first framing, debrief) lives in the separate `13-mentor-brief.md`. Don't
-duplicate it here. This runbook is the per-build-block detail: what's pre-built, what the team
+This runbook is the per-build-block reference: what's pre-built, what the team
 builds, the named **Checkpoints**, common failures, and the notebook safety-net fallback.
 
-**Customer:** Fred Hutch · Applied AI session of the 2-day onsite (this kit is that session only).
-**Team:** single team, mixed CORE-maturity. Comfortable with SQL and notebooks, **newer to GenAI and
-agents**. So go light on the SQL/pipeline TODOs and heavier on signposting the `ai_query` and MLflow-
-eval parts.
+**Who it's for:** an ML team working through the Applied AI build in this kit.
+**Assumed skills:** comfortable with SQL and notebooks, **newer to GenAI and
+agents**. So the kit goes light on the SQL/pipeline TODOs and heavier on signposting the `ai_query` and
+MLflow-eval parts.
 **Outcome:** a governed, **data-driven** trial pre-screen on OMOP that recovers the notes-only patients,
-joins the DE group's trials catalog (so a new trial is a file drop, not a code change), and measures
-the extraction, plus the coordinator/researcher app Sita asked for (inspiration demo). **Security-first:**
+joins its own trial-criteria table (so a new trial is a new row, not a code change), and measures
+the extraction, plus the coordinator/researcher app (reference demo). **Security-first:**
 synthetic data only, everything UC-scoped, governance visible.
 
 > **Set expectations in the first two minutes.** Say plainly what this session is. It is applied AI
@@ -22,14 +20,14 @@ synthetic data only, everything UC-scoped, governance visible.
 > anyone wants a trained model, point them to the prioritization-ranker stretch in `STRETCH.md`, which
 > sits on top of the rules and never replaces them. The full is/is-not table is in the kit `README.md`.
 
-**Reveal ladder (from the mentor brief):** nudge → hint (point at the `# TODO`) → **point at the matching
-prompt in `GENIE_CODE_PROMPTS.md`** → pair → reveal (`reference/ANSWER_KEY.md`, or the full working
-notebooks at `onsite_july2026/notebooks/`). Reveal **late** on the learnable core; reveal **early** on
-plumbing and anything PHI/security-sensitive.
+**If a team is stuck:** point at the `# TODO`, then the matching prompt in `GENIE_CODE_PROMPTS.md`,
+then the worked reference solution (`reference/ANSWER_KEY.md`, or the full working notebooks in
+`notebooks/`). Lean on the reference **late** for the learnable core, and **early** for plumbing and
+anything PHI/security-sensitive.
 
 **Free-form build.** This session is intentionally open. The team designs their own pre-screen off the
-6 OMOP tables in the shared foundation. `GENIE_CODE_PROMPTS.md` holds ready-to-use Genie Code build prompts (the proven
-dry-run set, numbered to the notebooks, each with a "good looks like" + the `ai_query` gotcha); treat
+6 OMOP tables in the shared foundation. `GENIE_CODE_PROMPTS.md` holds ready-to-use Genie Code build prompts (the validated
+set, numbered to the notebooks, each with a "good looks like" + the `ai_query` gotcha); treat
 them as *starters the team can adapt*, not a script.
 
 ---
@@ -52,7 +50,7 @@ stall fallback; only `05` and `07` are ones you actually run.
 | `06_gold_unified_prescreen` | Fuse structured and NLP, generic trials-as-data pre-screen, patient timeline | **Genie Code** (materialized views) | Backup |
 | `07_mlflow_evaluation_runs` | Extraction eval | **Genie Code** for the live SQL accuracy check; **Notebook, Run All** for the logged MLflow experiment (runs, leaderboard, traces) | **Run the notebook only for the deeper artifact** |
 | `08_genie_space_setup` | Coordinator Genie space | **Genie Code** (via the `prompt-to-genie` skill) | Backup |
-| `09_app` | Coordinator app | Inspiration demo, pre-built at `app/` | Reference |
+| `09_app` | Coordinator app | Reference demo, pre-built at `app/` | Reference |
 
 **Two notebooks you run: `05` (required for the model and similarity enrichment) and `07` (optional, the
 logged eval). Everything else is Genie Code.** The dividing line is the runtime, not the notebook
@@ -72,8 +70,8 @@ number: SQL → Genie Code; Python on serverless → a notebook you run.
 - **🚩 Checkpoint 1, Data foundation up.** `01` row-counts show person=300, note=300, all 6 tables
   > 0; the three biomarker groups read ≈ 180 / 60 / 60.
 - **Common failures:**
-  - *Stuck on auth/grants/catalog creation* → **plumbing, reveal early.** Pull the Governance SSA;
-    confirm the catalog/schema names match the bundle. This is not their learnable core.
+  - *Stuck on auth/grants/catalog creation* → **plumbing, reveal early.** Check with your workspace
+    admin; confirm the catalog/schema names match the bundle. This is not the learnable core.
   - *`hive_metastore` muscle memory* → redirect to the UC catalog/schema from the widgets. No
     hive_metastore anywhere.
   - *Six OMOP tables not found* → the foundation lands them in the shared foundation schema. Point the
@@ -89,8 +87,8 @@ number: SQL → Genie Code; Python on serverless → a notebook you run.
   straightforward pivot, so a team can move through it quickly and spend most of their time on the
   learnable core (the gap and the `ai_query` recovery).
 - **🚩 Checkpoint 2, Structured silver built.** Verify `silver_biomarker_profile` has HER2 populated;
-  the other two views present. (If it fails to build, the 6 OMOP tables may be missing, pull the lead
-  SA; this is plumbing, not the ML lesson.)
+  the other two views present. (If it fails to build, the 6 OMOP tables may be missing, check with your
+  workspace admin; this is plumbing, not the ML lesson.)
 - **Note:** the `MAX(CASE…)` pivot is standard SQL, so reveal the mechanism early if a team is spinning
   on it. The ML value is in the gap analysis and the NLP recovery that follow.
 
@@ -134,7 +132,7 @@ number: SQL → Genie Code; Python on serverless → a notebook you run.
 
 - **Pre-built:** the `joined` CTE skeleton, the source-split payoff cells, the plain-language win.
 - **Team builds:** `gold_unified_biomarker_profile` (FULL OUTER + COALESCE + source audit); the
-  **data-driven** pre-screen that **joins the DE group's `silver_trial_criteria`** instead of
+  **data-driven** pre-screen that **joins its own `silver_trial_criteria`** instead of
   hardcoding Trial A/B; and `gold_patient_measurements` (the per-patient test timeline the app reads).
 - **The pre-screen join (the shift this session):** trials are now data, not code. The generic rule
   is **each non-NULL `req_*` must match and age BETWEEN `age_min` AND `age_max`** (a NULL requirement =
@@ -143,10 +141,10 @@ number: SQL → Genie Code; Python on serverless → a notebook you run.
   **`gold_trial_prescreen_wide` VIEW** preserves the old one-row-per-person A/B/C shape.
 - **🚩 Checkpoint 6, Audited, data-driven cohort exists.** `gold_trial_prescreen` (LONG) built; the
   source-split cell shows non-zero `'nlp'` eligible counts. The cohort grew because of the NLP step.
-  Numbers preserved: **Trial A 140 / Trial B 70 / NLP-recovered +31 for A, +14 for B**, plus **net-new Trial C (53)**
+  Numbers preserved: **Trial A 140 / Trial B 70 / NLP-recovered +31 for A, +14 for B**, plus **Trial C (53)**
   that screened **with no code change** because it came in via the join. **This is the end-to-end
   payoff; make the team say what the audit column buys them in a clinical setting, and that adding
-  Trial C was a DE file drop, not an ML edit.**
+  Trial C was one more row in the criteria table, not an ML edit.**
 - **Common failures:**
   - *"Both" patients double-counted* → they used UNION instead of FULL OUTER JOIN (ANSWER_KEY nb 06).
   - *Trial A loses everyone* → missing `COALESCE(had_anti_her2_therapy, false)`; NULL kills the boolean.
@@ -179,21 +177,21 @@ number: SQL → Genie Code; Python on serverless → a notebook you run.
 - **Common failure:** *Genie's number is off* → add the trusted example SQL from `genie/genie_space.md`;
   confirm the nb 08 comment cell ran (comments are Genie's main signal).
 
-## Block 8 · Coordinator/researcher app (nb 09), INSPIRATION DEMO (Sita's ask)
+## Block 8 · Coordinator/researcher app (nb 09), REFERENCE DEMO
 
-- **What it is:** the researcher-facing app Sita asked for. **We built it** as this kit's app
-  deliverable; it lives at `onsite_july2026/app/`. FH has not yet approved Databricks Apps, so it is
-  an **inspiration demo**, show the value, don't require the room to rebuild it. Three capabilities:
+- **What it is:** the researcher-facing app. This kit **includes it** as the app
+  deliverable; it lives in this kit's `app/` folder. It is provided as
+  a **reference demo**, show the value, don't require a rebuild. Three capabilities:
   - **Patient timeline drill-down**, reads `gold_patient_measurements`, shows a patient's tests over time.
   - **Override write-back**, the model output stays **immutable** (`gold_trial_prescreen` is never
     edited); a coordinator's disagree/remove goes to `eligibility_override` with a reason, and the app
     shows **effective eligibility** = `COALESCE(human_says, model_says)`. Auditable, reversible.
   - **In-app lightweight agent**, MLflow `ResponsesAgent` pattern, calls the `databricks-claude-sonnet-4-6`
     FM endpoint directly, three tools: patient timeline, check-against-all-trials, screen-a-subset.
-- **Facilitation:** demo it to make the point (model output immutable + human overrides + an agent
+- **How to use it:** demo it to make the point (model output immutable + human overrides + an agent
   that personalizes across trials). If a team wants to extend it, timebox and restate the one success
   signal (the actionable, audited patient list). See `STRETCH.md` for open-ended extensions.
-- **Framing to hold:** this is our inspiration demo, synthetic data only, PREVIEW / do-not-publish.
+- **Framing to hold:** this is a reference demo, synthetic data only.
 
 ---
 
@@ -210,6 +208,6 @@ number: SQL → Genie Code; Python on serverless → a notebook you run.
 | 7 | Four runs in MLflow | 2×2 leaderboard + error patterns |
 | 8 | Genie headline | NLP-recovery count matches verify SQL |
 
-**Safety net, always:** the complete working notebooks at `onsite_july2026/notebooks/` reproduce every
+**Safety net, always:** the complete working notebooks in `notebooks/` reproduce every
 artifact. Reveal them as a last resort to keep a team in the game, never as a substitute for the
 learnable core, and default to synthetic for anything PHI-adjacent.

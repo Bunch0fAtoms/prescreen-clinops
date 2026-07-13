@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Applied AI session, Fred Hutch × Databricks</title>
+<title>Applied AI session, Clinical Trial Pre-Screening</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -125,13 +125,12 @@
 <div class="page">
 
   <div class="hdr">
-    <div class="eyebrow">Fred Hutch × Databricks · Build Days · Applied AI session</div>
+    <div class="eyebrow">Prescreen ClinOps · Applied AI session</div>
     <h1>Recover the patients that <span class="accent">structured queries miss</span></h1>
     <div class="sub">This session builds an applied-AI trial pre-screen. A language model reads biomarker facts out of free-text pathology notes, then feeds those facts to a transparent, rules-based eligibility screen. The payoff is a bigger, defensible trial cohort, governed and measured end to end.</div>
     <div class="facts">
       <span class="fact"><b>Surface:</b> Genie Code · notebooks · app</span>
-      <span class="fact"><b>Group:</b> Emma · Sita · Monica</span>
-      <span class="fact"><b>Window:</b> full two days</span>
+      <span class="fact"><b>Scope:</b> end-to-end build</span>
       <span class="fact"><b>Data:</b> synthetic OMOP · no PHI</span>
     </div>
     <div class="toolbar">
@@ -153,7 +152,7 @@
     <a href="#s4"><span class="an">4</span> The build arc</a>
     <a href="#s5"><span class="an">5</span> What you screen for</a>
     <a href="#s6"><span class="an">6</span> The coordinator app</a>
-    <a href="#s7"><span class="an">7</span> Your Day-2 demo</a>
+    <a href="#s7"><span class="an">7</span> Your closing demo</a>
   </nav>
 
   <!-- 1 -->
@@ -181,16 +180,16 @@
         </ul>
       </div>
     </div>
-    <p class="body" style="margin-top:18px;margin-bottom:8px;"><b>These are the questions your team submitted.</b> The session is built around them, in your own words.</p>
+    <p class="body" style="margin-top:18px;margin-bottom:8px;"><b>What this kit covers.</b> The session is built around these capabilities.</p>
     <table class="arc">
-      <thead><tr><th>The Fred Hutch ask</th><th>Where it lands</th></tr></thead>
+      <thead><tr><th>What you build</th><th>Where it lands</th></tr></thead>
       <tbody>
-        <tr><td>"Build apps using Mosaic AI with HuggingFace models like ClinicalBERT, to pre-screen patients for clinical trials." <span style="color:var(--muted)">(Emma)</span></td><td>The whole build, end to end.</td></tr>
-        <tr><td>"Register a HuggingFace model to read-only schemas to test ideas." <span style="color:var(--muted)">(Emma)</span></td><td>ClinicalBERT to MLflow to Unity Catalog.</td></tr>
-        <tr><td>"Give Genie context and example queries so it answers more accurately." <span style="color:var(--muted)">(Monica)</span></td><td>The self-serve Genie space.</td></tr>
-        <tr><td>"Use Databricks Apps so teams can review outputs and give feedback without notebooks." <span style="color:var(--muted)">(Sita)</span></td><td>The coordinator app.</td></tr>
-        <tr><td>"Register or call an external model while preserving governance and traceability." <span style="color:var(--muted)">(Sita)</span></td><td>Model registration and the AI Gateway.</td></tr>
-        <tr><td>"Set up evaluation runs to compare prompts, models, and outputs across versions." <span style="color:var(--muted)">(Sita)</span></td><td>The MLflow evaluation step.</td></tr>
+        <tr><td>Build an app using Mosaic AI with a HuggingFace model like ClinicalBERT, to pre-screen patients for clinical trials.</td><td>The whole build, end to end.</td></tr>
+        <tr><td>Register a HuggingFace model to read-only schemas to test ideas.</td><td>ClinicalBERT to MLflow to Unity Catalog.</td></tr>
+        <tr><td>Give Genie context and example queries so it answers more accurately.</td><td>The self-serve Genie space.</td></tr>
+        <tr><td>Use Databricks Apps so teams can review outputs and give feedback without notebooks.</td><td>The coordinator app.</td></tr>
+        <tr><td>Register or call an external model while preserving governance and traceability.</td><td>Model registration and the AI Gateway.</td></tr>
+        <tr><td>Set up evaluation runs to compare prompts, models, and outputs across versions.</td><td>The MLflow evaluation step.</td></tr>
       </tbody>
     </table>
   </section>
@@ -239,7 +238,7 @@
         <tr><td class="step">06</td><td>Gold pre-screen</td><td>Unified cohort with a <code>biomarker_source</code> audit column, joined to the DE group's trials catalog.</td></tr>
         <tr><td class="step">07</td><td>MLflow evaluation</td><td>Compare prompts and models against ground truth. Prove the extraction is good.</td></tr>
         <tr><td class="step">08</td><td>Genie space</td><td>A non-technical coordinator self-serves the cohort in plain language.</td></tr>
-        <tr><td class="step">09</td><td>Coordinator app</td><td>Patient timeline, an override write-back, and an in-app agent. Our inspiration demo.</td></tr>
+        <tr><td class="step">09</td><td>Coordinator app</td><td>Patient timeline, an override write-back, and an in-app agent. A reference demo.</td></tr>
       </tbody>
     </table>
   </section>
@@ -265,7 +264,7 @@
     </div>
     <div class="callout">
       <h3>The synthetic → real toggle</h3>
-      <p>The whole kit runs on synthetic data by default. When Fred Hutch is ready, ask Genie Code to repoint the reads from the shared foundation to real <code>curated_omop.omop</code>. The table names are identical, so every query you wrote runs unchanged.</p>
+      <p>The whole kit runs on synthetic data by default. When you are ready, ask Genie Code to repoint the reads from the shared foundation to your own OMOP tables. The tables follow the OMOP Common Data Model, a public open standard, so the table names are identical and every query you wrote runs unchanged.</p>
     </div>
   </section>
 
@@ -274,7 +273,7 @@
     <div class="sec-head">
       <div class="kicker"><span class="n">6</span> The coordinator app</div>
       <h2>Where a human stays in charge</h2>
-      <p class="lede">Sita asked for a researcher-facing app on top of the pre-screen. We built it as this kit's inspiration demo. One principle: the model informs, the human decides.</p>
+      <p class="lede">This kit includes a researcher-facing app on top of the pre-screen, provided as a reference demo. One principle: the model informs, the human decides.</p>
     </div>
     <div class="grid g3">
       <div class="card tinted"><h3>Timeline drill-down</h3><p>Pick a patient, see their tests over time from the longitudinal gold table.</p></div>
@@ -286,8 +285,8 @@
   <!-- 7 -->
   <section class="sec" id="s7">
     <div class="sec-head">
-      <div class="kicker"><span class="n">7</span> Your Day-2 demo</div>
-      <h2>What you'll show the room</h2>
+      <div class="kicker"><span class="n">7</span> Your closing demo</div>
+      <h2>What you'll show your stakeholders</h2>
     </div>
     <div class="oneliner">
       <div class="k">The one line</div>
@@ -303,8 +302,8 @@
   </section>
 
   <div class="foot">
-    <span>Fred Hutch × Databricks · Applied AI session brief</span>
-    <span>Build Days · July 7 to 8, 2026 · synthetic data only, Unity-Catalog-scoped · kit: <code>ml-session-starter-kit</code></span>
+    <span>Prescreen ClinOps · Applied AI session brief</span>
+    <span>Synthetic data only, Unity-Catalog-scoped · kit: <code>ml-session-starter-kit</code></span>
   </div>
 
 </div>

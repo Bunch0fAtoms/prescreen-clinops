@@ -17,10 +17,11 @@
 # MAGIC
 # MAGIC The **OMOP Common Data Model (CDM)** is a standard way to organize health records so the same
 # MAGIC query works across hospitals and research networks. The shared foundation already stood up
-# MAGIC **6 of those tables** with 300 synthetic breast-cancer patients, the same shape as Fred Hutch's
-# MAGIC real `curated_omop.omop` data. This notebook reads them read-only from your `source_schema`
+# MAGIC **6 of those tables** with 300 synthetic breast-cancer patients, following the OMOP CDM (a
+# MAGIC public open standard). This notebook reads them read-only from your `source_schema`
 # MAGIC (synthetic default `clinops_foundation`), so every query you write here runs unchanged against
-# MAGIC the real tables later: just point `source_schema` at `curated_omop.omop` in `databricks.yml`.
+# MAGIC any OMOP-conformant source later: just point `source_catalog` / `source_schema` at your own
+# MAGIC OMOP tables in `databricks.yml`.
 # MAGIC
 # MAGIC | Table | Role in this demo |
 # MAGIC |---|---|
@@ -71,8 +72,8 @@
 # MAGIC generate data; it **reads** the foundation's tables.
 # MAGIC
 # MAGIC <div style="background:#E8F5E9; border-left:6px solid #2E7D32; padding:12px 16px; border-radius:4px">
-# MAGIC To read the <b>real</b> OMOP data instead of the synthetic foundation, set
-# MAGIC <code>source_schema</code> to <code>omop</code> (catalog <code>curated_omop</code>) in
+# MAGIC To read your <b>own</b> OMOP data instead of the synthetic foundation, set
+# MAGIC <code>source_catalog</code> / <code>source_schema</code> to your OMOP catalog and schema in
 # MAGIC <code>databricks.yml</code>. The 6 table names are identical, so nothing downstream changes.
 # MAGIC </div>
 
@@ -89,8 +90,8 @@
 
 # DBTITLE 1,Point this profiling session at the read-only source schema
 # Read-only exploration only. We do NOT create anything in the source schema.
-# Use the SOURCE catalog+schema so bare table names resolve to real OMOP too. Real
-# curated_omop.omop is a different catalog, so switching only the schema would miss it.
+# Use the SOURCE catalog+schema so bare table names resolve to your own OMOP too. Your
+# OMOP source is typically a different catalog, so switching only the schema would miss it.
 spark.sql(f"USE CATALOG {SOURCE_CATALOG}")
 spark.sql(f"USE SCHEMA {SOURCE_SCHEMA}")
 print(f"Reading the 6 OMOP tables from {SOURCE_CATALOG}.{SOURCE_SCHEMA}")
@@ -113,7 +114,7 @@ print(f"Reading the 6 OMOP tables from {SOURCE_CATALOG}.{SOURCE_SCHEMA}")
 # MAGIC Expected: **`person` = 300**, **`note` = 300**, `condition_occurrence` ≈ 300, and `measurement`,
 # MAGIC `observation`, `drug_exposure` all > 0. If a table is missing or empty, confirm the shared
 # MAGIC foundation has run and that your `source_schema` points at it (synthetic default
-# MAGIC `clinops_foundation`, or `curated_omop.omop` for the real data).
+# MAGIC `clinops_foundation`, or your own OMOP catalog and schema for the real data).
 
 # COMMAND ----------
 

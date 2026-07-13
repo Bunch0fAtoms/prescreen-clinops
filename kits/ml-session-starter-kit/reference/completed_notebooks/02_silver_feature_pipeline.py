@@ -144,62 +144,74 @@ print(f"✅ Pipeline source written to {out_dir}/silver_layer.sql")
 # COMMAND ----------
 
 # DBTITLE 1,silver_biomarker_profile (HER2 / ER / PR pivot) (COMPLETED)
-# MAGIC %sql
-# MAGIC CREATE OR REPLACE TABLE silver_biomarker_profile
-# MAGIC COMMENT 'Per-person structured biomarker pivot: HER2, ER, PR from measurement'
-# MAGIC AS
-# MAGIC WITH biomarkers AS (
-# MAGIC   SELECT person_id,
-# MAGIC     MAX(CASE WHEN measurement_source_value = 'HER2/neu'              THEN value_source_value END) AS her2_status,
-# MAGIC     MAX(CASE WHEN measurement_source_value = 'Estrogen receptor'     THEN value_source_value END) AS er_status,
-# MAGIC     MAX(CASE WHEN measurement_source_value = 'Progesterone receptor' THEN value_source_value END) AS pr_status
-# MAGIC   FROM measurement
-# MAGIC   WHERE measurement_source_value IN ('HER2/neu','Estrogen receptor','Progesterone receptor')
-# MAGIC   GROUP BY person_id
-# MAGIC )
-# MAGIC SELECT person_id, her2_status, er_status, pr_status FROM biomarkers;
+# Reads the read-only OMOP source via src(); writes to YOUR schema via fqn(). Using Python
+# spark.sql keeps both fully qualified, so the read-only source and your writable schema can
+# live in different schemas (or catalogs) with no session juggling.
+spark.sql(f"""
+CREATE OR REPLACE TABLE {fqn('silver_biomarker_profile')}
+COMMENT 'Per-person structured biomarker pivot: HER2, ER, PR from measurement'
+AS
+WITH biomarkers AS (
+  SELECT person_id,
+    MAX(CASE WHEN measurement_source_value = 'HER2/neu'              THEN value_source_value END) AS her2_status,
+    MAX(CASE WHEN measurement_source_value = 'Estrogen receptor'     THEN value_source_value END) AS er_status,
+    MAX(CASE WHEN measurement_source_value = 'Progesterone receptor' THEN value_source_value END) AS pr_status
+  FROM {src('measurement')}
+  WHERE measurement_source_value IN ('HER2/neu','Estrogen receptor','Progesterone receptor')
+  GROUP BY person_id
+)
+SELECT person_id, her2_status, er_status, pr_status FROM biomarkers
+""")
+print("✅ built", fqn('silver_biomarker_profile'))
+display(spark.table(fqn('silver_biomarker_profile')).limit(10))
 
 # COMMAND ----------
 
 # DBTITLE 1,silver_prior_therapy: anti-HER2 & endocrine flags (PRE-BUILT example)
-# MAGIC %sql
-# MAGIC CREATE OR REPLACE TABLE silver_prior_therapy
-# MAGIC COMMENT 'Per-person prior-therapy flags derived from drug_exposure'
-# MAGIC AS
-# MAGIC SELECT person_id,
-# MAGIC   MAX(CASE WHEN drug_source_value IN ('Trastuzumab','Pertuzumab') THEN 1 ELSE 0 END) = 1 AS had_anti_her2_therapy,
-# MAGIC   MAX(CASE WHEN drug_source_value IN ('Letrozole','Tamoxifen')   THEN 1 ELSE 0 END) = 1 AS had_endocrine_therapy
-# MAGIC FROM drug_exposure
-# MAGIC GROUP BY person_id;
+spark.sql(f"""
+CREATE OR REPLACE TABLE {fqn('silver_prior_therapy')}
+COMMENT 'Per-person prior-therapy flags derived from drug_exposure'
+AS
+SELECT person_id,
+  MAX(CASE WHEN drug_source_value IN ('Trastuzumab','Pertuzumab') THEN 1 ELSE 0 END) = 1 AS had_anti_her2_therapy,
+  MAX(CASE WHEN drug_source_value IN ('Letrozole','Tamoxifen')   THEN 1 ELSE 0 END) = 1 AS had_endocrine_therapy
+FROM {src('drug_exposure')}
+GROUP BY person_id
+""")
+print("✅ built", fqn('silver_prior_therapy'))
+display(spark.table(fqn('silver_prior_therapy')).limit(10))
 
 # COMMAND ----------
 
 # DBTITLE 1,silver_demographics: age-at-dx, menopausal status, stage (PRE-BUILT example)
-# MAGIC %sql
-# MAGIC CREATE OR REPLACE TABLE silver_demographics
-# MAGIC COMMENT 'Per-person demographics + diagnosis context for trial eligibility'
-# MAGIC AS
-# MAGIC WITH dx AS (
-# MAGIC   SELECT person_id, MIN(condition_start_date) AS dx_date
-# MAGIC   FROM condition_occurrence
-# MAGIC   WHERE condition_source_value = 'Malignant neoplasm of breast'
-# MAGIC   GROUP BY person_id
-# MAGIC ),
-# MAGIC meno AS (
-# MAGIC   SELECT person_id, MAX(value_source_value) AS menopausal_status
-# MAGIC   FROM observation WHERE observation_source_value = 'Menopausal status' GROUP BY person_id
-# MAGIC ),
-# MAGIC stage AS (
-# MAGIC   SELECT person_id, MAX(value_source_value) AS ajcc_stage
-# MAGIC   FROM observation WHERE observation_source_value = 'AJCC stage' GROUP BY person_id
-# MAGIC )
-# MAGIC SELECT p.person_id, p.gender_source_value,
-# MAGIC   (year(dx.dx_date) - p.year_of_birth) AS age_at_dx_years,
-# MAGIC   dx.dx_date, meno.menopausal_status, stage.ajcc_stage
-# MAGIC FROM person p
-# MAGIC JOIN dx         ON p.person_id = dx.person_id
-# MAGIC LEFT JOIN meno  ON p.person_id = meno.person_id
-# MAGIC LEFT JOIN stage ON p.person_id = stage.person_id;
+spark.sql(f"""
+CREATE OR REPLACE TABLE {fqn('silver_demographics')}
+COMMENT 'Per-person demographics + diagnosis context for trial eligibility'
+AS
+WITH dx AS (
+  SELECT person_id, MIN(condition_start_date) AS dx_date
+  FROM {src('condition_occurrence')}
+  WHERE condition_source_value = 'Malignant neoplasm of breast'
+  GROUP BY person_id
+),
+meno AS (
+  SELECT person_id, MAX(value_source_value) AS menopausal_status
+  FROM {src('observation')} WHERE observation_source_value = 'Menopausal status' GROUP BY person_id
+),
+stage AS (
+  SELECT person_id, MAX(value_source_value) AS ajcc_stage
+  FROM {src('observation')} WHERE observation_source_value = 'AJCC stage' GROUP BY person_id
+)
+SELECT p.person_id, p.gender_source_value,
+  (year(dx.dx_date) - p.year_of_birth) AS age_at_dx_years,
+  dx.dx_date, meno.menopausal_status, stage.ajcc_stage
+FROM {src('person')} p
+JOIN dx         ON p.person_id = dx.person_id
+LEFT JOIN meno  ON p.person_id = meno.person_id
+LEFT JOIN stage ON p.person_id = stage.person_id
+""")
+print("✅ built", fqn('silver_demographics'))
+display(spark.table(fqn('silver_demographics')).limit(10))
 
 # COMMAND ----------
 
@@ -215,7 +227,7 @@ print(f"✅ Pipeline source written to {out_dir}/silver_layer.sql")
 
 # MAGIC %md
 # MAGIC <div style="background:#E8F5E9; border-left:6px solid #2E7D32; padding:12px 16px; border-radius:4px">
-# MAGIC <b>What we built:</b> three clean per-patient silver views. Note that
+# MAGIC <b>What this builds:</b> three clean per-patient silver views. Note that
 # MAGIC <code>silver_biomarker_profile</code> only has biomarkers for the ~240 patients with structured
 # MAGIC <code>measurement</code> rows. The 60 <b>notes-only</b> patients are still missing. That gap is
 # MAGIC exactly what notebook 03 quantifies and notebook 04 fills with NLP.
