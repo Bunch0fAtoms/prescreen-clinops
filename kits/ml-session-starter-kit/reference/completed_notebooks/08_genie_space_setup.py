@@ -19,8 +19,9 @@
 # MAGIC shows the answer. The user never sees a `JOIN`, and every query still runs against your
 # MAGIC permissioned tables.
 # MAGIC
-# MAGIC This notebook is **setup guidance + curated content**: prepare the tables, then stand up the space
-# MAGIC in the UI and seed it with the questions, instructions, and trusted SQL in `genie/`.
+# MAGIC This notebook **teaches you to build the space**: prepare the tables, stand up the space, then
+# MAGIC teach it the vocabulary and trusted SQL that make it accurate. Step 4 also shows a one-prompt way
+# MAGIC to have Genie Code build the whole space for you.
 
 # COMMAND ----------
 
@@ -73,8 +74,8 @@
 # MAGIC
 # MAGIC <div style="background:#FFF8E1; border-left:6px solid #F2A900; padding:12px 16px; border-radius:4px">
 # MAGIC <b>Keep the table count tight.</b> Genie is most accurate with a small, well-described set. Three
-# MAGIC is plenty. The exact instructions, sample questions, and trusted SQL to paste into the space are in
-# MAGIC <code>genie/genie_space.md</code>.
+# MAGIC is plenty. Step 4 below walks you through the instructions and trusted SQL that make the space
+# MAGIC accurate, including a one-prompt way to have Genie Code build the whole space for you.
 # MAGIC </div>
 
 # COMMAND ----------
@@ -118,17 +119,89 @@ show_md(f"""
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 📚 Step 4: Add instructions & trusted SQL to the space (content in genie/)
+# MAGIC ## 📚 Step 4: Teach the space to answer accurately (instructions + trusted SQL)
 # MAGIC
-# MAGIC Two settings turn a decent Genie into an accurate one, both under the space's
-# MAGIC **Instructions / Knowledge** panel:
-# MAGIC - **General instructions**: plain-language rules (what "eligible" means, that `biomarker_source =
-# MAGIC   'nlp'` was recovered from a note, the valid status strings, that the table is one row per patient
-# MAGIC   per trial so you filter by `trial_id`).
-# MAGIC - **Trusted example SQL**: save 2 to 3 verified queries with plain-English titles; Genie generalizes
-# MAGIC   from them. This is the strongest accuracy boost.
+# MAGIC The space works now, but two settings turn a decent Genie into an accurate one. Both live under
+# MAGIC the space's **Instructions / Knowledge** panel. You are teaching Genie the vocabulary of your data.
 # MAGIC
-# MAGIC **Both are written for you in `genie/genie_space.md`. Copy them into the space.**
+# MAGIC - **General instructions**: plain-language rules. What "eligible" means, that `biomarker_source =
+# MAGIC   'nlp'` was recovered from a note, the valid status strings, and that the table is one row per
+# MAGIC   patient per trial so you filter by `trial_id`.
+# MAGIC - **Trusted example SQL**: two or three verified queries, each saved with a plain-English title.
+# MAGIC   Genie generalizes from them, so this is the single strongest accuracy boost.
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### ⚡ The fast way: let Genie Code build the space for you
+# MAGIC
+# MAGIC A community skill, **`prompt-to-genie`**, stands up a whole Genie space from one plain-English
+# MAGIC prompt: tables, descriptions, sample questions, and trusted SQL. Install it once at the workspace
+# MAGIC level, then just describe the space you want.
+# MAGIC
+# MAGIC **Install once** (in a workspace **web terminal**, it authenticates as you):
+# MAGIC
+# MAGIC ```bash
+# MAGIC databricks repos create https://github.com/sean-zhang-dbx/prompt-to-genie.git gitHub \
+# MAGIC   --path /Workspace/.assistant/skills/prompt-to-genie
+# MAGIC ```
+# MAGIC
+# MAGIC Or from the UI: **Workspace → Create → Git folder**, URL
+# MAGIC `https://github.com/sean-zhang-dbx/prompt-to-genie.git`, destination
+# MAGIC `/Workspace/.assistant/skills/prompt-to-genie`.
+# MAGIC
+# MAGIC **Then open a Genie Code chat and paste a starter prompt like this:**
+# MAGIC
+# MAGIC > Build a Genie space named **"Breast Cancer Biomarker & Trial Eligibility"** over my
+# MAGIC > `gold_trial_prescreen`, `gold_unified_biomarker_profile`, and `silver_demographics` tables.
+# MAGIC > `gold_trial_prescreen` is LONG: one row per (`person_id`, `trial_id`) with an `eligible` flag, a
+# MAGIC > `reason`, and a `biomarker_source` that is `'structured'` or `'nlp'`. Add clear table and column
+# MAGIC > descriptions, seed these sample questions, and save trusted SQL for them: (1) how many patients
+# MAGIC > are eligible for each trial, (2) how many Trial A patients were found only via pathology-note
+# MAGIC > NLP, (3) the eligible breakdown by biomarker source.
+# MAGIC
+# MAGIC A good follow-up prompt, once the space exists:
+# MAGIC
+# MAGIC > Turn on entity matching for `trial_id`, `her2_status`, `er_status`, `pr_status`, and
+# MAGIC > `biomarker_source`, and add a join on `person_id` between the three tables.
+# MAGIC
+# MAGIC Review each proposal before you accept it, the same as any Genie Code edit. That one prompt gets
+# MAGIC you a space with all three accuracy levers already in place.
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### 🔍 What "good" looks like (so you can check the result, or build it by hand)
+# MAGIC
+# MAGIC Whether Genie Code built it or you are doing it in the UI, this is the content that makes the
+# MAGIC space accurate. Paste this into the **Instructions** panel. It is the vocabulary Genie needs:
+# MAGIC
+# MAGIC ```text
+# MAGIC You answer questions about breast-cancer clinical-trial PRE-SCREENING over governed Unity Catalog
+# MAGIC gold tables. Synthetic data only, there is no PHI.
+# MAGIC
+# MAGIC gold_trial_prescreen is LONG: one row per (person_id, trial_id). To count distinct patients use
+# MAGIC COUNT(DISTINCT person_id); to count eligible for a trial, filter trial_id and eligible = TRUE.
+# MAGIC
+# MAGIC TRIALS: A = HER2-positive; B = ER-positive / HER2-negative / postmenopausal; C = triple-negative.
+# MAGIC ELIGIBILITY: eligible is a boolean; reason gives the plain-English explanation.
+# MAGIC PROVENANCE: biomarker_source = 'structured' came from coded lab data; 'nlp' was recovered from a
+# MAGIC free-text pathology note by an AI model, so those patients are invisible to a structured-only query.
+# MAGIC STATUS values are the strings 'Positive', 'Negative', or 'Unknown' for her2_status, er_status, pr_status.
+# MAGIC ```
+# MAGIC
+# MAGIC Then save two or three **trusted queries**, each with a plain-English title. Genie learns the most
+# MAGIC from these:
+# MAGIC
+# MAGIC | Save it with this title | The SQL |
+# MAGIC |---|---|
+# MAGIC | *Eligible patients per trial* | `SELECT trial_id, trial_name, COUNT(*) AS eligible_patients FROM gold_trial_prescreen WHERE eligible = TRUE GROUP BY trial_id, trial_name ORDER BY trial_id` |
+# MAGIC | *Trial A patients found only via NLP* | `SELECT COUNT(*) AS nlp_recovered_eligible FROM gold_trial_prescreen WHERE trial_id = 'A' AND eligible = TRUE AND biomarker_source = 'nlp'` |
+# MAGIC | *Eligible breakdown by biomarker source* | `SELECT trial_id, biomarker_source, COUNT(*) AS eligible_patients FROM gold_trial_prescreen WHERE eligible = TRUE GROUP BY trial_id, biomarker_source ORDER BY trial_id, biomarker_source` |
+# MAGIC
+# MAGIC The pattern to learn: describe the table shape and the vocabulary in the instructions, then show
+# MAGIC Genie two or three correct queries. Those two levers, on top of the column comments from Step 1,
+# MAGIC are what make a Genie space trustworthy.
 
 # COMMAND ----------
 
