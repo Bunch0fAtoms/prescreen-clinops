@@ -212,4 +212,4 @@ show_md(f"""
 # MAGIC </div>
 # MAGIC
 # MAGIC ## ▶️ Next step
-# MAGIC ### → Open the **[coordinator app]($../app/README)** (`app/`) for the point-and-click pre-screening UI.
+# MAGIC ### → Open **[09_app_TODO]($./09_app_TODO)** for the stretch goal: a coordinator app over the cohort.

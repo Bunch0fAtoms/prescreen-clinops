@@ -74,8 +74,9 @@
 # MAGIC ## 2️⃣ `gold_trial_prescreen`: generic, catalog-driven eligibility + a reason
 # MAGIC
 # MAGIC Do NOT hardcode Trial A and Trial B as literal rules. Trials are **data** now, in
-# MAGIC `silver_trial_criteria` (built by DE notebook 05). This pre-screen joins against whatever rows that
-# MAGIC table holds, so adding a trial is a data change in the DE section, not a code change here.
+# MAGIC `silver_trial_criteria`, a small trials catalog we seed just below (PRE-BUILT) so this notebook is
+# MAGIC self-contained. This pre-screen joins against whatever rows that table holds, so adding a trial is a
+# MAGIC data change, not a code change here.
 # MAGIC
 # MAGIC **The generic rule.** A patient qualifies for a trial when, for every `req_*` criterion that is
 # MAGIC NON-NULL, the patient's value matches, AND `age_at_dx_years` is BETWEEN `age_min` AND `age_max`. A
@@ -95,6 +96,31 @@
 # MAGIC | `req_no_prior_anti_her2 = true` | patient's `prior_anti_her2` must be `false` |
 # MAGIC
 # MAGIC `min_ecog` is carried through for the app to show, but not matched yet (patients have no ECOG field).
+
+# COMMAND ----------
+
+# DBTITLE 1,Seed the trials-as-data catalog: silver_trial_criteria (PRE-BUILT)
+# MAGIC %sql
+# MAGIC CREATE OR REPLACE TABLE silver_trial_criteria
+# MAGIC COMMENT 'Trials-as-data catalog: one row per trial, one req_* column per criterion. NULL req_* = unconstrained.'
+# MAGIC AS
+# MAGIC SELECT * FROM VALUES
+# MAGIC   -- trial_id, trial_name, status, req_sex, age_min, age_max, req_her2, req_er, req_pr,
+# MAGIC   --   req_menopausal, req_no_prior_anti_her2, min_ecog, eligibility_text
+# MAGIC   ('A', 'HER2-Positive Breast Cancer Study', 'Recruiting', 'Female', 18, 75,
+# MAGIC    'Positive', CAST(NULL AS STRING), CAST(NULL AS STRING),
+# MAGIC    CAST(NULL AS STRING), true, 1,
+# MAGIC    'HER2-positive breast cancer, age 18-75, no prior anti-HER2 therapy.'),
+# MAGIC   ('B', 'ER-Positive / HER2-Negative Study', 'Recruiting', 'Female', 18, 75,
+# MAGIC    'Negative', 'Positive', CAST(NULL AS STRING),
+# MAGIC    'Postmenopausal', CAST(NULL AS BOOLEAN), CAST(NULL AS INT),
+# MAGIC    'ER-positive, HER2-negative, postmenopausal breast cancer, age 18-75.'),
+# MAGIC   ('C', 'Triple-Negative Breast Cancer Study', 'Recruiting', 'Female', 18, 75,
+# MAGIC    'Negative', 'Negative', 'Negative',
+# MAGIC    CAST(NULL AS STRING), CAST(NULL AS BOOLEAN), CAST(NULL AS INT),
+# MAGIC    'Triple-negative breast cancer (HER2-, ER-, PR-), age 18-75.')
+# MAGIC AS t(trial_id, trial_name, status, req_sex, age_min, age_max, req_her2, req_er, req_pr,
+# MAGIC       req_menopausal, req_no_prior_anti_her2, min_ecog, eligibility_text);
 
 # COMMAND ----------
 
@@ -298,7 +324,7 @@ Those <b>{nlp['a_nlp'] + nlp['b_nlp']} patients</b> are now in the unified cohor
 # MAGIC ## 🚩 Checkpoint 6: gold cohort is catalog-driven and app-ready
 # MAGIC
 # MAGIC - `gold_trial_prescreen` is now **LONG** (one row per person per trial), computed by a single generic
-# MAGIC   join to `silver_trial_criteria`. Adding a trial is a data change in DE notebook 05.
+# MAGIC   join to `silver_trial_criteria`. Adding a trial is a data change: insert a row into that catalog.
 # MAGIC - Trials A and B reproduce the validated numbers (**A = 140**, **B = 70**, **+31 NLP-recovered for A, +14 for B**);
 # MAGIC   Trial C (triple-negative) is net-new.
 # MAGIC - `gold_trial_prescreen_wide` keeps the old `trial_a_eligible` / `trial_b_eligible` shape.
